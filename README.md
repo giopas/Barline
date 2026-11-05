@@ -4,89 +4,120 @@ Plan your set, and keep everyone in sync on stage.
 
 SSP is a tool for bands and other music groups to work out a song's
 structure together -- sections, tempo, count-ins, and reminders for each
-player -- and then give every musician a live, synced, on-stage reference
-on their own tablet or phone.
+player -- and then put it on every musician's own tablet or phone, all
+moving through the song together, each with its own click.
+
+![The editor: a song's sections, bars, tempo, count-ins and hints](screenshots/01-editor.png)
 
 ## What it does
 
-- **Draft a song's structure** as a band: verses, choruses, bridges, however
-  you think about your songs. Set bars and tempo per section, a count-in
-  style, and hints -- a note for the whole band, or something aimed at one
-  player ("Bass: root notes only here").
-- **Build a setlist** from your songs and switch between them instantly.
-- **Play it live**: any connected device can start a run, and every
-  tablet/phone scrolls and highlights in sync, with its own metronome
-  click playing in time.
+- **Draft a song's structure as a band.** Verses, choruses, bridges, however
+  you think about your songs. Bars and tempo per section (a half-time bridge
+  can have its own BPM), a count-in, and hints: a note for the whole band,
+  or one aimed at a single player ("Bass: root notes only here"). A hint can
+  carry a short voice memo too.
+- **Everyone edits the same copy.** Change a bar count on the laptop and the
+  singer's phone updates a moment later. No refresh, no "which version is
+  the latest".
+- **Build setlists** and switch between songs instantly.
+- **Play it live.** Anyone can press Start -- usually the drummer. Every
+  screen follows the song bar by bar, shows what's coming next, and puts
+  *your* hints up front. Each device plays its own metronome click in time.
+- **Take it with you.** Download a practice click track (`.wav`) that follows
+  the song's tempo changes, print a chart for the whole band or one player,
+  or export a song (voice memos included) as a single file for another band.
+
+| On the drummer's tablet | On the bassist's phone |
+|---|---|
+| ![Live view on a tablet, as the drummer](screenshots/07-live-tablet-drums.png) | ![Live view on a phone, as the bass player](screenshots/08-live-phone-bass.png) |
+
+![One tap on the tablet: tablet and phone follow the song together](screenshots/live.gif)
 
 ## How it works
 
-One small server -- a laptop, a Raspberry Pi, or similar -- runs on your
-own Wi-Fi and holds the whole band's songs and setlists. Everyone in the
-room (drafting the structure, or following along live) opens the same
-address in their phone or tablet's browser. There's no app to install, no
-account, no internet connection involved at all.
+One small server -- a laptop, a Raspberry Pi, or similar -- runs on your own
+Wi-Fi and holds the whole band's songs and setlists. Everyone in the room
+opens the same address in their phone or tablet's browser (or scans the QR
+code the server shows). There's no app to install, no account, and no
+internet connection involved at all.
 
-**This is deliberate, not a limitation to work around.** SSP is meant to
-run on your local network only -- never exposed to the internet -- because
-a remote server is exactly the kind of lag and dropped-connection risk a
-rehearsal or a live set can't afford.
+![Edits on the laptop show up on the phone](screenshots/sync.gif)
 
-**Trust model (v1):** anyone on the same Wi-Fi who has the address can
-read and edit everything. There's no per-user login yet -- treat the
-server's address the way you'd treat a shared rehearsal-room whiteboard.
+**Local network only, on purpose.** SSP is never meant to be reachable over
+the internet: a remote server is exactly the kind of lag and dropped
+connection a rehearsal or a live set can't afford. The server makes no
+outbound connections, sends no telemetry, and only reads and writes its own
+data folder.
+
+**Trust model:** anyone on the same Wi-Fi who has the address can read and
+edit everything. There's no per-user login -- treat the address the way
+you'd treat a whiteboard in your rehearsal room.
 
 ## Getting started
 
-On a laptop, open the desktop control panel:
+On a laptop, open the control panel:
 
-- macOS: double-click `launchers/start-macos.command` (or run the packaged
-  `SSP - Song and Setlist Planner.app`, see "Packaged builds" below)
-- Windows: double-click `launchers/start-windows.bat` (or
-  `SingleSongPlanner.exe` once packaged)
-- Linux: run `launchers/start-linux.sh` (or the packaged
-  `SingleSongPlanner` binary)
+- macOS: double-click `launchers/start-macos.command` (or a packaged
+  `SSP - Song and Setlist Planner.app`, see below)
+- Windows: double-click `launchers/start-windows.bat`
+- Linux: run `launchers/start-linux.sh`
 
-1. Pick (or create) a folder for your band's songs and setlists -- the
-   panel remembers it, and a handful of recently used folders, for next
-   time.
-2. Click **Start server**. The panel lists the addresses to open --
-   something like `http://192.168.1.42:8420/`.
-3. On each phone or tablet, connect to the same Wi-Fi and open that
-   address in the browser.
-4. Start planning. Everything you create is saved as you go.
+![The control panel](screenshots/13-launcher.png)
 
-Running it on a headless Raspberry Pi instead (no screen, always on) skips
-the control panel: run `server/app.py` directly, or install it as a
-background service -- see `launchers/ssp.service`.
+1. Pick (or create) a folder for your band's songs. The panel remembers it.
+2. Click **Start server**. It shows the address and a QR code.
+3. On each phone or tablet, join the same Wi-Fi and scan the code or type
+   the address.
+4. Start planning. Everything is saved as you go.
 
-Requires Python 3.9+ with Tk (python.org's installers for Windows/macOS
-already include it; on Linux, `sudo apt install python3-tk` or your
-distro's equivalent) -- or just use a packaged build below, which needs
-nothing installed at all.
+Want to look around first? **Try the demo band** loads a fictional band
+(The Paper Lanterns) with six songs and two setlists. It's a throwaway
+copy, so nothing you do there sticks. From a terminal:
+`python3 server/app.py --demo`.
+
+On a Raspberry Pi with no screen, skip the control panel and run the server
+as a service: see the wiki page *Running on a Raspberry Pi* and
+`launchers/ssp.service`.
+
+Requires Python 3.9 or newer. The server uses only Python's standard
+library; the control panel also needs Tk (included with python.org's
+installers for Windows and macOS; on Linux, `sudo apt install python3-tk`).
 
 ### Packaged builds
 
-For anyone who'd rather not install Python: `packaging/` has a PyInstaller
-spec and a build script per OS (`build-macos.sh`, `build-windows.bat`,
-`build-linux.sh`) that produce a standalone, double-click-to-run build --
-same idea as QLC+ Swiss Knife's packaged releases. Each must be built ON
-that OS (PyInstaller doesn't cross-compile); see `packaging/ssp.spec` for
-what gets bundled.
+`packaging/` has a PyInstaller spec and a build script per OS that produce
+a double-click-to-run build with nothing to install. Each has to be built on
+its own OS (PyInstaller doesn't cross-compile).
+
+## More
+
+The [wiki](https://github.com/giopas/SSP---Song-and-Setlist-Planner/wiki)
+walks through planning a song, using it on stage, the metronome, printing,
+moving songs between setups, and running SSP on a Raspberry Pi.
+
+| Setlists | The band | Connect a device |
+|---|---|---|
+| ![Setlist builder](screenshots/02-setlist.png) | ![Band members](screenshots/03-band.png) | ![QR code to connect](screenshots/04-connect.png) |
+
+## For developers
+
+- `python3 -m unittest discover -s tests` runs the tests (the browser tests
+  need Playwright and are skipped without it).
+- `python3 tools/make_demo_data.py` regenerates `demo/`;
+  `python3 tools/shots.py` retakes every screenshot and GIF in
+  `screenshots/` from the demo band.
+- No build step: the web app in `web/static/` is plain HTML, CSS and
+  JavaScript.
 
 ## Credit
 
 SSP's song-structure focus takes its cue from
-[song-map.com](https://song-map.com/). The "one local server, every device
-a synced client" pattern -- and the metronome/click-track engine -- are
-adapted from
-[QLC+ Swiss Knife](https://github.com/giopas/qlc-plus-swiss-knife-tool-script)'s
-Stage Monitor feature.
-
-## Status
-
-Early and actively developing. See `claude/WORKPLAN.md` for the current
-roadmap and `CHANGELOG.md` for what's shipped.
+[song-map.com](https://song-map.com/). The "one local server, every device a
+synced client" pattern, the per-player "tablet on stage" idea, the QR code
+encoder and the click-track sounds are adapted from
+[QLC+ Swiss Knife](https://github.com/giopas/qlc-plus-swiss-knife-tool-script).
 
 ## License
 
-MIT -- free and open source, forever. See `LICENSE`.
+MIT -- free and open source, forever. See `LICENSE`. What's changed in each
+version is in `CHANGELOG.md`.

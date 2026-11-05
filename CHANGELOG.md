@@ -3,7 +3,89 @@
 All notable changes to this project are documented here. Versioning
 follows semver (MAJOR.MINOR.PATCH).
 
-## [Unreleased] -- v0.1
+## [0.9.0] -- 2026-11-05
+
+Everything planned for 1.0 is in. 1.0.0 gets tagged once it's been played
+through on real tablets and phones over real Wi-Fi.
+
+### Added
+
+- **Metronome.** Each device plays its own click (wood, beep or tick, with
+  a louder first beat), scheduled on the browser's audio clock so it
+  stays tight. Preview a whole song's click, or one section's count-in and
+  first bars, while planning. The sounds are the same ones QLC+ Swiss
+  Knife uses, built from the same formulas.
+- **Practice click tracks.** Download a `.wav` of a song's click, with
+  every tempo change and count-in in place.
+- **Live sync between devices.** Every edit shows up on every connected
+  device within a moment, without losing anyone's cursor. When another
+  device changes the song you're on, you're told who. A dropped Wi-Fi
+  connection reconnects by itself and catches up.
+- **Connect a device**: a QR code for the server's address, plus one per
+  player that opens straight into that player's live view. The desktop
+  control panel shows the QR code too.
+- **Band page**: players with a name and an instrument. Removing a player
+  sends their hints back to the whole band.
+- **Who's using this device**: each phone or tablet says who's holding it;
+  hints aimed at that player stand out ("For you"), others' hints stay one
+  tap away. The sidebar shows how many devices are connected.
+- **Live view and transport.** Any device can start or stop a song for the
+  whole band. The server fixes the start time and shares the tempo map;
+  every screen then follows the song from a shared clock: the current
+  section, bar and beat, what's next and how soon, your hints, the next
+  section's hints, and the whole song scrolling along. Start from any
+  section. Setlists: cue a setlist, move between songs from any device,
+  and the next song comes up ready at the end of each one. Space and arrow
+  keys (and so most Bluetooth page-turner pedals) start, stop and change
+  song.
+- **Count-ins on stage**: a count-in, even mid-song, shows in yellow with
+  the beat. A run always starts with a count-in (one bar of click if the
+  first section has none).
+- **Voice memos on hints**: record one (on the server's own computer) or
+  attach an audio file (on phones and tablets), up to 30 seconds; anyone
+  can play it back. Memos no song uses any more are cleaned up.
+- **Printable charts** for a song or a whole setlist, for the whole band or
+  one player. Print, or save as PDF.
+- **Export and import** a song as one `.ssp.json` file with its voice
+  memos. Importing never overwrites an existing song.
+- **Demo band** (`demo/`, a fictional band and six songs), opened with
+  `server/app.py --demo` or the control panel's "Try the demo band". Always
+  a throwaway copy.
+- **Phones**: the editor and live view both fit a phone screen; the sidebar
+  becomes a slide-out menu.
+- **Setlists** can be reordered and show each song's tempo and length and
+  the set's total time.
+- **Raspberry Pi guide** in the wiki: running headless as a service,
+  `ssp.local`, and the Pi as its own Wi-Fi hotspot. `launchers/ssp.service`
+  updated to match.
+- **Wiki** pages for the metronome, printing and moving songs, and the Pi,
+  with screenshots and GIFs throughout; the README has them too.
+- **Tests**: server API, live sync, transport, clips, export/import, a
+  decoded QR code, the browser and server tempo maps agreeing on every
+  demo song, and browser tests with two and three devices
+  (`python3 -m unittest discover -s tests`).
+- **Screenshots and GIFs** are made by `tools/shots.py` from the demo
+  band, so they can be retaken whenever a screen changes.
+
+### Changed
+
+- Live sync uses Server-Sent Events rather than a WebSocket: the server
+  only ever pushes, edits still go up as normal requests, it needs nothing
+  outside Python's standard library, and browsers reconnect it by
+  themselves.
+- The control panel stops the server properly (ends the live run and
+  every device's connection) so the port is free straight away.
+- Section, hint and player ids made in the browser are now plain random
+  ids (no `tmp-` prefix). Songs saved by 0.1 load unchanged.
+
+### Security
+
+- Stricter Content-Security-Policy (no framing, no referrer); every
+  request body has a size limit; recorded clips are only ever read or
+  written by a strictly checked name inside the data folder's `audio/`
+  folder; printed charts escape everything they show.
+
+## [0.1.0] -- 2026-11-05
 
 ### Changed
 
