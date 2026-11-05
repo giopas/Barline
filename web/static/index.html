@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>Single Song Planner</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div id="app" class="app">
+
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>SSP</h1>
+        <span class="tagline">Single Song Planner</span>
+      </div>
+
+      <section class="sidebar-section">
+        <div class="sidebar-section-head">
+          <h2>Setlists</h2>
+          <button class="btn-icon" id="new-setlist-btn" title="New setlist">+</button>
+        </div>
+        <ul id="setlist-list" class="item-list"></ul>
+      </section>
+
+      <section class="sidebar-section">
+        <div class="sidebar-section-head">
+          <h2>Songs</h2>
+          <button class="btn-icon" id="new-song-btn" title="New song">+</button>
+        </div>
+        <ul id="song-list" class="item-list"></ul>
+      </section>
+
+      <footer class="sidebar-footer">
+        <span id="connection-status" class="status-dot status-ok" title="Connected"></span>
+        <span id="connection-label">connected</span>
+      </footer>
+    </aside>
+
+    <main class="main">
+      <div id="empty-state" class="empty-state">
+        <p>Select a song to start planning its structure, or create a new one.</p>
+      </div>
+
+      <div id="song-view" class="song-view hidden">
+        <header class="song-header">
+          <input id="song-title" class="song-title-input" type="text" placeholder="Song title" />
+          <div class="song-meta">
+            <label>
+              Default BPM
+              <input id="song-bpm" type="number" min="20" max="400" />
+            </label>
+            <button id="delete-song-btn" class="btn-danger">Delete song</button>
+          </div>
+        </header>
+
+        <div id="song-shape" class="song-shape" title="Whole-song overview"></div>
+
+        <div class="sections-head">
+          <h2>Sections</h2>
+          <button id="add-section-btn" class="btn">+ Add section</button>
+        </div>
+
+        <div id="sections-list" class="sections-list"></div>
+      </div>
+
+      <!-- Setlist builder view -->
+      <div id="setlist-view" class="setlist-view hidden">
+        <header class="song-header">
+          <input id="setlist-name" class="song-title-input" type="text" placeholder="Setlist name" />
+          <div class="song-meta">
+            <button id="delete-setlist-btn" class="btn-danger">Delete setlist</button>
+          </div>
+        </header>
+        <div class="setlist-builder">
+          <div class="setlist-column">
+            <h2>In this setlist</h2>
+            <ol id="setlist-songs" class="setlist-songs"></ol>
+          </div>
+          <div class="setlist-column">
+            <h2>All songs</h2>
+            <ul id="setlist-available" class="setlist-available"></ul>
+          </div>
+        </div>
+      </div>
+    </main>
+
+  </div>
+
+  <template id="section-card-template">
+    <div class="section-card" data-section-id="">
+      <div class="section-card-head">
+        <input class="section-label" type="text" placeholder="Section label" />
+        <div class="section-card-controls">
+          <button class="btn-icon move-up" title="Move up">&uarr;</button>
+          <button class="btn-icon move-down" title="Move down">&darr;</button>
+          <button class="btn-icon danger remove-section" title="Remove section">&times;</button>
+        </div>
+      </div>
+      <div class="section-card-fields">
+        <label>Bars <input class="section-bars" type="number" min="1" /></label>
+        <label>BPM override <input class="section-bpm" type="number" min="20" max="400" placeholder="(song default)" /></label>
+        <label>Count-in bars <input class="count-in-bars" type="number" min="0" /></label>
+        <label>Count-in style
+          <select class="count-in-style">
+            <option value="none">none</option>
+            <option value="sticks">sticks</option>
+            <option value="click">click</option>
+            <option value="verbal">verbal</option>
+          </select>
+        </label>
+      </div>
+      <div class="section-bar-grid"></div>
+      <div class="section-hints">
+        <div class="section-hints-head">
+          <h3>Hints</h3>
+          <button class="btn-icon add-hint" title="Add hint">+</button>
+        </div>
+        <ul class="hint-list"></ul>
+      </div>
+    </div>
+  </template>
+
+  <template id="hint-row-template">
+    <li class="hint-row">
+      <input class="hint-text" type="text" placeholder="Hint text" />
+      <select class="hint-visibility">
+        <option value="all">Whole band</option>
+      </select>
+      <button class="btn-icon danger remove-hint" title="Remove hint">&times;</button>
+    </li>
+  </template>
+
+  <script src="/app.js"></script>
+</body>
+</html>

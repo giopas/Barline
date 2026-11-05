@@ -1,0 +1,25 @@
+# systemd unit for running SSP headless on a Raspberry Pi (or any always-on
+# Linux box). This is a starting point, not finished deployment docs --
+# full headless-Pi setup instructions land in v0.7 (see claude/WORKPLAN.md).
+#
+# Install:
+#   sudo cp ssp.service /etc/systemd/system/ssp.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now ssp
+#
+# Adjust User, WorkingDirectory and ExecStart to match where the repo lives.
+
+[Unit]
+Description=Single Song Planner server
+After=network.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/single-song-planner/server
+ExecStart=/usr/bin/python3 /home/pi/single-song-planner/server/app.py
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

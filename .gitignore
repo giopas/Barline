@@ -1,0 +1,28 @@
+# local-only AI working notes -- not committed
+claude/
+
+# local real-band data -- demo/test data only goes in fixtures, not here
+data/band.json
+data/songs/*.json
+data/setlists/*.json
+!data/songs/.gitkeep
+!data/setlists/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# PyInstaller build output (packaging/ build-*.sh write here; see packaging/ssp.spec)
+build/
+dist/
+
+# editor/OS cruft
+.DS_Store
+*.swp
+
+# scratch/archive
+scratch/
+archive/
+*.local.*
