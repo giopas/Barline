@@ -2,18 +2,27 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#16181d" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>SSP - Song and Setlist Planner</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <div id="app" class="app">
 
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
         <h1>SSP</h1>
         <span class="tagline">Song and Setlist Planner</span>
       </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-btn" id="nav-band" title="Band members and roles">Band</button>
+        <button class="nav-btn nav-live" id="nav-live" title="Open the live, on-stage view">Live view</button>
+      </nav>
 
       <section class="sidebar-section">
         <div class="sidebar-section-head">
@@ -23,38 +32,70 @@
         <ul id="setlist-list" class="item-list"></ul>
       </section>
 
-      <section class="sidebar-section">
+      <section class="sidebar-section sidebar-songs">
         <div class="sidebar-section-head">
           <h2>Songs</h2>
-          <button class="btn-icon" id="new-song-btn" title="New song">+</button>
+          <span>
+            <button class="btn-icon" id="import-song-btn" title="Import a song file (.ssp.json)">&#8613;</button>
+            <button class="btn-icon" id="new-song-btn" title="New song">+</button>
+          </span>
         </div>
         <ul id="song-list" class="item-list"></ul>
+        <input type="file" id="import-file" accept=".json,application/json" class="hidden" />
       </section>
 
       <footer class="sidebar-footer">
-        <span id="connection-status" class="status-dot status-ok" title="Connected"></span>
-        <span id="connection-label">connected</span>
+        <div class="footer-row">
+          <span id="connection-status" class="status-dot status-bad" title="Not connected"></span>
+          <span id="connection-label">connecting…</span>
+          <span id="presence-label" class="presence-label"></span>
+        </div>
+        <div class="footer-row">
+          <button class="chip" id="who-btn" title="Who's using this device?">Whole band</button>
+          <button class="btn-small" id="connect-btn" title="Show the address and QR code for phones and tablets">Connect a device</button>
+        </div>
       </footer>
     </aside>
+    <div class="scrim" id="scrim"></div>
 
-    <main class="main">
+    <main class="main" id="main">
+      <div class="mobile-bar">
+        <button class="btn-icon menu-btn" id="menu-btn" title="Songs and setlists">&#9776;</button>
+        <span class="mobile-title">SSP</span>
+      </div>
+
       <div id="empty-state" class="empty-state">
         <p>Select a song to start planning its structure, or create a new one.</p>
       </div>
 
       <div id="song-view" class="song-view hidden">
         <header class="song-header">
-          <input id="song-title" class="song-title-input" type="text" placeholder="Song title" />
+          <input id="song-title" class="song-title-input" type="text" placeholder="Song title" data-focus-key="song:title" />
           <div class="song-meta">
             <label>
               Default BPM
-              <input id="song-bpm" type="number" min="20" max="400" />
+              <input id="song-bpm" type="number" min="20" max="400" data-focus-key="song:bpm" />
             </label>
-            <button id="delete-song-btn" class="btn-danger">Delete song</button>
           </div>
         </header>
+        <div class="toolbar">
+          <button class="btn btn-go" id="song-live-btn" title="Put this song on every live screen">&#9654; Go live</button>
+          <button class="btn" id="song-preview-btn" title="Hear the song's click on this device">&#9835; Preview click</button>
+          <span class="tool-group">
+            <select id="click-sound" title="Click sound">
+              <option value="wood">wood</option>
+              <option value="beep">beep</option>
+              <option value="tick">tick</option>
+            </select>
+            <button class="btn" id="song-wav-btn" title="Download a practice click track (.wav)">&#8615; Click track</button>
+          </span>
+          <button class="btn" id="song-print-btn" title="Printable chart (whole band, or your part)">&#9113; Print chart</button>
+          <button class="btn" id="song-export-btn" title="Download this song as one portable file, with its voice memos">&#8615; Export</button>
+          <button id="delete-song-btn" class="btn-danger">Delete</button>
+        </div>
 
         <div id="song-shape" class="song-shape" title="Whole-song overview"></div>
+        <p id="song-summary" class="song-summary"></p>
 
         <div class="sections-head">
           <h2>Sections</h2>
@@ -64,14 +105,16 @@
         <div id="sections-list" class="sections-list"></div>
       </div>
 
-      <!-- Setlist builder view -->
       <div id="setlist-view" class="setlist-view hidden">
         <header class="song-header">
-          <input id="setlist-name" class="song-title-input" type="text" placeholder="Setlist name" />
-          <div class="song-meta">
-            <button id="delete-setlist-btn" class="btn-danger">Delete setlist</button>
-          </div>
+          <input id="setlist-name" class="song-title-input" type="text" placeholder="Setlist name" data-focus-key="setlist:name" />
         </header>
+        <div class="toolbar">
+          <button class="btn btn-go" id="setlist-live-btn" title="Put this setlist on every live screen">&#9654; Go live with this setlist</button>
+          <button class="btn" id="setlist-print-btn" title="Printable charts for the whole set">&#9113; Print set</button>
+          <button id="delete-setlist-btn" class="btn-danger">Delete</button>
+        </div>
+        <p id="setlist-summary" class="song-summary"></p>
         <div class="setlist-builder">
           <div class="setlist-column">
             <h2>In this setlist</h2>
@@ -83,15 +126,121 @@
           </div>
         </div>
       </div>
+
+      <div id="band-view" class="band-view hidden">
+        <header class="song-header">
+          <input id="band-name" class="song-title-input" type="text" placeholder="Band name" data-focus-key="band:name" />
+        </header>
+        <p class="song-summary">Everyone who plays. A hint can be aimed at one of them, and each device can say who's holding it so that player's hints stand out.</p>
+        <ul id="player-list" class="player-list"></ul>
+        <button class="btn" id="add-player-btn">+ Add player</button>
+      </div>
     </main>
 
+    <!-- Live / on-stage view -->
+    <section id="live-view" class="live hidden">
+      <header class="live-top">
+        <button class="btn-small" id="live-exit" title="Back to editing">&larr; Edit</button>
+        <div class="live-title">
+          <span id="live-song-title">No song cued</span>
+          <span id="live-song-meta" class="live-meta"></span>
+        </div>
+        <div class="live-setlist-nav" id="live-setlist-nav">
+          <button class="btn-small" id="live-prev" title="Previous song">&#9664;</button>
+          <span id="live-setlist-pos"></span>
+          <button class="btn-small" id="live-next" title="Next song">&#9654;</button>
+        </div>
+        <span class="live-presence" id="live-presence"></span>
+        <button class="chip" id="live-who" title="Who's using this device?">Whole band</button>
+      </header>
+
+      <div class="live-shape" id="live-shape"></div>
+
+      <div class="live-now" id="live-now">
+        <div class="now-main">
+          <div class="now-kicker" id="now-kicker">Ready</div>
+          <div class="now-label" id="now-label">&ndash;</div>
+          <div class="now-sub" id="now-sub"></div>
+        </div>
+        <div class="now-beats" id="now-beats">
+          <span class="beat"></span><span class="beat"></span><span class="beat"></span><span class="beat"></span>
+        </div>
+        <div class="now-next" id="now-next"></div>
+      </div>
+
+      <div class="live-hints" id="live-hints"></div>
+      <div class="live-chart" id="live-chart"></div>
+
+      <footer class="live-controls">
+        <button class="big-go" id="live-start">&#9654; Start</button>
+        <button class="big-stop hidden" id="live-stop">&#9632; Stop</button>
+        <span class="live-driver" id="live-driver"></span>
+        <span class="click-controls">
+          <button class="chip" id="click-toggle" title="Metronome click on this device">&#128264; Click: tap to enable</button>
+          <select id="live-sound" title="Click sound on this device">
+            <option value="wood">wood</option>
+            <option value="beep">beep</option>
+            <option value="tick">tick</option>
+          </select>
+          <input type="range" id="live-volume" min="0" max="1" step="0.05" title="Click volume" />
+        </span>
+      </footer>
+    </section>
   </div>
+
+  <!-- Connect a device -->
+  <div class="modal hidden" id="connect-modal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>Connect a phone or tablet</h2>
+        <button class="btn-icon" data-close>&times;</button>
+      </div>
+      <p class="modal-note">Same Wi-Fi as this server, then scan the code or type the address into any browser. No app, no account.</p>
+      <div class="connect-body">
+        <img id="connect-qr" class="qr" alt="QR code for the address" />
+        <div>
+          <select id="connect-address"></select>
+          <p class="connect-url" id="connect-url"></p>
+          <h3>Straight to one player's live view</h3>
+          <div id="connect-players" class="connect-players"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Who's on this device -->
+  <div class="modal hidden" id="who-modal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>Who's using this device?</h2>
+        <button class="btn-icon" data-close>&times;</button>
+      </div>
+      <p class="modal-note">Hints aimed at you will stand out. You can change this any time.</p>
+      <div id="who-options" class="who-options"></div>
+    </div>
+  </div>
+
+  <!-- Print / export choice -->
+  <div class="modal hidden" id="print-modal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>Print a chart</h2>
+        <button class="btn-icon" data-close>&times;</button>
+      </div>
+      <p class="modal-note">Opens a printable page. Use your browser's Print, or "Save as PDF".</p>
+      <div id="print-options" class="who-options"></div>
+    </div>
+  </div>
+
+  <div id="toasts" class="toasts"></div>
 
   <template id="section-card-template">
     <div class="section-card" data-section-id="">
       <div class="section-card-head">
+        <span class="section-start"></span>
         <input class="section-label" type="text" placeholder="Section label" />
         <div class="section-card-controls">
+          <button class="btn-icon preview-section" title="Hear this section's count-in and first bars">&#9835;</button>
           <button class="btn-icon move-up" title="Move up">&uarr;</button>
           <button class="btn-icon move-down" title="Move down">&darr;</button>
           <button class="btn-icon duplicate-section" title="Duplicate section">&#10697;</button>
@@ -99,9 +248,9 @@
         </div>
       </div>
       <div class="section-card-fields">
-        <label>Bars <input class="section-bars" type="number" min="1" /></label>
+        <label>Bars <input class="section-bars" type="number" min="1" max="999" /></label>
         <label>BPM override <input class="section-bpm" type="number" min="20" max="400" placeholder="(song default)" /></label>
-        <label>Count-in bars <input class="count-in-bars" type="number" min="0" /></label>
+        <label>Count-in bars <input class="count-in-bars" type="number" min="0" max="8" /></label>
         <label>Count-in style
           <select class="count-in-style">
             <option value="none">none</option>
@@ -128,10 +277,17 @@
       <select class="hint-visibility">
         <option value="all">Whole band</option>
       </select>
+      <button class="btn-icon hint-play hidden" title="Play the voice memo">&#9654;</button>
+      <button class="btn-icon hint-record" title="Record or attach a short voice memo">&#127908;</button>
       <button class="btn-icon danger remove-hint" title="Remove hint">&times;</button>
+      <input type="file" class="hint-file hidden" accept="audio/*" capture />
     </li>
   </template>
 
+  <script src="/timing.js"></script>
+  <script src="/audio.js"></script>
+  <script src="/sync.js"></script>
   <script src="/app.js"></script>
+  <script src="/live.js"></script>
 </body>
 </html>

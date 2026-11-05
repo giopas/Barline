@@ -1,68 +1,92 @@
 "use strict";
 
 /*
- * SSP - Song and Setlist Planner -- v0.1 single-page app.
+ * SSP - Song and Setlist Planner -- the one web app.
  *
- * One client at a time in this version (no WebSocket sync yet -- that's
- * v0.3). Drafting controls and the eventual live/player view are meant to
- * be the same app, not separate ones (see PROJECT_CHARTER.md section 10),
- * so this file is written to grow into that rather than be thrown away.
+ * Drafting (this file) and the live, on-stage view (live.js) are the same
+ * app against the same server, not separate ones (PROJECT_CHARTER.md
+ * section 10). Every edit is saved to the server a moment after you stop
+ * typing and pushed from there to every other connected device (sync.js).
  *
- * No build step: this is loaded directly as a <script>, vanilla JS.
+ * Concurrency is deliberately simple: last write wins, per song. When
+ * another device changes the song you have open, this page takes their
+ * version -- unless you're mid-edit yourself, in which case your save,
+ * a fraction of a second later, wins and goes out to everyone.
+ *
+ * No build step: plain <script>s, vanilla JS.
  */
 
-const API = "/api";
+const Timing = window.SSPTiming;
+const Sync = window.SSPSync;
+const api = (...args) => Sync.api(...args);
 
-async function api(method, path, body) {
-  const opts = { method, headers: {} };
-  if (body !== undefined) {
-    opts.headers["Content-Type"] = "application/json";
-    opts.body = JSON.stringify(body);
-  }
-  const res = await fetch(API + path, opts);
-  setConnectionStatus(true);
-  if (res.status === 204) return null;
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(data.error || `${method} ${path} failed (${res.status})`);
-  }
-  return data;
-}
+// ---------------------------------------------------------------------
+// Small helpers
+// ---------------------------------------------------------------------
 
-function setConnectionStatus(ok) {
-  const dot = document.getElementById("connection-status");
-  const label = document.getElementById("connection-label");
-  dot.className = "status-dot " + (ok ? "status-ok" : "status-bad");
-  label.textContent = ok ? "connected" : "disconnected";
-}
-
-// debounce helper -- edits accumulate locally and only hit the server
-// (and therefore disk) a short while after the user stops typing.
 function debounce(fn, delay) {
   let timer = null;
-  return (...args) => {
+  const wrapped = (...args) => {
     clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), delay);
+    timer = setTimeout(() => {
+      timer = null;
+      fn(...args);
+    }, delay);
   };
+  wrapped.pending = () => timer !== null;
+  return wrapped;
+}
+
+const prefs = {
+  get(key, fallback) {
+    try {
+      const v = localStorage.getItem("ssp." + key);
+      return v === null ? fallback : JSON.parse(v);
+    } catch (err) {
+      return fallback;
+    }
+  },
+  set(key, value) {
+    try {
+      localStorage.setItem("ssp." + key, JSON.stringify(value));
+    } catch (err) {
+      /* private mode etc. -- a per-device convenience only */
+    }
+  },
+};
+
+function toast(text, kind) {
+  const box = document.getElementById("toasts");
+  // the same message again (another device saving as it types): keep one
+  for (const old of box.children) if (old.textContent === text && !old.classList.contains("toast-out")) old.remove();
+  const t = document.createElement("div");
+  t.className = "toast" + (kind ? " toast-" + kind : "");
+  t.textContent = text;
+  box.appendChild(t);
+  setTimeout(() => t.classList.add("toast-out"), 3200);
+  setTimeout(() => t.remove(), 3800);
+}
+
+function newId() {
+  const a = new Uint8Array(6);
+  crypto.getRandomValues(a);
+  return Array.from(a, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
 }
 
 // ---------------------------------------------------------------------
-// Section color coding -- one color per section, by its position in the
-// song (left-to-right order), reused consistently between the song-shape
-// overview strip, the detailed bar/beat grid, and a small swatch on each
-// section card, so all three views read as the same picture of the song.
+// Section colours -- one per section by its position in the song, the
+// same in the overview strip, the bar grid, the card border, the live
+// view and the printed chart (server/export.py has the same list).
 // ---------------------------------------------------------------------
 
-const SECTION_PALETTE = [
-  "#5b8cff", // blue
-  "#45c08a", // green
-  "#e2b93b", // amber
-  "#e2574c", // red
-  "#b073f0", // purple
-  "#39c2c9", // teal
-  "#f08a3c", // orange
-  "#6fcf97", // mint
-];
+const SECTION_PALETTE = ["#5b8cff", "#45c08a", "#e2b93b", "#e2574c", "#b073f0", "#39c2c9", "#f08a3c", "#6fcf97"];
 
 function sectionColor(index) {
   return SECTION_PALETTE[index % SECTION_PALETTE.length];
@@ -70,212 +94,531 @@ function sectionColor(index) {
 
 function hexToRgba(hex, alpha) {
   const n = parseInt(hex.slice(1), 16);
-  const r = (n >> 16) & 255;
-  const g = (n >> 8) & 255;
-  const b = n & 255;
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`;
 }
+
+const ROLES = ["Drums", "Bass", "Guitar", "Vocals", "Keys", "Other"];
 
 // ---------------------------------------------------------------------
 // App state
 // ---------------------------------------------------------------------
 
 const state = {
-  songs: [],       // sidebar summaries
-  setlists: [],    // sidebar summaries
-  currentSong: null,     // full song object, or null
-  currentSetlist: null,  // full setlist object, or null
+  band: { name: "", players: [] },
+  songs: [],
+  setlists: [],
+  currentSong: null,
+  currentSetlist: null,
+  view: "empty",
+  transport: { state: "stopped" },
+  presence: [],
+  me: prefs.get("player", null), // this device's player id, or null = whole band
+  previewing: false,
 };
 
+const metronome = new window.SSPAudio.Metronome();
+metronome.sound = prefs.get("sound", "wood");
+metronome.setVolume(prefs.get("volume", 0.8));
+metronome.enabled = prefs.get("click", true);
+
 const els = {
+  sidebar: document.getElementById("sidebar"),
+  scrim: document.getElementById("scrim"),
   songList: document.getElementById("song-list"),
   setlistList: document.getElementById("setlist-list"),
   emptyState: document.getElementById("empty-state"),
   songView: document.getElementById("song-view"),
   setlistView: document.getElementById("setlist-view"),
+  bandView: document.getElementById("band-view"),
+  liveView: document.getElementById("live-view"),
   songTitle: document.getElementById("song-title"),
   songBpm: document.getElementById("song-bpm"),
   songShape: document.getElementById("song-shape"),
+  songSummary: document.getElementById("song-summary"),
   sectionsList: document.getElementById("sections-list"),
   setlistName: document.getElementById("setlist-name"),
   setlistSongs: document.getElementById("setlist-songs"),
   setlistAvailable: document.getElementById("setlist-available"),
+  setlistSummary: document.getElementById("setlist-summary"),
+  bandName: document.getElementById("band-name"),
+  playerList: document.getElementById("player-list"),
+  clickSound: document.getElementById("click-sound"),
 };
+
+function playerById(id) {
+  return state.band.players.find((p) => p.id === id) || null;
+}
+
+function playerName(id) {
+  const p = playerById(id);
+  return p ? p.name : null;
+}
+
+function nameForClient(clientId) {
+  const c = state.presence.find((x) => x.client_id === clientId);
+  return (c && playerName(c.player_id)) || "Another device";
+}
+
+// ---------------------------------------------------------------------
+// Re-render without losing the cursor: every editable input carries a
+// data-focus-key; after a redraw we put focus (and the caret) back.
+// ---------------------------------------------------------------------
+
+function preserveFocus(fn) {
+  const a = document.activeElement;
+  const key = a && a.dataset ? a.dataset.focusKey : null;
+  let sel = null;
+  if (key && typeof a.selectionStart === "number") {
+    try {
+      sel = [a.selectionStart, a.selectionEnd];
+    } catch (err) {
+      sel = null;
+    }
+  }
+  fn();
+  if (!key) return;
+  const b = document.querySelector(`[data-focus-key="${CSS.escape(key)}"]`);
+  if (b) {
+    b.focus({ preventScroll: true });
+    if (sel) {
+      try {
+        b.setSelectionRange(sel[0], sel[1]);
+      } catch (err) {
+        /* number inputs */
+      }
+    }
+  }
+}
+
+// ---------------------------------------------------------------------
+// Routing: #/song/<id>, #/setlist/<id>, #/band, #/live[?player=<id>]
+// ---------------------------------------------------------------------
+
+function go(hash) {
+  if (location.hash === hash) route();
+  else location.hash = hash;
+}
+
+function parseHash() {
+  const h = location.hash.replace(/^#\/?/, "");
+  const [path, query] = h.split("?");
+  const parts = path.split("/").filter(Boolean);
+  return { parts, params: new URLSearchParams(query || "") };
+}
+
+async function route() {
+  const { parts, params } = parseHash();
+  closeSidebar();
+  if (params.get("player") !== null) {
+    const pid = params.get("player");
+    setMe(pid && playerById(pid) ? pid : null);
+  }
+  stopPreview();
+  try {
+    if (parts[0] === "song" && parts[1]) return await openSong(parts[1]);
+    if (parts[0] === "setlist" && parts[1]) return await openSetlist(parts[1]);
+    if (parts[0] === "band") return openBand();
+    if (parts[0] === "live") return openLive();
+  } catch (err) {
+    toast("That song or setlist isn't here any more.", "warn");
+  }
+  showView("empty");
+}
+
+function openLive() {
+  showView("live");
+}
+
+function showView(view) {
+  state.view = view;
+  els.emptyState.classList.toggle("hidden", view !== "empty");
+  els.songView.classList.toggle("hidden", view !== "song");
+  els.setlistView.classList.toggle("hidden", view !== "setlist");
+  els.bandView.classList.toggle("hidden", view !== "band");
+  els.liveView.classList.toggle("hidden", view !== "live");
+  document.body.classList.toggle("is-live", view === "live");
+  if (view !== "song") state.currentSong = null;
+  if (view !== "setlist") state.currentSetlist = null;
+  document.getElementById("nav-band").classList.toggle("active", view === "band");
+  renderSidebar();
+  if (window.SSPLive) window.SSPLive.visible(view === "live");
+}
 
 // ---------------------------------------------------------------------
 // Sidebar
 // ---------------------------------------------------------------------
 
-async function refreshSidebar() {
+async function refreshLists() {
   const [songs, setlists] = await Promise.all([api("GET", "/songs"), api("GET", "/setlists")]);
   state.songs = songs;
   state.setlists = setlists;
   renderSidebar();
+  if (state.view === "setlist") preserveFocus(renderSetlistSongs);
+  if (window.SSPLive) window.SSPLive.refresh();
 }
+const refreshListsSoon = debounce(() => refreshLists().catch(() => {}), 150);
 
 function renderSidebar() {
   els.songList.innerHTML = "";
   for (const song of state.songs) {
-    const li = document.createElement("li");
-    li.textContent = song.title || "(untitled)";
-    const count = document.createElement("span");
-    count.className = "item-count";
-    count.textContent = `${song.total_bars}b`;
-    li.appendChild(count);
+    const li = el("li");
+    li.appendChild(el("span", "item-name", song.title || "(untitled)"));
+    li.appendChild(el("span", "item-count", `${song.default_bpm} · ${Timing.fmtDuration(song.duration_ms)}`));
     if (state.currentSong && state.currentSong.id === song.id) li.classList.add("active");
-    li.addEventListener("click", () => selectSong(song.id));
+    li.addEventListener("click", () => go(`#/song/${song.id}`));
     els.songList.appendChild(li);
   }
-
   els.setlistList.innerHTML = "";
   for (const setlist of state.setlists) {
-    const li = document.createElement("li");
-    li.textContent = setlist.name;
-    const count = document.createElement("span");
-    count.className = "item-count";
-    count.textContent = `${setlist.song_count}`;
-    li.appendChild(count);
+    const li = el("li");
+    li.appendChild(el("span", "item-name", setlist.name));
+    li.appendChild(el("span", "item-count", `${setlist.song_count} · ${Timing.fmtDuration(setlist.duration_ms)}`));
     if (state.currentSetlist && state.currentSetlist.id === setlist.id) li.classList.add("active");
-    li.addEventListener("click", () => selectSetlist(setlist.id));
+    li.addEventListener("click", () => go(`#/setlist/${setlist.id}`));
     els.setlistList.appendChild(li);
+  }
+  renderWho();
+}
+
+function openSidebar() {
+  els.sidebar.classList.add("open");
+  els.scrim.classList.add("open");
+}
+
+function closeSidebar() {
+  els.sidebar.classList.remove("open");
+  els.scrim.classList.remove("open");
+}
+
+document.getElementById("menu-btn").addEventListener("click", openSidebar);
+els.scrim.addEventListener("click", closeSidebar);
+document.getElementById("nav-band").addEventListener("click", () => go("#/band"));
+document.getElementById("nav-live").addEventListener("click", () => go("#/live"));
+
+// ---------------------------------------------------------------------
+// Who's on this device
+// ---------------------------------------------------------------------
+
+function setMe(playerId) {
+  state.me = playerId || null;
+  prefs.set("player", state.me);
+  prefs.set("asked", true);
+  Sync.setPlayer(state.me);
+  renderWho();
+  if (state.view === "song") preserveFocus(renderSections);
+  if (window.SSPLive) window.SSPLive.refresh();
+}
+
+function whoLabel() {
+  const p = playerById(state.me);
+  return p ? `${p.name} · ${p.role}` : "Whole band";
+}
+
+function renderWho() {
+  for (const id of ["who-btn", "live-who"]) {
+    const b = document.getElementById(id);
+    if (b) b.textContent = (id === "who-btn" ? "You: " : "") + whoLabel();
   }
 }
 
-// ---------------------------------------------------------------------
-// View switching
-// ---------------------------------------------------------------------
-
-function showEmpty() {
-  state.currentSong = null;
-  state.currentSetlist = null;
-  els.emptyState.classList.remove("hidden");
-  els.songView.classList.add("hidden");
-  els.setlistView.classList.add("hidden");
-  renderSidebar();
+function openWho() {
+  const box = document.getElementById("who-options");
+  box.innerHTML = "";
+  const all = el("button", "who-option" + (state.me ? "" : " active"));
+  all.appendChild(el("strong", "", "Whole band"));
+  all.appendChild(el("span", "", "No one in particular, every hint looks the same"));
+  all.addEventListener("click", () => {
+    setMe(null);
+    closeModal("who-modal");
+  });
+  box.appendChild(all);
+  for (const p of state.band.players) {
+    const b = el("button", "who-option" + (state.me === p.id ? " active" : ""));
+    b.appendChild(el("strong", "", p.name));
+    b.appendChild(el("span", "", p.role));
+    b.addEventListener("click", () => {
+      setMe(p.id);
+      closeModal("who-modal");
+    });
+    box.appendChild(b);
+  }
+  openModal("who-modal");
 }
 
-function showSongView() {
-  state.currentSetlist = null;
-  els.emptyState.classList.add("hidden");
-  els.songView.classList.remove("hidden");
-  els.setlistView.classList.add("hidden");
-}
-
-function showSetlistView() {
-  state.currentSong = null;
-  els.emptyState.classList.add("hidden");
-  els.songView.classList.add("hidden");
-  els.setlistView.classList.remove("hidden");
-}
+document.getElementById("who-btn").addEventListener("click", openWho);
+document.getElementById("live-who").addEventListener("click", openWho);
 
 // ---------------------------------------------------------------------
-// Song editing -- switching songs is instant (server keeps everything
-// in memory; this is just a GET against that in-memory copy).
+// Modals
 // ---------------------------------------------------------------------
 
-async function selectSong(id) {
+function openModal(id) {
+  document.getElementById(id).classList.remove("hidden");
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.add("hidden");
+}
+
+document.addEventListener("keydown", (ev) => {
+  if (ev.key === "Escape") for (const m of document.querySelectorAll(".modal")) m.classList.add("hidden");
+});
+
+for (const m of document.querySelectorAll(".modal")) {
+  m.addEventListener("click", (ev) => {
+    if (ev.target === m || ev.target.hasAttribute("data-close")) m.classList.add("hidden");
+  });
+}
+
+// -- connect a device -----------------------------------------------------
+
+async function openConnect() {
+  let info = { addresses: [] };
+  try {
+    info = await api("GET", "/connect");
+  } catch (err) {
+    /* fall back to this page's own address */
+  }
+  const here = location.origin + "/";
+  const onLocal = /^(localhost|127\.|\[::1\])/.test(location.hostname);
+  const options = onLocal ? info.addresses : [here, ...info.addresses.filter((a) => a !== here)];
+  if (!options.length) options.push(here);
+  const select = document.getElementById("connect-address");
+  select.innerHTML = "";
+  for (const a of options) {
+    const o = el("option", "", a);
+    o.value = a;
+    select.appendChild(o);
+  }
+  const draw = () => {
+    const base = select.value;
+    document.getElementById("connect-url").textContent = base;
+    document.getElementById("connect-qr").src = "/api/qr.svg?text=" + encodeURIComponent(base);
+    const box = document.getElementById("connect-players");
+    box.innerHTML = "";
+    for (const p of state.band.players) {
+      const url = `${base}#/live?player=${p.id}`;
+      const b = el("button", "chip", `${p.name} · ${p.role}`);
+      b.title = url;
+      b.addEventListener("click", () => {
+        document.getElementById("connect-qr").src = "/api/qr.svg?text=" + encodeURIComponent(url);
+        document.getElementById("connect-url").textContent = url;
+      });
+      box.appendChild(b);
+    }
+    if (!state.band.players.length) box.appendChild(el("p", "modal-note", "Add players on the Band page to get one code per player."));
+  };
+  select.onchange = draw;
+  draw();
+  openModal("connect-modal");
+}
+
+document.getElementById("connect-btn").addEventListener("click", openConnect);
+
+// ---------------------------------------------------------------------
+// Song editing
+// ---------------------------------------------------------------------
+
+let songEdits = 0; // bumps on every local edit; lets a remote update know we're mid-edit
+
+async function openSong(id) {
   const song = await api("GET", `/songs/${id}`);
   state.currentSong = song;
-  showSongView();
+  showView("song");
   renderSongView();
   renderSidebar();
 }
 
 function renderSongView() {
   const song = state.currentSong;
-  els.songTitle.value = song.title;
-  els.songBpm.value = song.default_bpm;
+  if (document.activeElement !== els.songTitle) els.songTitle.value = song.title;
+  if (document.activeElement !== els.songBpm) els.songBpm.value = song.default_bpm;
+  els.clickSound.value = metronome.sound;
   renderSongShape();
   renderSections();
 }
 
+function songIsDirty() {
+  return saveSong.pending() || savingSong;
+}
+
+let savingSong = false;
 const saveSong = debounce(async () => {
   if (!state.currentSong) return;
   const song = state.currentSong;
+  const editsAtSend = songEdits;
+  savingSong = true;
   try {
     // Deliberately does NOT replace state.currentSong with the server's
-    // response. Every input handler in renderSections() closes over the
-    // specific section objects that were on state.currentSong at render
-    // time; swapping in a new object graph here would silently orphan
-    // those closures -- further typing would keep mutating the old,
-    // now-unreachable objects while saveSong() kept re-sending whatever
-    // state.currentSong still pointed at, so edits would appear in the
-    // input boxes but never actually reach the server. (This was the
-    // "section names not updated" bug -- the UI only re-renders from
-    // state.currentSong after an explicit action like switching songs,
-    // so there's no need for the PUT response to feed back into it.)
+    // response: every input handler in renderSections() closes over the
+    // section objects that were on state.currentSong when it rendered, and
+    // swapping in a new object graph here would orphan them (the v0.1
+    // "section names not saved" bug). Remote updates do re-render, which
+    // rebuilds every handler against the new objects -- see onRemoteSong.
     await api("PUT", `/songs/${song.id}`, song);
-    await refreshSidebar();
+    refreshListsSoon();
   } catch (err) {
-    alert("Couldn't save: " + err.message);
+    toast("Couldn't save: " + err.message, "error");
+  } finally {
+    savingSong = false;
+    if (songEdits !== editsAtSend && !saveSong.pending()) saveSong();
   }
 }, 400);
 
+function edited() {
+  songEdits++;
+  renderSummary();
+  saveSong();
+}
+
 els.songTitle.addEventListener("input", () => {
   state.currentSong.title = els.songTitle.value;
-  renderSidebarSongTitleOnly();
-  saveSong();
+  const entry = state.songs.find((s) => s.id === state.currentSong.id);
+  if (entry) entry.title = state.currentSong.title;
+  renderSidebar();
+  edited();
 });
 
 els.songBpm.addEventListener("input", () => {
   const v = parseInt(els.songBpm.value, 10);
-  if (!Number.isNaN(v)) {
+  if (!Number.isNaN(v) && v >= 20 && v <= 400) {
     state.currentSong.default_bpm = v;
     renderSongShape();
-    renderSections();
-    saveSong();
+    preserveFocus(renderSections);
+    edited();
   }
 });
 
-function renderSidebarSongTitleOnly() {
-  // avoid a full sidebar re-render (and losing focus) on every keystroke
-  const entry = state.songs.find((s) => s.id === state.currentSong.id);
-  if (entry) entry.title = state.currentSong.title;
-  renderSidebar();
-  els.songTitle.focus();
-}
-
 document.getElementById("new-song-btn").addEventListener("click", async () => {
   const song = await api("POST", "/songs", { title: "Untitled Song", default_bpm: 120 });
-  await refreshSidebar();
-  selectSong(song.id);
+  await refreshLists();
+  go(`#/song/${song.id}`);
 });
 
 document.getElementById("delete-song-btn").addEventListener("click", async () => {
   if (!state.currentSong) return;
   if (!confirm(`Delete "${state.currentSong.title}"? This can't be undone.`)) return;
   await api("DELETE", `/songs/${state.currentSong.id}`);
-  await refreshSidebar();
-  showEmpty();
+  state.currentSong = null;
+  await refreshLists();
+  go("#/");
 });
 
-// -- sections -----------------------------------------------------------
+document.getElementById("song-live-btn").addEventListener("click", async () => {
+  if (!state.currentSong) return;
+  await api("POST", "/transport", { action: "cue", song_id: state.currentSong.id });
+  go("#/live");
+});
 
-function newId() {
-  return "tmp-" + Math.random().toString(36).slice(2, 10);
+document.getElementById("song-wav-btn").addEventListener("click", () => {
+  if (!state.currentSong) return;
+  location.href = `/api/songs/${state.currentSong.id}/click.wav?sound=${els.clickSound.value}`;
+});
+
+els.clickSound.addEventListener("change", () => {
+  metronome.sound = els.clickSound.value;
+  prefs.set("sound", metronome.sound);
+});
+
+document.getElementById("song-export-btn").addEventListener("click", () => {
+  if (!state.currentSong) return;
+  location.href = `/api/songs/${state.currentSong.id}/export`;
+});
+
+function openPrint(kind, id) {
+  const box = document.getElementById("print-options");
+  box.innerHTML = "";
+  const add = (label, sub, player) => {
+    const b = el("a", "who-option");
+    b.href = `/export/${kind}/${id}` + (player ? `?player=${player}` : "");
+    b.target = "_blank";
+    b.rel = "noopener";
+    b.appendChild(el("strong", "", label));
+    b.appendChild(el("span", "", sub));
+    b.addEventListener("click", () => closeModal("print-modal"));
+    box.appendChild(b);
+  };
+  add("Whole band", "Every hint, with who it's for");
+  for (const p of state.band.players) add(p.name, `${p.role}: band-wide hints plus ${p.name}'s own`, p.id);
+  openModal("print-modal");
 }
+
+document.getElementById("song-print-btn").addEventListener("click", () => {
+  if (state.currentSong) openPrint("song", state.currentSong.id);
+});
+
+// -- import ---------------------------------------------------------------
+
+document.getElementById("import-song-btn").addEventListener("click", () => document.getElementById("import-file").click());
+document.getElementById("import-file").addEventListener("change", async (ev) => {
+  const file = ev.target.files[0];
+  ev.target.value = "";
+  if (!file) return;
+  try {
+    const payload = JSON.parse(await file.text());
+    const song = await api("POST", "/songs/import", payload);
+    toast(`Imported "${song.title}"`);
+    await refreshLists();
+    go(`#/song/${song.id}`);
+  } catch (err) {
+    toast("Couldn't import that file: " + err.message, "error");
+  }
+});
+
+// -- preview the click ------------------------------------------------------
+
+function soundForBar(bar) {
+  if (bar.count_in && bar.count_in_style === "sticks") return metronome.sound === "tick" ? "wood" : "tick";
+  return metronome.sound;
+}
+
+function stopPreview() {
+  if (!state.previewing) return;
+  state.previewing = false;
+  metronome.stop();
+  clearTimeout(state.previewTimer);
+  document.getElementById("song-preview-btn").textContent = "♫ Preview click";
+  for (const b of document.querySelectorAll(".preview-section.playing")) b.classList.remove("playing");
+}
+
+function startPreview(timeline, button) {
+  stopPreview();
+  if (!metronome.unlock()) {
+    toast("This browser can't play sound.", "warn");
+    return;
+  }
+  const wasEnabled = metronome.enabled;
+  metronome.enabled = true;
+  state.previewing = true;
+  metronome.run(timeline, performance.now() + 250, soundForBar);
+  state.previewTimer = setTimeout(() => {
+    metronome.enabled = wasEnabled;
+    stopPreview();
+  }, timeline.total_ms + 600);
+  if (button) button.classList.add("playing");
+}
+
+document.getElementById("song-preview-btn").addEventListener("click", (ev) => {
+  if (state.previewing) return stopPreview();
+  const tl = Timing.build(state.currentSong);
+  if (!tl.bars.length) return toast("Add a section with some bars first.", "warn");
+  startPreview(tl);
+  ev.currentTarget.textContent = "■ Stop preview";
+});
+
+// -- sections -------------------------------------------------------------
 
 function newSectionLocal(order) {
-  return {
-    id: newId(),
-    label: "Section",
-    order,
-    bars: 4,
-    bpm: null,
-    count_in: { bars: 0, style: "none" },
-    hints: [],
-  };
+  return { id: newId(), label: "Section", order, bars: 4, bpm: null, count_in: { bars: 0, style: "none" }, hints: [] };
 }
 
-// Clones a section (bars, BPM override, count-in, and every hint, each
-// hint getting its own fresh id) and inserts the copy immediately after
-// the original -- for repeating a section verbatim (another Chorus,
-// another Verse) without retyping it.
+// Clones a section (bars, BPM override, count-in, every hint with a fresh
+// id) and inserts the copy straight after the original.
 function duplicateSection(song, section) {
   const clone = {
     id: newId(),
     label: section.label,
-    order: section.order + 0.5, // placed right after the original once reindexed below
+    order: section.order + 0.5,
     bars: section.bars,
     bpm: section.bpm,
     count_in: { ...section.count_in },
@@ -287,60 +630,64 @@ function duplicateSection(song, section) {
 
 document.getElementById("add-section-btn").addEventListener("click", () => {
   const song = state.currentSong;
-  const order = song.sections.length;
-  song.sections.push(newSectionLocal(order));
+  song.sections.push(newSectionLocal(song.sections.length));
   renderSongShape();
   renderSections();
-  saveSong();
-});
-
-function sectionStartBar(song, sectionId) {
-  let bar = 1;
-  for (const s of [...song.sections].sort((a, b) => a.order - b.order)) {
-    if (s.id === sectionId) return bar;
-    bar += s.bars;
+  edited();
+  const cards = els.sectionsList.querySelectorAll(".section-label");
+  if (cards.length) {
+    cards[cards.length - 1].focus();
+    cards[cards.length - 1].select();
   }
-  return bar;
-}
-
-function songTotalBars(song) {
-  return song.sections.reduce((sum, s) => sum + s.bars, 0);
-}
+});
 
 function effectiveBpm(song, section) {
   return section.bpm || song.default_bpm;
 }
 
+function renderSummary() {
+  const song = state.currentSong;
+  if (!song) return;
+  const bars = Timing.songTotalBars(song);
+  const n = song.sections.length;
+  els.songSummary.textContent = n
+    ? `${n} section${n === 1 ? "" : "s"} · ${bars} bars · about ${Timing.fmtDuration(Timing.durationMs(song))} with count-ins`
+    : "No sections yet: add the first one below.";
+}
+
 function renderSongShape() {
   const song = state.currentSong;
   els.songShape.innerHTML = "";
-  const sorted = [...song.sections].sort((a, b) => a.order - b.order);
+  const sorted = Timing.sortedSections(song);
   sorted.forEach((section, index) => {
     const color = sectionColor(index);
-    const block = document.createElement("div");
-    block.className = "song-shape-block";
+    const block = el("div", "song-shape-block");
     block.style.flexGrow = String(section.bars);
     block.style.flexBasis = "0";
     block.style.background = hexToRgba(color, 0.28);
     block.style.borderColor = hexToRgba(color, 0.7);
     block.title = `${section.label} -- ${section.bars} bars @ ${effectiveBpm(song, section)} BPM`;
     block.textContent = section.bars >= 2 ? section.label : "";
+    block.addEventListener("click", () => {
+      const card = els.sectionsList.querySelector(`[data-section-id="${section.id}"]`);
+      if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
     els.songShape.appendChild(block);
   });
-  if (song.sections.length === 0) {
-    const empty = document.createElement("div");
-    empty.className = "song-shape-block";
+  if (!sorted.length) {
+    const empty = el("div", "song-shape-block", "no sections yet");
     empty.style.flexGrow = "1";
-    empty.textContent = "no sections yet";
     els.songShape.appendChild(empty);
   }
+  renderSummary();
 }
 
 function renderSections() {
   const song = state.currentSong;
+  if (!song) return;
   const template = document.getElementById("section-card-template");
   els.sectionsList.innerHTML = "";
-  const sorted = [...song.sections].sort((a, b) => a.order - b.order);
+  const sorted = Timing.sortedSections(song);
 
   sorted.forEach((section, index) => {
     const color = sectionColor(index);
@@ -348,99 +695,122 @@ function renderSections() {
     const card = node.querySelector(".section-card");
     card.dataset.sectionId = section.id;
     card.style.borderLeft = `4px solid ${color}`;
+    card.querySelector(".section-start").textContent = `bar ${Timing.sectionStartBar(song, section.id)}`;
 
     const labelInput = node.querySelector(".section-label");
     labelInput.value = section.label;
+    labelInput.dataset.focusKey = `${section.id}:label`;
     labelInput.addEventListener("input", () => {
       section.label = labelInput.value;
       renderSongShape();
-      saveSong();
+      edited();
     });
 
     const barsInput = node.querySelector(".section-bars");
     barsInput.value = section.bars;
+    barsInput.dataset.focusKey = `${section.id}:bars`;
     barsInput.addEventListener("input", () => {
       const v = parseInt(barsInput.value, 10);
-      if (v >= 1) {
+      if (v >= 1 && v <= 999) {
         section.bars = v;
         renderSongShape();
-        // Use card.querySelector, not node.querySelector: by the time this
-        // handler fires, node (the cloned <template> fragment) has already
-        // been appended to the document and is now empty -- its children,
-        // card included, were moved into the live DOM, not copied. card
-        // itself is one of those moved children, so it's still valid.
+        // card, not node: by now node (the <template> clone) has been
+        // appended and is empty -- its children were moved into the page.
         renderBarGrid(card.querySelector(".section-bar-grid"), section, song, color);
-        saveSong();
+        for (const c of els.sectionsList.querySelectorAll(".section-card")) {
+          c.querySelector(".section-start").textContent = `bar ${Timing.sectionStartBar(song, c.dataset.sectionId)}`;
+        }
+        edited();
       }
     });
 
     const bpmInput = node.querySelector(".section-bpm");
     bpmInput.value = section.bpm || "";
+    bpmInput.placeholder = `(${song.default_bpm})`;
+    bpmInput.dataset.focusKey = `${section.id}:bpm`;
     bpmInput.addEventListener("input", () => {
       const v = parseInt(bpmInput.value, 10);
-      section.bpm = Number.isNaN(v) ? null : v;
+      if (bpmInput.value === "") section.bpm = null;
+      else if (v >= 20 && v <= 400) section.bpm = v;
+      else return;
       renderSongShape();
-      saveSong();
+      edited();
     });
 
     const countBars = node.querySelector(".count-in-bars");
     countBars.value = section.count_in.bars;
+    countBars.dataset.focusKey = `${section.id}:cibars`;
     countBars.addEventListener("input", () => {
       const v = parseInt(countBars.value, 10);
-      section.count_in.bars = Number.isNaN(v) ? 0 : v;
-      saveSong();
+      section.count_in.bars = Number.isNaN(v) ? 0 : Math.max(0, Math.min(8, v));
+      if (section.count_in.bars > 0 && section.count_in.style === "none") {
+        section.count_in.style = "click";
+        countStyle.value = "click";
+      }
+      edited();
     });
 
     const countStyle = node.querySelector(".count-in-style");
     countStyle.value = section.count_in.style;
+    countStyle.dataset.focusKey = `${section.id}:cistyle`;
     countStyle.addEventListener("change", () => {
       section.count_in.style = countStyle.value;
-      saveSong();
+      if (countStyle.value !== "none" && !section.count_in.bars) {
+        section.count_in.bars = 1;
+        countBars.value = 1;
+      }
+      edited();
     });
 
+    const move = (delta) => {
+      const other = sorted[index + delta];
+      if (!other) return;
+      [section.order, other.order] = [other.order, section.order];
+      renderSongShape();
+      renderSections();
+      edited();
+    };
     node.querySelector(".move-up").disabled = index === 0;
-    node.querySelector(".move-up").addEventListener("click", () => {
-      if (index === 0) return;
-      const prev = sorted[index - 1];
-      [section.order, prev.order] = [prev.order, section.order];
-      renderSongShape();
-      renderSections();
-      saveSong();
-    });
-
+    node.querySelector(".move-up").addEventListener("click", () => move(-1));
     node.querySelector(".move-down").disabled = index === sorted.length - 1;
-    node.querySelector(".move-down").addEventListener("click", () => {
-      if (index === sorted.length - 1) return;
-      const next = sorted[index + 1];
-      [section.order, next.order] = [next.order, section.order];
-      renderSongShape();
-      renderSections();
-      saveSong();
-    });
+    node.querySelector(".move-down").addEventListener("click", () => move(1));
 
     node.querySelector(".remove-section").addEventListener("click", () => {
       song.sections = song.sections.filter((s) => s.id !== section.id);
-      // keep order contiguous
       song.sections.sort((a, b) => a.order - b.order).forEach((s, i) => (s.order = i));
       renderSongShape();
       renderSections();
-      saveSong();
+      edited();
     });
 
     node.querySelector(".duplicate-section").addEventListener("click", () => {
       duplicateSection(song, section);
       renderSongShape();
       renderSections();
-      saveSong();
+      edited();
+    });
+
+    const previewBtn = node.querySelector(".preview-section");
+    previewBtn.addEventListener("click", () => {
+      if (state.previewing) return stopPreview();
+      const full = Timing.build(song, section.id);
+      const keep = full.bars.filter((b) => b.section_id === section.id);
+      const ci = keep.filter((b) => b.count_in).length;
+      const bars = keep.slice(0, ci + Math.min(2, section.bars));
+      const last = bars[bars.length - 1];
+      startPreview({ bars, total_ms: last.start_ms + last.beat_ms * last.beats }, previewBtn);
     });
 
     renderBarGrid(node.querySelector(".section-bar-grid"), section, song, color);
     renderHints(node.querySelector(".hint-list"), section);
 
     node.querySelector(".add-hint").addEventListener("click", () => {
-      section.hints.push({ id: newId(), text: "", audio: null, visibility: "all" });
-      renderHints(card.querySelector(".hint-list"), section); // see comment on the bars handler above
-      saveSong();
+      const hint = { id: newId(), text: "", audio: null, visibility: "all" };
+      section.hints.push(hint);
+      renderHints(card.querySelector(".hint-list"), section);
+      edited();
+      const input = card.querySelector(`[data-focus-key="${hint.id}:text"]`);
+      if (input) input.focus();
     });
 
     els.sectionsList.appendChild(node);
@@ -448,21 +818,27 @@ function renderSections() {
 }
 
 // -- bar/beat visualization ------------------------------------------
-// One small square per bar; each square is a 2x2 dot grid for its beats
-// (4/4 assumed for v0.1 -- see wishlist for other time signatures).
+// One small square per bar; each square is a 2x2 dot grid for its beats.
 
 function renderBarGrid(container, section, song, color) {
   container.innerHTML = "";
-  const startBar = sectionStartBar(song, section.id);
+  const startBar = Timing.sectionStartBar(song, section.id);
+  if (section.count_in.style !== "none" && section.count_in.bars > 0) {
+    for (let i = 0; i < section.count_in.bars; i++) {
+      const sq = el("div", "bar-square count-in");
+      sq.title = `count-in (${section.count_in.style})`;
+      for (let b = 0; b < 4; b++) sq.appendChild(el("div", "beat-dot"));
+      container.appendChild(sq);
+    }
+    container.appendChild(el("span", "count-in-gap"));
+  }
   for (let i = 0; i < section.bars; i++) {
-    const square = document.createElement("div");
-    square.className = "bar-square";
+    const square = el("div", "bar-square");
     square.style.background = hexToRgba(color, 0.22);
     square.style.borderColor = hexToRgba(color, 0.55);
     square.title = `bar ${startBar + i}`;
     for (let beat = 0; beat < 4; beat++) {
-      const dot = document.createElement("div");
-      dot.className = "beat-dot";
+      const dot = el("div", "beat-dot");
       dot.style.background = color;
       square.appendChild(dot);
     }
@@ -472,37 +848,111 @@ function renderBarGrid(container, section, song, color) {
 
 // -- hints -------------------------------------------------------------
 
+const canRecord = () => !!(window.isSecureContext && navigator.mediaDevices && window.MediaRecorder);
+
 function renderHints(container, section) {
   const template = document.getElementById("hint-row-template");
   container.innerHTML = "";
-  const players = state.currentBand ? state.currentBand.players : [];
 
   for (const hint of section.hints) {
     const node = template.content.cloneNode(true);
+    const row = node.querySelector(".hint-row");
+    if (hint.visibility !== "all" && hint.visibility === state.me) row.classList.add("mine");
     const textInput = node.querySelector(".hint-text");
     textInput.value = hint.text;
+    textInput.dataset.focusKey = `${hint.id}:text`;
     textInput.addEventListener("input", () => {
       hint.text = textInput.value;
-      saveSong();
+      edited();
     });
 
     const visSelect = node.querySelector(".hint-visibility");
-    for (const p of players) {
-      const opt = document.createElement("option");
+    visSelect.dataset.focusKey = `${hint.id}:vis`;
+    for (const p of state.band.players) {
+      const opt = el("option", "", `${p.name} (${p.role})`);
       opt.value = p.id;
-      opt.textContent = p.name;
       visSelect.appendChild(opt);
     }
-    visSelect.value = hint.visibility;
+    visSelect.value = playerById(hint.visibility) ? hint.visibility : "all";
     visSelect.addEventListener("change", () => {
       hint.visibility = visSelect.value;
-      saveSong();
+      row.classList.toggle("mine", hint.visibility !== "all" && hint.visibility === state.me);
+      edited();
+    });
+
+    const playBtn = node.querySelector(".hint-play");
+    const recBtn = node.querySelector(".hint-record");
+    const fileInput = node.querySelector(".hint-file");
+    const drawClip = () => {
+      playBtn.classList.toggle("hidden", !hint.audio);
+      recBtn.title = hint.audio ? "Remove the voice memo" : canRecord() ? "Record a short voice memo" : "Attach a voice memo (record one, or pick a file)";
+      recBtn.innerHTML = hint.audio ? "&#10005;&#9834;" : "&#127908;";
+      recBtn.classList.toggle("has-clip", !!hint.audio);
+    };
+    drawClip();
+    playBtn.addEventListener("click", () => metronome.playClip(`/api/audio/${hint.audio}`));
+
+    const attach = async (blob) => {
+      try {
+        const type = (blob.type || "audio/webm").split(";")[0];
+        const res = await api("POST", "/audio", undefined, { body: blob, type });
+        hint.audio = res.ref;
+        drawClip();
+        edited();
+        toast("Voice memo saved");
+      } catch (err) {
+        toast("Couldn't save the memo: " + err.message, "error");
+      }
+    };
+
+    recBtn.addEventListener("click", async () => {
+      if (hint.audio) {
+        hint.audio = null;
+        drawClip();
+        edited();
+        return;
+      }
+      if (!canRecord()) {
+        fileInput.click();
+        return;
+      }
+      if (recBtn._recorder) {
+        recBtn._recorder.stop();
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const rec = new MediaRecorder(stream);
+        const chunks = [];
+        rec.ondataavailable = (e) => chunks.push(e.data);
+        rec.onstop = () => {
+          stream.getTracks().forEach((t) => t.stop());
+          recBtn._recorder = null;
+          recBtn.classList.remove("recording");
+          clearTimeout(recBtn._limit);
+          attach(new Blob(chunks, { type: rec.mimeType || "audio/webm" }));
+        };
+        rec.start();
+        recBtn._recorder = rec;
+        recBtn.classList.add("recording");
+        recBtn.innerHTML = "&#9632;";
+        recBtn.title = "Stop recording";
+        recBtn._limit = setTimeout(() => rec.state === "recording" && rec.stop(), 30000);
+      } catch (err) {
+        fileInput.click(); // no microphone permission -- offer a file instead
+      }
+    });
+
+    fileInput.addEventListener("change", () => {
+      const f = fileInput.files[0];
+      fileInput.value = "";
+      if (f) attach(f);
     });
 
     node.querySelector(".remove-hint").addEventListener("click", () => {
       section.hints = section.hints.filter((h) => h.id !== hint.id);
       renderHints(container, section);
-      saveSong();
+      edited();
     });
 
     container.appendChild(node);
@@ -513,61 +963,64 @@ function renderHints(container, section) {
 // Setlist builder
 // ---------------------------------------------------------------------
 
-async function selectSetlist(id) {
+async function openSetlist(id) {
   const setlist = await api("GET", `/setlists/${id}`);
   state.currentSetlist = setlist;
-  showSetlistView();
-  renderSetlistView();
-  renderSidebar();
-}
-
-function renderSetlistView() {
-  const setlist = state.currentSetlist;
-  els.setlistName.value = setlist.name;
+  showView("setlist");
+  if (document.activeElement !== els.setlistName) els.setlistName.value = setlist.name;
   renderSetlistSongs();
+  renderSidebar();
 }
 
 function renderSetlistSongs() {
   const setlist = state.currentSetlist;
+  if (!setlist) return;
   const songsById = Object.fromEntries(state.songs.map((s) => [s.id, s]));
-
+  let total = 0;
   els.setlistSongs.innerHTML = "";
   setlist.songs.forEach((songId, index) => {
     const song = songsById[songId];
-    const li = document.createElement("li");
-    const order = document.createElement("span");
-    order.className = "song-order";
-    order.textContent = String(index + 1);
-    li.appendChild(order);
-    const title = document.createElement("span");
-    title.textContent = song ? song.title : "(deleted song)";
-    title.style.flex = "1";
+    if (song) total += song.duration_ms;
+    const li = el("li");
+    li.appendChild(el("span", "song-order", String(index + 1)));
+    const title = el("span", "setlist-song-title", song ? song.title : "(deleted song)");
+    if (song) title.addEventListener("click", () => go(`#/song/${song.id}`));
     li.appendChild(title);
-
-    const removeBtn = document.createElement("button");
-    removeBtn.className = "btn-icon danger";
-    removeBtn.textContent = "−";
-    removeBtn.title = "Remove from setlist";
-    removeBtn.addEventListener("click", () => {
+    if (song) li.appendChild(el("span", "item-count", `${song.default_bpm} BPM · ${Timing.fmtDuration(song.duration_ms)}`));
+    const mk = (label, tip, fn, disabled) => {
+      const b = el("button", "btn-icon", label);
+      b.title = tip;
+      b.disabled = !!disabled;
+      b.addEventListener("click", fn);
+      li.appendChild(b);
+    };
+    const swap = (d) => {
+      const j = index + d;
+      [setlist.songs[index], setlist.songs[j]] = [setlist.songs[j], setlist.songs[index]];
+      renderSetlistSongs();
+      saveSetlist();
+    };
+    mk("↑", "Move up", () => swap(-1), index === 0);
+    mk("↓", "Move down", () => swap(1), index === setlist.songs.length - 1);
+    mk("−", "Remove from setlist", () => {
       setlist.songs.splice(index, 1);
       renderSetlistSongs();
       saveSetlist();
     });
-    li.appendChild(removeBtn);
+    li.lastChild.classList.add("danger");
     els.setlistSongs.appendChild(li);
   });
+  els.setlistSummary.textContent = setlist.songs.length
+    ? `${setlist.songs.length} songs · about ${Timing.fmtDuration(total)} of music`
+    : "Empty: add songs from the right.";
 
   els.setlistAvailable.innerHTML = "";
   for (const song of state.songs) {
     if (setlist.songs.includes(song.id)) continue;
-    const li = document.createElement("li");
-    const title = document.createElement("span");
-    title.textContent = song.title;
-    title.style.flex = "1";
-    li.appendChild(title);
-    const addBtn = document.createElement("button");
-    addBtn.className = "btn-icon";
-    addBtn.textContent = "+";
+    const li = el("li");
+    li.appendChild(el("span", "setlist-song-title", song.title));
+    li.appendChild(el("span", "item-count", `${song.default_bpm} BPM · ${Timing.fmtDuration(song.duration_ms)}`));
+    const addBtn = el("button", "btn-icon", "+");
     addBtn.title = "Add to setlist";
     addBtn.addEventListener("click", () => {
       setlist.songs.push(song.id);
@@ -581,14 +1034,12 @@ function renderSetlistSongs() {
 
 const saveSetlist = debounce(async () => {
   if (!state.currentSetlist) return;
-  const setlist = state.currentSetlist;
   try {
-    // See the comment in saveSong() -- same reasoning, same fix: don't
-    // replace state.currentSetlist with the PUT response.
-    await api("PUT", `/setlists/${setlist.id}`, setlist);
-    await refreshSidebar();
+    // same reasoning as saveSong(): don't swap in the PUT response
+    await api("PUT", `/setlists/${state.currentSetlist.id}`, state.currentSetlist);
+    refreshListsSoon();
   } catch (err) {
-    alert("Couldn't save: " + err.message);
+    toast("Couldn't save: " + err.message, "error");
   }
 }, 400);
 
@@ -597,36 +1048,246 @@ els.setlistName.addEventListener("input", () => {
   const entry = state.setlists.find((s) => s.id === state.currentSetlist.id);
   if (entry) entry.name = els.setlistName.value;
   renderSidebar();
-  els.setlistName.focus();
   saveSetlist();
 });
 
 document.getElementById("new-setlist-btn").addEventListener("click", async () => {
   const setlist = await api("POST", "/setlists", { name: "New Setlist", songs: [] });
-  await refreshSidebar();
-  selectSetlist(setlist.id);
+  await refreshLists();
+  go(`#/setlist/${setlist.id}`);
 });
 
 document.getElementById("delete-setlist-btn").addEventListener("click", async () => {
   if (!state.currentSetlist) return;
-  if (!confirm(`Delete "${state.currentSetlist.name}"? This can't be undone.`)) return;
+  if (!confirm(`Delete "${state.currentSetlist.name}"? The songs stay; only the list goes.`)) return;
   await api("DELETE", `/setlists/${state.currentSetlist.id}`);
-  await refreshSidebar();
-  showEmpty();
+  state.currentSetlist = null;
+  await refreshLists();
+  go("#/");
 });
+
+document.getElementById("setlist-live-btn").addEventListener("click", async () => {
+  const sl = state.currentSetlist;
+  if (!sl) return;
+  const first = sl.songs.find((id) => state.songs.some((s) => s.id === id));
+  if (!first) return toast("Add a song to the setlist first.", "warn");
+  await api("POST", "/transport", { action: "cue", song_id: first, setlist_id: sl.id });
+  go("#/live");
+});
+
+document.getElementById("setlist-print-btn").addEventListener("click", () => {
+  if (state.currentSetlist) openPrint("setlist", state.currentSetlist.id);
+});
+
+// ---------------------------------------------------------------------
+// Band & players
+// ---------------------------------------------------------------------
+
+function openBand() {
+  showView("band");
+  renderBand();
+}
+
+function renderBand() {
+  if (document.activeElement !== els.bandName) els.bandName.value = state.band.name;
+  els.playerList.innerHTML = "";
+  for (const p of state.band.players) {
+    const li = el("li", "player-row" + (p.id === state.me ? " mine" : ""));
+    const name = el("input", "player-name");
+    name.value = p.name;
+    name.placeholder = "Name";
+    name.dataset.focusKey = `${p.id}:name`;
+    name.addEventListener("input", () => {
+      p.name = name.value;
+      saveBand();
+    });
+    const role = el("select", "player-role");
+    role.dataset.focusKey = `${p.id}:role`;
+    for (const r of ROLES) {
+      const o = el("option", "", r);
+      o.value = r;
+      role.appendChild(o);
+    }
+    role.value = p.role;
+    role.addEventListener("change", () => {
+      p.role = role.value;
+      saveBand();
+    });
+    const del = el("button", "btn-icon danger", "×");
+    del.title = "Remove player (their hints go back to the whole band)";
+    del.addEventListener("click", () => {
+      if (!confirm(`Remove ${p.name || "this player"}? Hints aimed at them will show for the whole band.`)) return;
+      state.band.players = state.band.players.filter((x) => x.id !== p.id);
+      if (state.me === p.id) setMe(null);
+      renderBand();
+      saveBand();
+    });
+    li.append(name, role, del);
+    els.playerList.appendChild(li);
+  }
+}
+
+const saveBand = debounce(async () => {
+  try {
+    await api("PUT", "/band", state.band);
+  } catch (err) {
+    toast("Couldn't save: " + err.message, "error");
+  }
+}, 400);
+
+els.bandName.addEventListener("input", () => {
+  state.band.name = els.bandName.value;
+  saveBand();
+});
+
+document.getElementById("add-player-btn").addEventListener("click", () => {
+  const p = { id: newId(), name: "", role: "Other" };
+  state.band.players.push(p);
+  renderBand();
+  saveBand();
+  const input = document.querySelector(`[data-focus-key="${p.id}:name"]`);
+  if (input) input.focus();
+});
+
+// ---------------------------------------------------------------------
+// What other devices do arrives here
+// ---------------------------------------------------------------------
+
+function mine(msg) {
+  return msg && msg.origin === Sync.clientId;
+}
+
+Sync.on("song", (song, msg) => {
+  refreshListsSoon();
+  if (mine(msg)) return;
+  if (state.currentSong && state.currentSong.id === song.id) {
+    if (songIsDirty()) return; // we're mid-edit: our save follows and wins (last write wins)
+    state.currentSong = song;
+    preserveFocus(renderSongView);
+    toast(`${nameForClient(msg.origin)} changed this song`);
+  }
+  if (window.SSPLive) window.SSPLive.songChanged(song);
+});
+
+Sync.on("song_deleted", (data, msg) => {
+  refreshListsSoon();
+  if (state.currentSong && state.currentSong.id === data.id && !mine(msg)) {
+    state.currentSong = null;
+    toast("This song was deleted on another device.", "warn");
+    go("#/");
+  }
+});
+
+Sync.on("setlist", (setlist, msg) => {
+  refreshListsSoon();
+  if (mine(msg)) return;
+  if (state.currentSetlist && state.currentSetlist.id === setlist.id && !saveSetlist.pending()) {
+    state.currentSetlist = setlist;
+    preserveFocus(() => {
+      if (document.activeElement !== els.setlistName) els.setlistName.value = setlist.name;
+      renderSetlistSongs();
+    });
+  }
+});
+
+Sync.on("setlist_deleted", (data, msg) => {
+  refreshListsSoon();
+  if (state.currentSetlist && state.currentSetlist.id === data.id && !mine(msg)) {
+    state.currentSetlist = null;
+    toast("This setlist was deleted on another device.", "warn");
+    go("#/");
+  }
+});
+
+Sync.on("band", (band, msg) => {
+  if (mine(msg) && state.view === "band") return;
+  if (saveBand.pending()) return;
+  state.band = band;
+  if (state.me && !playerById(state.me)) setMe(null);
+  renderWho();
+  if (state.view === "band") preserveFocus(renderBand);
+  if (state.view === "song") preserveFocus(renderSections);
+  if (window.SSPLive) window.SSPLive.refresh();
+});
+
+Sync.on("presence", (list) => {
+  state.presence = list;
+  renderPresence();
+});
+
+function renderPresence() {
+  const n = state.presence.length;
+  const names = state.presence.map((c) => playerName(c.player_id)).filter(Boolean);
+  const label = n ? `${n} device${n === 1 ? "" : "s"}` : "";
+  const tip = names.length ? names.join(", ") : "";
+  for (const id of ["presence-label", "live-presence"]) {
+    const e = document.getElementById(id);
+    e.textContent = label;
+    e.title = tip;
+  }
+}
+
+Sync.on("status", (ok) => {
+  const dot = document.getElementById("connection-status");
+  dot.className = "status-dot " + (ok ? "status-ok" : "status-bad");
+  dot.title = ok ? "Connected to the server" : "Lost the server: retrying";
+  document.getElementById("connection-label").textContent = ok ? "connected" : "reconnecting…";
+  document.body.classList.toggle("offline", !ok);
+});
+
+// after a Wi-Fi blip, catch up on anything missed while away
+Sync.on("reconnect", () => loadState(true));
 
 // ---------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------
 
-async function boot() {
-  try {
-    state.currentBand = await api("GET", "/band");
-    await refreshSidebar();
-  } catch (err) {
-    setConnectionStatus(false);
-    console.error(err);
+async function loadState(again) {
+  const s = await api("GET", "/state");
+  state.band = s.band;
+  state.songs = s.songs;
+  state.setlists = s.setlists;
+  state.presence = s.presence;
+  state.transport = s.transport;
+  if (state.me && !playerById(state.me)) state.me = null;
+  renderSidebar();
+  renderPresence();
+  if (again) {
+    if (state.currentSong && !songIsDirty()) {
+      try {
+        state.currentSong = await api("GET", `/songs/${state.currentSong.id}`);
+        preserveFocus(renderSongView);
+      } catch (err) {
+        go("#/");
+      }
+    }
+    if (window.SSPLive) window.SSPLive.transport(s.transport);
   }
+  return s;
 }
 
-boot();
+async function boot() {
+  try {
+    await loadState(false);
+  } catch (err) {
+    console.error(err);
+  }
+  const linked = parseHash().params.get("player");
+  if (linked !== null) state.me = linked && playerById(linked) ? linked : null;
+  Sync.playerId = state.me;
+  await Sync.syncClock(6);
+  Sync.connect();
+  if (window.SSPLive) window.SSPLive.transport(state.transport);
+  await route();
+  const linkedPlayer = parseHash().params.get("player") !== null;
+  if (!linkedPlayer && !prefs.get("asked", false) && state.band.players.length) openWho();
+}
+
+window.addEventListener("hashchange", route);
+
+window.SSP = {
+  state, els, api, prefs, toast, el, go, metronome, sectionColor, hexToRgba, playerById, playerName,
+  nameForClient, soundForBar, openWho, renderPresence,
+};
+
+window.addEventListener("load", boot);
