@@ -26,3 +26,10 @@ dist/
 scratch/
 archive/
 *.local.*
+
+# Project-doc sync copies at repo root (mirrors of claude/*.md kept here
+# by the Cowork project integration) -- not meant for the public repo,
+# same reasoning as claude/ above.
+/CLAUDE.md
+/PROJECT_CHARTER.md
+/WORKPLAN.md
