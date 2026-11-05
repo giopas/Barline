@@ -5,6 +5,19 @@ follows semver (MAJOR.MINOR.PATCH).
 
 ## [Unreleased] -- v0.1
 
+### Changed
+
+- Renamed the project from "Single Song Planner" to "SSP -- Song and
+  Setlist Planner" everywhere a person sees it (README, window titles,
+  the web app's title/tagline, the server's startup banner, the
+  packaged macOS app's display name). The short form "SSP", the repo
+  name, and every on-disk/technical name (settings folder, packaged
+  binary, macOS bundle identifier) are unchanged, so nobody's
+  already-saved settings or data folder move.
+- Added a wiki (`wiki/`), written for the band using the tool rather
+  than a developer reading the source, covering what SSP is for and
+  how to get a rehearsal or show set up.
+
 ### Added
 
 - Server (`server/app.py`): plain stdlib Python, headless-capable, holds

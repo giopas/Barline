@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build a standalone Linux package of the Single Song Planner launcher.
+# Build a standalone Linux package of the SSP - Song and Setlist Planner launcher.
 # Run this ON Linux (PyInstaller does not cross-compile).
 #
 # Requires: python3 with tkinter (on Debian/Ubuntu: `sudo apt install python3-tk`)

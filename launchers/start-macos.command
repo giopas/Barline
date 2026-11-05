@@ -5,5 +5,5 @@
 # For a headless Pi instead, run server/app.py directly (see launchers/ssp.service).
 set -e
 cd "$(dirname "$0")/.."
-echo "Starting Single Song Planner..."
+echo "Starting SSP - Song and Setlist Planner..."
 python3 launcher/gui.py

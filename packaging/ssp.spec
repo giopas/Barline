@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 #
-# PyInstaller spec for the Single Song Planner desktop launcher.
+# PyInstaller spec for the SSP - Song and Setlist Planner desktop launcher.
 #
 # Packages launcher/gui.py (the Tkinter control panel) together with the
 # server package and the web app's static files into a standalone,
@@ -25,6 +25,12 @@ SERVER_DIR = os.path.join(ROOT, "server")
 LAUNCHER_DIR = os.path.join(ROOT, "launcher")
 STATIC_DIR = os.path.join(ROOT, "web", "static")
 
+# Technical identifier only -- kept stable across the "SSP - Song and
+# Setlist Planner" rename so it doesn't move or orphan a user's already
+# -saved settings file or data folder (see server/platform_dirs.py, which
+# uses the same name). The binary/folder on disk stays "SingleSongPlanner";
+# only user-facing display strings below (window titles, the macOS bundle
+# name) carry the new name.
 APP_NAME = "SingleSongPlanner"
 
 a = Analysis(  # noqa: F821
@@ -77,12 +83,12 @@ coll = COLLECT(  # noqa: F821
 if sys.platform == "darwin":
     app = BUNDLE(  # noqa: F821
         coll,
-        name="Single Song Planner.app",
+        name="SSP - Song and Setlist Planner.app",
         icon=None,
         bundle_identifier="com.giopas.singlesongplanner",
         info_plist={
             "NSHighResolutionCapable": True,
             "CFBundleShortVersionString": "0.1.0",
-            "CFBundleName": "Single Song Planner",
+            "CFBundleName": "SSP - Song and Setlist Planner",
         },
     )

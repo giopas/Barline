@@ -10,7 +10,7 @@
 # Adjust User, WorkingDirectory and ExecStart to match where the repo lives.
 
 [Unit]
-Description=Single Song Planner server
+Description=SSP - Song and Setlist Planner server
 After=network.target
 
 [Service]

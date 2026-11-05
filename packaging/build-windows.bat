@@ -1,5 +1,5 @@
 @echo off
-REM Build a standalone Windows package of the Single Song Planner launcher.
+REM Build a standalone Windows package of the SSP - Song and Setlist Planner launcher.
 REM Run this ON Windows (PyInstaller does not cross-compile).
 REM
 REM Requires: python.org's Python (bundles Tk by default) and `pip install pyinstaller`.

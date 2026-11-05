@@ -1,7 +1,7 @@
 "use strict";
 
 /*
- * Single Song Planner -- v0.1 single-page app.
+ * SSP - Song and Setlist Planner -- v0.1 single-page app.
  *
  * One client at a time in this version (no WebSocket sync yet -- that's
  * v0.3). Drafting controls and the eventual live/player view are meant to

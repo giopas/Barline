@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Single Song Planner -- the one server.
+SSP -- Song and Setlist Planner -- the one server.
 
 A small, plain, stdlib-only Python app (same spirit as QLC+ Swiss Knife):
 holds the in-memory data model (backed by the one-JSON-per-song storage in
@@ -403,7 +403,7 @@ def build_server(data_dir: str, static_root: str, port: int) -> tuple:
 def startup_banner(httpd, store: Store, data_dir: str, static_root: str) -> str:
     port = httpd.server_address[1]
     lines = [
-        "Single Song Planner -- v0.1",
+        "SSP -- Song and Setlist Planner -- v0.1",
         f"  data dir:   {os.path.abspath(data_dir)}",
         f"  static dir: {os.path.abspath(static_root)}",
         f"  songs loaded: {len(store.songs)}  setlists loaded: {len(store.setlists)}",
@@ -417,7 +417,7 @@ def startup_banner(httpd, store: Store, data_dir: str, static_root: str) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Single Song Planner server")
+    parser = argparse.ArgumentParser(description="SSP - Song and Setlist Planner server")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--data", default=paths.default_data_dir())
     parser.add_argument("--static", default=paths.default_static_dir())

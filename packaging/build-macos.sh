@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build a standalone macOS .app of the Single Song Planner launcher.
+# Build a standalone macOS .app of the SSP - Song and Setlist Planner launcher.
 # Run this ON macOS (PyInstaller does not cross-compile).
 #
 # Requires: python3.org's Python (bundles Tk) or Homebrew's `python-tk`,
@@ -15,7 +15,7 @@ python3 -c "import tkinter" 2>/dev/null || {
 pyinstaller packaging/ssp.spec --distpath dist/macos --workpath build/macos --noconfirm
 
 echo
-echo "Built: dist/macos/Single Song Planner.app"
+echo "Built: dist/macos/SSP - Song and Setlist Planner.app"
 echo "Not code-signed or notarised (see PROJECT_CHARTER.md section 4) -- the first"
 echo "launch needs a right-click > Open (or System Settings > Privacy & Security > Open Anyway)."
 echo "Zip the .app to distribute it."

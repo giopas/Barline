@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Single Song Planner -- desktop launcher.
+SSP - Song and Setlist Planner -- desktop launcher.
 
 A small Tkinter control panel for the server (same spirit as QLC+ Swiss
 Knife being a Tkinter desktop app): pick a data folder, pick a port, start
@@ -42,7 +42,7 @@ import settings as launcher_settings  # launcher/settings.py
 class LauncherApp:
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("Single Song Planner")
+        self.root.title("SSP - Song and Setlist Planner")
         self.root.minsize(560, 480)
 
         self.settings = launcher_settings.load()
@@ -68,7 +68,7 @@ class LauncherApp:
 
         header = ttk.Frame(self.root)
         header.pack(fill="x", **pad)
-        ttk.Label(header, text="Single Song Planner", font=("", 15, "bold")).pack(side="left")
+        ttk.Label(header, text="SSP - Song and Setlist Planner", font=("", 15, "bold")).pack(side="left")
         self.status_dot = tk.Canvas(header, width=12, height=12, highlightthickness=0)
         self.status_dot.pack(side="right", padx=(0, 4))
         self._draw_status_dot(False)
@@ -179,23 +179,23 @@ class LauncherApp:
         data_dir = self.data_dir_var.get().strip()
         static_dir = self.static_dir_var.get().strip()
         if not data_dir:
-            messagebox.showerror("Single Song Planner", "Choose a data folder first.")
+            messagebox.showerror("SSP - Song and Setlist Planner", "Choose a data folder first.")
             return
         try:
             port = int(self.port_var.get().strip())
             if not (1 <= port <= 65535):
                 raise ValueError
         except ValueError:
-            messagebox.showerror("Single Song Planner", "Port must be a number between 1 and 65535.")
+            messagebox.showerror("SSP - Song and Setlist Planner", "Port must be a number between 1 and 65535.")
             return
 
         try:
             httpd, store = server_app.build_server(data_dir, static_dir, port)
         except OSError as exc:
-            messagebox.showerror("Single Song Planner", f"Couldn't start the server:\n{exc}")
+            messagebox.showerror("SSP - Song and Setlist Planner", f"Couldn't start the server:\n{exc}")
             return
         except Exception as exc:  # noqa: BLE001 - surface any startup problem to the user, not a traceback
-            messagebox.showerror("Single Song Planner", f"Couldn't start the server:\n{exc}")
+            messagebox.showerror("SSP - Song and Setlist Planner", f"Couldn't start the server:\n{exc}")
             return
 
         self.httpd = httpd

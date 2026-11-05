@@ -1,4 +1,4 @@
-# Single Song Planner (SSP)
+# SSP -- Song and Setlist Planner
 
 Plan your set, and keep everyone in sync on stage.
 
@@ -40,7 +40,7 @@ server's address the way you'd treat a shared rehearsal-room whiteboard.
 On a laptop, open the desktop control panel:
 
 - macOS: double-click `launchers/start-macos.command` (or run the packaged
-  `Single Song Planner.app`, see "Packaged builds" below)
+  `SSP - Song and Setlist Planner.app`, see "Packaged builds" below)
 - Windows: double-click `launchers/start-windows.bat` (or
   `SingleSongPlanner.exe` once packaged)
 - Linux: run `launchers/start-linux.sh` (or the packaged
