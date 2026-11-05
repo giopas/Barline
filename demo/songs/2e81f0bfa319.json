@@ -1,0 +1,66 @@
+{
+  "id": "2e81f0bfa319",
+  "title": "Coffee at Midnight",
+  "default_bpm": 110,
+  "sections": [
+    {
+      "id": "bc8fa25dc0cc",
+      "label": "Intro",
+      "order": 0,
+      "bars": 4,
+      "bpm": null,
+      "count_in": {
+        "bars": 1,
+        "style": "click"
+      },
+      "hints": [
+        {
+          "id": "ed0c3fc9b90b",
+          "text": "New song, still working it out",
+          "audio": null,
+          "visibility": "all"
+        }
+      ]
+    },
+    {
+      "id": "dca7bd6db1f9",
+      "label": "Verse 1",
+      "order": 1,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "34723e5401b7",
+          "text": "Try the walking line",
+          "audio": null,
+          "visibility": "90a91d9d374a"
+        }
+      ]
+    },
+    {
+      "id": "64e6f2cc1fbd",
+      "label": "Chorus",
+      "order": 2,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "f65ae319a742",
+          "text": "Bridge idea: next rehearsal",
+          "audio": null,
+          "visibility": "all"
+        }
+      ]
+    }
+  ],
+  "created_at": 1793836800.0,
+  "updated_at": 1793836800.0
+}

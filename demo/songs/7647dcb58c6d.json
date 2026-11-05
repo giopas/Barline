@@ -1,0 +1,147 @@
+{
+  "id": "7647dcb58c6d",
+  "title": "Night Bus to Nowhere",
+  "default_bpm": 168,
+  "sections": [
+    {
+      "id": "a3aa9c55dc22",
+      "label": "Intro",
+      "order": 0,
+      "bars": 2,
+      "bpm": null,
+      "count_in": {
+        "bars": 1,
+        "style": "sticks"
+      },
+      "hints": [
+        {
+          "id": "ecb041aeb154",
+          "text": "Fast! Ruby counts it off",
+          "audio": null,
+          "visibility": "all"
+        }
+      ]
+    },
+    {
+      "id": "a32c0c01f81d",
+      "label": "Verse 1",
+      "order": 1,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "d1a2cc255f55",
+          "text": "Palm-muted eighths",
+          "audio": null,
+          "visibility": "d551d118de2e"
+        }
+      ]
+    },
+    {
+      "id": "e7a44520d1db",
+      "label": "Chorus",
+      "order": 2,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "a2a182c4a0f1",
+          "text": "Shout-along",
+          "audio": null,
+          "visibility": "all"
+        }
+      ]
+    },
+    {
+      "id": "2edb74c98589",
+      "label": "Verse 2",
+      "order": 3,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": []
+    },
+    {
+      "id": "9e99d3c42602",
+      "label": "Chorus",
+      "order": 4,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": []
+    },
+    {
+      "id": "7648e9ce5880",
+      "label": "Breakdown",
+      "order": 5,
+      "bars": 4,
+      "bpm": 84,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "3d36eb785f44",
+          "text": "Half speed, heavy",
+          "audio": null,
+          "visibility": "all"
+        }
+      ]
+    },
+    {
+      "id": "d47bf671444f",
+      "label": "Stop",
+      "order": 6,
+      "bars": 1,
+      "bpm": 84,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "3ec6b165d136",
+          "text": "Everyone stops dead",
+          "audio": null,
+          "visibility": "all"
+        }
+      ]
+    },
+    {
+      "id": "1274d37556f5",
+      "label": "Last chorus",
+      "order": 7,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 1,
+        "style": "verbal"
+      },
+      "hints": [
+        {
+          "id": "2af365523576",
+          "text": "Mia shouts the count back in",
+          "audio": null,
+          "visibility": "bd713934e53d"
+        }
+      ]
+    }
+  ],
+  "created_at": 1793836800.0,
+  "updated_at": 1793836800.0
+}

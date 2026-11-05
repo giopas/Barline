@@ -1,0 +1,172 @@
+{
+  "id": "8cc968f27399",
+  "title": "Lantern Parade",
+  "default_bpm": 132,
+  "sections": [
+    {
+      "id": "7ed3d3c839b7",
+      "label": "Intro",
+      "order": 0,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 2,
+        "style": "click"
+      },
+      "hints": [
+        {
+          "id": "1a39acbcc1a4",
+          "text": "Clap along with the crowd",
+          "audio": null,
+          "visibility": "all"
+        }
+      ]
+    },
+    {
+      "id": "c03e81daaab2",
+      "label": "Verse 1",
+      "order": 1,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": []
+    },
+    {
+      "id": "150784408289",
+      "label": "Chorus",
+      "order": 2,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "86b89b0cff70",
+          "text": "Big unison riff",
+          "audio": null,
+          "visibility": "all"
+        }
+      ]
+    },
+    {
+      "id": "485a6ed0f5d9",
+      "label": "Verse 2",
+      "order": 3,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "532e9a313bf2",
+          "text": "Slap bass this time",
+          "audio": null,
+          "visibility": "90a91d9d374a"
+        }
+      ]
+    },
+    {
+      "id": "8d6d9f0f63b7",
+      "label": "Chorus",
+      "order": 4,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": []
+    },
+    {
+      "id": "98bb82b37d8e",
+      "label": "Bridge",
+      "order": 5,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "687f61fa303b",
+          "text": "Organ sound",
+          "audio": null,
+          "visibility": "82d79b465f9b"
+        }
+      ]
+    },
+    {
+      "id": "fc980d8c6a1b",
+      "label": "Drum solo",
+      "order": 6,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "816acca64193",
+          "text": "All yours, Ruby",
+          "audio": null,
+          "visibility": "c62f1fc099f4"
+        },
+        {
+          "id": "2e97df9c7168",
+          "text": "Everyone back in on bar 1 of the chorus",
+          "audio": null,
+          "visibility": "all"
+        }
+      ]
+    },
+    {
+      "id": "49f35b2feda8",
+      "label": "Chorus",
+      "order": 7,
+      "bars": 16,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "6319eeee49fa",
+          "text": "Double chorus, key change on bar 9",
+          "audio": null,
+          "visibility": "all"
+        }
+      ]
+    },
+    {
+      "id": "75cdcd2a3c21",
+      "label": "Outro",
+      "order": 8,
+      "bars": 4,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "849ccd042a17",
+          "text": "Big ending: three hits",
+          "audio": null,
+          "visibility": "all"
+        }
+      ]
+    }
+  ],
+  "created_at": 1793836800.0,
+  "updated_at": 1793836800.0
+}

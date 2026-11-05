@@ -1,0 +1,135 @@
+{
+  "id": "6bfb037c5078",
+  "title": "Slow Tide",
+  "default_bpm": 72,
+  "sections": [
+    {
+      "id": "290aaa0683eb",
+      "label": "Intro",
+      "order": 0,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 1,
+        "style": "click"
+      },
+      "hints": [
+        {
+          "id": "d71676c2cd13",
+          "text": "Swell in from nothing",
+          "audio": null,
+          "visibility": "82d79b465f9b"
+        }
+      ]
+    },
+    {
+      "id": "dd0b6f59bb9b",
+      "label": "Verse 1",
+      "order": 1,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "0da1ca57452b",
+          "text": "Brushes, very light",
+          "audio": null,
+          "visibility": "c62f1fc099f4"
+        }
+      ]
+    },
+    {
+      "id": "9573cc9b65dc",
+      "label": "Chorus",
+      "order": 2,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": []
+    },
+    {
+      "id": "e7acfa02021b",
+      "label": "Interlude",
+      "order": 3,
+      "bars": 4,
+      "bpm": 80,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "9e286dec3640",
+          "text": "Pushes a little: 80 BPM",
+          "audio": null,
+          "visibility": "all"
+        }
+      ]
+    },
+    {
+      "id": "b1b836e5cdf2",
+      "label": "Verse 2",
+      "order": 4,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "334c5d6da4ed",
+          "text": "Back to 72",
+          "audio": null,
+          "visibility": "all"
+        }
+      ]
+    },
+    {
+      "id": "3ed832c5f3fa",
+      "label": "Chorus",
+      "order": 5,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "1bec066a2ed4",
+          "text": "Bass up an octave",
+          "audio": null,
+          "visibility": "90a91d9d374a"
+        }
+      ]
+    },
+    {
+      "id": "a96d256ecefe",
+      "label": "Outro",
+      "order": 6,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "422eccdf412d",
+          "text": "Fade together, watch Jonas",
+          "audio": null,
+          "visibility": "all"
+        }
+      ]
+    }
+  ],
+  "created_at": 1793836800.0,
+  "updated_at": 1793836800.0
+}

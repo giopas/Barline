@@ -1,0 +1,31 @@
+{
+  "id": "band",
+  "name": "The Paper Lanterns",
+  "players": [
+    {
+      "id": "bd713934e53d",
+      "name": "Mia",
+      "role": "Vocals"
+    },
+    {
+      "id": "d551d118de2e",
+      "name": "Theo",
+      "role": "Guitar"
+    },
+    {
+      "id": "90a91d9d374a",
+      "name": "Sam",
+      "role": "Bass"
+    },
+    {
+      "id": "c62f1fc099f4",
+      "name": "Ruby",
+      "role": "Drums"
+    },
+    {
+      "id": "82d79b465f9b",
+      "name": "Jonas",
+      "role": "Keys"
+    }
+  ]
+}

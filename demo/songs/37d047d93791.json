@@ -1,0 +1,166 @@
+{
+  "id": "37d047d93791",
+  "title": "Paper Boats",
+  "default_bpm": 96,
+  "sections": [
+    {
+      "id": "ade1e2b64795",
+      "label": "Intro",
+      "order": 0,
+      "bars": 4,
+      "bpm": null,
+      "count_in": {
+        "bars": 1,
+        "style": "verbal"
+      },
+      "hints": [
+        {
+          "id": "4e1206d1dc30",
+          "text": "Mia counts in, soft",
+          "audio": null,
+          "visibility": "bd713934e53d"
+        },
+        {
+          "id": "cc23a9fef691",
+          "text": "Fingerpicked, no pick",
+          "audio": null,
+          "visibility": "d551d118de2e"
+        }
+      ]
+    },
+    {
+      "id": "2fef9a865da8",
+      "label": "Verse 1",
+      "order": 1,
+      "bars": 16,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "64deeaa1cf11",
+          "text": "Bass waits until bar 9",
+          "audio": null,
+          "visibility": "90a91d9d374a"
+        }
+      ]
+    },
+    {
+      "id": "10792de8a629",
+      "label": "Chorus",
+      "order": 2,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "757462229864",
+          "text": "Rim clicks only",
+          "audio": null,
+          "visibility": "c62f1fc099f4"
+        }
+      ]
+    },
+    {
+      "id": "d475c6431250",
+      "label": "Verse 2",
+      "order": 3,
+      "bars": 16,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": []
+    },
+    {
+      "id": "5e6b9a8cbe36",
+      "label": "Chorus",
+      "order": 4,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "19bdd4be1644",
+          "text": "Full kit now",
+          "audio": null,
+          "visibility": "c62f1fc099f4"
+        }
+      ]
+    },
+    {
+      "id": "f1dc0b233b99",
+      "label": "Guitar solo",
+      "order": 5,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "1ee98eca8739",
+          "text": "Take your time, it's yours",
+          "audio": null,
+          "visibility": "d551d118de2e"
+        },
+        {
+          "id": "7ab0b5060d5b",
+          "text": "Pad under the solo",
+          "audio": null,
+          "visibility": "82d79b465f9b"
+        }
+      ]
+    },
+    {
+      "id": "a70fc661900e",
+      "label": "Chorus",
+      "order": 6,
+      "bars": 8,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "fafef566108e",
+          "text": "Drop to just vocals for the first 4 bars",
+          "audio": null,
+          "visibility": "all"
+        }
+      ]
+    },
+    {
+      "id": "96d112762547",
+      "label": "Outro",
+      "order": 7,
+      "bars": 2,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": [
+        {
+          "id": "8ab0e6436942",
+          "text": "Let it ring",
+          "audio": null,
+          "visibility": "all"
+        }
+      ]
+    }
+  ],
+  "created_at": 1793836800.0,
+  "updated_at": 1793836800.0
+}
