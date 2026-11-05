@@ -248,6 +248,7 @@ input:focus, select:focus { outline: 1px solid var(--accent); }
 }
 
 .song-shape-block {
+  /* background/border-color set per-section from JS -- see .bar-square */
   background: var(--bg-card);
   border: 1px solid var(--border);
   display: flex;
@@ -349,8 +350,12 @@ input:focus, select:focus { outline: 1px solid var(--accent); }
   gap: 1px;
   padding: 2px;
   border-radius: 3px;
+  border: 1px solid var(--border);
+  /* background/border-color are set per-section from JS (app.js's
+     sectionColor/hexToRgba) so each section's bars read as one color
+     across the overview strip, this grid, and the section card's
+     accent border -- this is only the shape/fallback. */
   background: var(--bg-card);
-  opacity: 0.55;
 }
 
 .bar-square.first-of-bar-accent { outline: 1px solid var(--accent-dim); }

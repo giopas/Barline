@@ -47,6 +47,36 @@ function debounce(fn, delay) {
 }
 
 // ---------------------------------------------------------------------
+// Section color coding -- one color per section, by its position in the
+// song (left-to-right order), reused consistently between the song-shape
+// overview strip, the detailed bar/beat grid, and a small swatch on each
+// section card, so all three views read as the same picture of the song.
+// ---------------------------------------------------------------------
+
+const SECTION_PALETTE = [
+  "#5b8cff", // blue
+  "#45c08a", // green
+  "#e2b93b", // amber
+  "#e2574c", // red
+  "#b073f0", // purple
+  "#39c2c9", // teal
+  "#f08a3c", // orange
+  "#6fcf97", // mint
+];
+
+function sectionColor(index) {
+  return SECTION_PALETTE[index % SECTION_PALETTE.length];
+}
+
+function hexToRgba(hex, alpha) {
+  const n = parseInt(hex.slice(1), 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
+// ---------------------------------------------------------------------
 // App state
 // ---------------------------------------------------------------------
 
@@ -163,10 +193,19 @@ const saveSong = debounce(async () => {
   if (!state.currentSong) return;
   const song = state.currentSong;
   try {
-    const saved = await api("PUT", `/songs/${song.id}`, song);
-    state.currentSong = saved;
+    // Deliberately does NOT replace state.currentSong with the server's
+    // response. Every input handler in renderSections() closes over the
+    // specific section objects that were on state.currentSong at render
+    // time; swapping in a new object graph here would silently orphan
+    // those closures -- further typing would keep mutating the old,
+    // now-unreachable objects while saveSong() kept re-sending whatever
+    // state.currentSong still pointed at, so edits would appear in the
+    // input boxes but never actually reach the server. (This was the
+    // "section names not updated" bug -- the UI only re-renders from
+    // state.currentSong after an explicit action like switching songs,
+    // so there's no need for the PUT response to feed back into it.)
+    await api("PUT", `/songs/${song.id}`, song);
     await refreshSidebar();
-    renderSidebar(); // keep song-view's own inputs untouched, just update list
   } catch (err) {
     alert("Couldn't save: " + err.message);
   }
@@ -212,9 +251,13 @@ document.getElementById("delete-song-btn").addEventListener("click", async () =>
 
 // -- sections -----------------------------------------------------------
 
+function newId() {
+  return "tmp-" + Math.random().toString(36).slice(2, 10);
+}
+
 function newSectionLocal(order) {
   return {
-    id: "tmp-" + Math.random().toString(36).slice(2, 10),
+    id: newId(),
     label: "Section",
     order,
     bars: 4,
@@ -222,6 +265,24 @@ function newSectionLocal(order) {
     count_in: { bars: 0, style: "none" },
     hints: [],
   };
+}
+
+// Clones a section (bars, BPM override, count-in, and every hint, each
+// hint getting its own fresh id) and inserts the copy immediately after
+// the original -- for repeating a section verbatim (another Chorus,
+// another Verse) without retyping it.
+function duplicateSection(song, section) {
+  const clone = {
+    id: newId(),
+    label: section.label,
+    order: section.order + 0.5, // placed right after the original once reindexed below
+    bars: section.bars,
+    bpm: section.bpm,
+    count_in: { ...section.count_in },
+    hints: section.hints.map((h) => ({ ...h, id: newId() })),
+  };
+  song.sections.push(clone);
+  song.sections.sort((a, b) => a.order - b.order).forEach((s, i) => (s.order = i));
 }
 
 document.getElementById("add-section-btn").addEventListener("click", () => {
@@ -253,16 +314,19 @@ function effectiveBpm(song, section) {
 function renderSongShape() {
   const song = state.currentSong;
   els.songShape.innerHTML = "";
-  const total = songTotalBars(song) || 1;
-  for (const section of [...song.sections].sort((a, b) => a.order - b.order)) {
+  const sorted = [...song.sections].sort((a, b) => a.order - b.order);
+  sorted.forEach((section, index) => {
+    const color = sectionColor(index);
     const block = document.createElement("div");
     block.className = "song-shape-block";
     block.style.flexGrow = String(section.bars);
     block.style.flexBasis = "0";
+    block.style.background = hexToRgba(color, 0.28);
+    block.style.borderColor = hexToRgba(color, 0.7);
     block.title = `${section.label} -- ${section.bars} bars @ ${effectiveBpm(song, section)} BPM`;
     block.textContent = section.bars >= 2 ? section.label : "";
     els.songShape.appendChild(block);
-  }
+  });
   if (song.sections.length === 0) {
     const empty = document.createElement("div");
     empty.className = "song-shape-block";
@@ -279,9 +343,11 @@ function renderSections() {
   const sorted = [...song.sections].sort((a, b) => a.order - b.order);
 
   sorted.forEach((section, index) => {
+    const color = sectionColor(index);
     const node = template.content.cloneNode(true);
     const card = node.querySelector(".section-card");
     card.dataset.sectionId = section.id;
+    card.style.borderLeft = `4px solid ${color}`;
 
     const labelInput = node.querySelector(".section-label");
     labelInput.value = section.label;
@@ -298,7 +364,12 @@ function renderSections() {
       if (v >= 1) {
         section.bars = v;
         renderSongShape();
-        renderBarGrid(node.querySelector(".section-bar-grid"), section, song);
+        // Use card.querySelector, not node.querySelector: by the time this
+        // handler fires, node (the cloned <template> fragment) has already
+        // been appended to the document and is now empty -- its children,
+        // card included, were moved into the live DOM, not copied. card
+        // itself is one of those moved children, so it's still valid.
+        renderBarGrid(card.querySelector(".section-bar-grid"), section, song, color);
         saveSong();
       }
     });
@@ -356,12 +427,19 @@ function renderSections() {
       saveSong();
     });
 
-    renderBarGrid(node.querySelector(".section-bar-grid"), section, song);
+    node.querySelector(".duplicate-section").addEventListener("click", () => {
+      duplicateSection(song, section);
+      renderSongShape();
+      renderSections();
+      saveSong();
+    });
+
+    renderBarGrid(node.querySelector(".section-bar-grid"), section, song, color);
     renderHints(node.querySelector(".hint-list"), section);
 
     node.querySelector(".add-hint").addEventListener("click", () => {
-      section.hints.push({ id: "tmp-" + Math.random().toString(36).slice(2, 10), text: "", audio: null, visibility: "all" });
-      renderHints(node.querySelector(".hint-list"), section);
+      section.hints.push({ id: newId(), text: "", audio: null, visibility: "all" });
+      renderHints(card.querySelector(".hint-list"), section); // see comment on the bars handler above
       saveSong();
     });
 
@@ -373,16 +451,19 @@ function renderSections() {
 // One small square per bar; each square is a 2x2 dot grid for its beats
 // (4/4 assumed for v0.1 -- see wishlist for other time signatures).
 
-function renderBarGrid(container, section, song) {
+function renderBarGrid(container, section, song, color) {
   container.innerHTML = "";
   const startBar = sectionStartBar(song, section.id);
   for (let i = 0; i < section.bars; i++) {
     const square = document.createElement("div");
     square.className = "bar-square";
+    square.style.background = hexToRgba(color, 0.22);
+    square.style.borderColor = hexToRgba(color, 0.55);
     square.title = `bar ${startBar + i}`;
     for (let beat = 0; beat < 4; beat++) {
       const dot = document.createElement("div");
       dot.className = "beat-dot";
+      dot.style.background = color;
       square.appendChild(dot);
     }
     container.appendChild(square);
@@ -502,8 +583,9 @@ const saveSetlist = debounce(async () => {
   if (!state.currentSetlist) return;
   const setlist = state.currentSetlist;
   try {
-    const saved = await api("PUT", `/setlists/${setlist.id}`, setlist);
-    state.currentSetlist = saved;
+    // See the comment in saveSong() -- same reasoning, same fix: don't
+    // replace state.currentSetlist with the PUT response.
+    await api("PUT", `/setlists/${setlist.id}`, setlist);
     await refreshSidebar();
   } catch (err) {
     alert("Couldn't save: " + err.message);

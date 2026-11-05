@@ -29,6 +29,27 @@ follows semver (MAJOR.MINOR.PATCH).
 - Packaging (`packaging/`): a PyInstaller spec plus a build script per OS
   (Windows/macOS/Linux) producing a standalone, double-click-to-run
   build -- no Python install needed to use it.
+- Color coding: each section gets its own color, consistent across the
+  song-shape overview strip, its bar/beat grid, and its card's left
+  border, so the structure reads at a glance.
+- Duplicate-section button: clone a section (bars, BPM override,
+  count-in, and all its hints) and insert the copy right after it, for
+  repeating a section verbatim without retyping it.
+
+### Fixed
+
+- Editing a section's label, bar count, or BPM override -- or adding a
+  hint -- could silently fail to save after a different edit on the same
+  song had already round-tripped to the server: the rendered inputs kept
+  showing what was typed, but the underlying object those edits were
+  applied to had become stale and was no longer what got saved. (The
+  editor stopped replacing its in-memory copy of the open song/setlist
+  with the server's response after a save, which was the root cause.)
+- A second instance of the same underlying issue: editing a section's
+  bar count a second time, or adding a second hint, after the section
+  card had already finished its first render, could throw instead of
+  saving (looking up the target element through the already-emptied
+  `<template>` clone instead of the live card in the document).
 
 ### Scope notes
 
