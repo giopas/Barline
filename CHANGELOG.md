@@ -18,6 +18,17 @@ follows semver (MAJOR.MINOR.PATCH).
   for a headless Raspberry Pi.
 - Atomic JSON writes (temp file + rename) so a dropped connection or a
   crash mid-save can't corrupt a song file.
+- Desktop launcher (`launcher/gui.py`): a small Tkinter control panel --
+  pick a data folder, pick a port, start/stop the server, see the
+  reachable addresses, watch a live log -- instead of a terminal.
+  Launcher scripts now open this by default; a headless Pi still runs
+  `server/app.py` directly.
+- Settings persistence (`launcher/settings.py`): the chosen data folder,
+  port, and a recently-used-folders list ("sessions") are saved to a
+  per-OS app-support folder and restored next launch.
+- Packaging (`packaging/`): a PyInstaller spec plus a build script per OS
+  (Windows/macOS/Linux) producing a standalone, double-click-to-run
+  build -- no Python install needed to use it.
 
 ### Scope notes
 

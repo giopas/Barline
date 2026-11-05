@@ -37,20 +37,41 @@ server's address the way you'd treat a shared rehearsal-room whiteboard.
 
 ## Getting started
 
-1. On a laptop (or a Raspberry Pi set up to run headless), start the
-   server:
-   - macOS: double-click `launchers/start-macos.command`
-   - Windows: double-click `launchers/start-windows.bat`
-   - Linux: run `launchers/start-linux.sh` (or see
-     `launchers/ssp.service` for running it as a background service)
-2. The server prints an address, e.g. `http://192.168.1.42:8420/`.
+On a laptop, open the desktop control panel:
+
+- macOS: double-click `launchers/start-macos.command` (or run the packaged
+  `Single Song Planner.app`, see "Packaged builds" below)
+- Windows: double-click `launchers/start-windows.bat` (or
+  `SingleSongPlanner.exe` once packaged)
+- Linux: run `launchers/start-linux.sh` (or the packaged
+  `SingleSongPlanner` binary)
+
+1. Pick (or create) a folder for your band's songs and setlists -- the
+   panel remembers it, and a handful of recently used folders, for next
+   time.
+2. Click **Start server**. The panel lists the addresses to open --
+   something like `http://192.168.1.42:8420/`.
 3. On each phone or tablet, connect to the same Wi-Fi and open that
    address in the browser.
-4. Start planning. Every song and setlist you create is saved on the
-   server as you go.
+4. Start planning. Everything you create is saved as you go.
 
-Requires Python 3.9+ on whichever machine runs the server. Nothing else
-to install.
+Running it on a headless Raspberry Pi instead (no screen, always on) skips
+the control panel: run `server/app.py` directly, or install it as a
+background service -- see `launchers/ssp.service`.
+
+Requires Python 3.9+ with Tk (python.org's installers for Windows/macOS
+already include it; on Linux, `sudo apt install python3-tk` or your
+distro's equivalent) -- or just use a packaged build below, which needs
+nothing installed at all.
+
+### Packaged builds
+
+For anyone who'd rather not install Python: `packaging/` has a PyInstaller
+spec and a build script per OS (`build-macos.sh`, `build-windows.bat`,
+`build-linux.sh`) that produce a standalone, double-click-to-run build --
+same idea as QLC+ Swiss Knife's packaged releases. Each must be built ON
+that OS (PyInstaller doesn't cross-compile); see `packaging/ssp.spec` for
+what gets bundled.
 
 ## Credit
 
