@@ -1,23 +1,27 @@
-# systemd unit for running SSP headless on a Raspberry Pi (or any always-on
-# Linux box). This is a starting point, not finished deployment docs --
-# full headless-Pi setup instructions land in v0.7 (see claude/WORKPLAN.md).
+# systemd unit: runs SSP headless on a Raspberry Pi (or any always-on Linux
+# box) and starts it again on every boot. Step-by-step setup, including
+# turning the Pi into its own Wi-Fi hotspot: see the wiki page
+# "Running on a Raspberry Pi".
 #
-# Install:
-#   sudo cp ssp.service /etc/systemd/system/ssp.service
+# Install (assumes the repo was cloned to /home/pi/ssp and the band's
+# songs live in /home/pi/ssp-data -- change User and the paths otherwise):
+#   sudo cp launchers/ssp.service /etc/systemd/system/ssp.service
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable --now ssp
 #
-# Adjust User, WorkingDirectory and ExecStart to match where the repo lives.
+# Check it:      systemctl status ssp
+# Watch the log: journalctl -u ssp -f
 
 [Unit]
 Description=SSP - Song and Setlist Planner server
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=pi
-WorkingDirectory=/home/pi/single-song-planner/server
-ExecStart=/usr/bin/python3 /home/pi/single-song-planner/server/app.py
+WorkingDirectory=/home/pi/ssp/server
+ExecStart=/usr/bin/python3 /home/pi/ssp/server/app.py --port 8420 --data /home/pi/ssp-data
 Restart=on-failure
 RestartSec=3
 

@@ -36,6 +36,8 @@ for _p in (_HERE, _SERVER_DIR):
 
 import app as server_app  # server/app.py
 import paths  # server/paths.py
+import platform_dirs  # server/platform_dirs.py
+import qr  # server/qr.py
 import settings as launcher_settings  # launcher/settings.py
 
 
@@ -105,6 +107,8 @@ class LauncherApp:
             row3, text="Open in browser", command=self._open_browser, state="disabled"
         )
         self.open_browser_btn.pack(side="left", padx=(8, 0))
+        self.demo_btn = ttk.Button(row3, text="Try the demo band", command=self._start_demo)
+        self.demo_btn.pack(side="right")
 
         adv_toggle = ttk.Checkbutton(
             server_frame,
@@ -120,9 +124,11 @@ class LauncherApp:
         # advanced_frame is packed/unpacked by _toggle_advanced
 
         # -- addresses --------------------------------------------------------
-        self.addresses_frame = ttk.LabelFrame(self.root, text="Reachable at (open on each phone/tablet)")
-        self.addresses_text = tk.Text(self.addresses_frame, height=4, wrap="none")
-        self.addresses_text.pack(fill="both", expand=True, padx=8, pady=8)
+        self.addresses_frame = ttk.LabelFrame(self.root, text="Open on each phone/tablet (same Wi-Fi), or scan")
+        self.qr_canvas = tk.Canvas(self.addresses_frame, width=148, height=148, highlightthickness=0, bg="white")
+        self.qr_canvas.pack(side="left", padx=8, pady=8)
+        self.addresses_text = tk.Text(self.addresses_frame, height=6, wrap="none")
+        self.addresses_text.pack(side="left", fill="both", expand=True, padx=(0, 8), pady=8)
         self.addresses_text.configure(state="disabled")
         # addresses_frame is packed/unpacked when the server starts/stops
 
@@ -175,8 +181,26 @@ class LauncherApp:
         else:
             self._stop_server()
 
-    def _start_server(self) -> None:
-        data_dir = self.data_dir_var.get().strip()
+    def _start_demo(self) -> None:
+        """Serve a fresh copy of the fictional demo band from the app-support
+        folder -- a safe place to click around that never touches real songs.
+        It's reset each time this button is pressed."""
+        if self.httpd is not None:
+            self._stop_server()
+        self._pre_demo_dir = self.data_dir_var.get()
+        try:
+            target = server_app.prepare_demo(os.path.join(platform_dirs.user_app_dir(), "demo-data"))
+        except OSError as exc:
+            messagebox.showerror("SSP - Song and Setlist Planner", f"Couldn't set up the demo:\n{exc}")
+            return
+        self._enqueue_log("Demo band copied to " + target + " (reset every time you press the demo button).")
+        self._start_server(data_dir=target, remember=False)
+
+    def _start_server(self, data_dir: str = None, remember: bool = True) -> None:
+        if data_dir is None:
+            data_dir = self.data_dir_var.get().strip()
+        else:
+            self.data_dir_var.set(data_dir)
         static_dir = self.static_dir_var.get().strip()
         if not data_dir:
             messagebox.showerror("SSP - Song and Setlist Planner", "Choose a data folder first.")
@@ -208,7 +232,8 @@ class LauncherApp:
         self.server_thread = threading.Thread(target=self.httpd.serve_forever, daemon=True)
         self.server_thread.start()
 
-        self.settings = launcher_settings.remember_data_dir(self.settings, data_dir)
+        if remember:
+            self.settings = launcher_settings.remember_data_dir(self.settings, data_dir)
         self.settings["port"] = port
         launcher_settings.save(self.settings)
         self.recent_combo.configure(values=self._recent_values())
@@ -224,12 +249,14 @@ class LauncherApp:
         server_app.Handler.log_hook = None
 
         def _shutdown():
-            httpd.shutdown()
-            httpd.server_close()
+            server_app.stop_server(httpd)
             self.log_queue.put("Stopped.")
 
         threading.Thread(target=_shutdown, daemon=True).start()
         self._set_running_ui(False, None)
+        if getattr(self, "_pre_demo_dir", None) is not None:
+            self.data_dir_var.set(self._pre_demo_dir)  # back to the band's own folder
+            self._pre_demo_dir = None
 
     def _set_running_ui(self, running: bool, port) -> None:
         self.status_var.set("Running" if running else "Stopped")
@@ -238,6 +265,7 @@ class LauncherApp:
         self.open_browser_btn.configure(state="normal" if running else "disabled")
         self.data_entry.configure(state="disabled" if running else "normal")
         self.static_entry.configure(state="disabled" if running else "normal")
+        self.demo_btn.configure(state="disabled" if running else "normal")
         if running and port:
             self._show_addresses(port)
             self.addresses_frame.pack(fill="x", padx=10, pady=6, before=self._log_frame())
@@ -248,13 +276,30 @@ class LauncherApp:
         return self.log_text.master
 
     def _show_addresses(self, port: int) -> None:
-        lines = [f"http://localhost:{port}/"]
-        for ip in server_app.local_addresses():
-            lines.append(f"http://{ip}:{port}/")
+        ips = server_app.local_addresses()
+        lines = [f"http://{ip}:{port}/" for ip in ips]
+        lines.append(f"http://localhost:{port}/   (this computer only)")
+        self._draw_qr(f"http://{ips[0]}:{port}/" if ips else None)
         self.addresses_text.configure(state="normal")
         self.addresses_text.delete("1.0", "end")
         self.addresses_text.insert("1.0", "\n".join(lines))
         self.addresses_text.configure(state="disabled")
+
+    def _draw_qr(self, url) -> None:
+        c = self.qr_canvas
+        c.delete("all")
+        if not url:
+            c.create_text(74, 74, text="no Wi-Fi\naddress found", justify="center")
+            return
+        m = qr.encode(url)
+        quiet = 2
+        n = len(m) + 2 * quiet
+        cell = 148 / n
+        for y, row in enumerate(m):
+            for x, v in enumerate(row):
+                if v:
+                    x0, y0 = (x + quiet) * cell, (y + quiet) * cell
+                    c.create_rectangle(x0, y0, x0 + cell, y0 + cell, fill="black", outline="black")
 
     def _open_browser(self) -> None:
         port = self.port_var.get().strip()
@@ -287,8 +332,7 @@ class LauncherApp:
     def _on_close(self) -> None:
         if self.httpd is not None:
             try:
-                self.httpd.shutdown()
-                self.httpd.server_close()
+                server_app.stop_server(self.httpd)
             except Exception:  # noqa: BLE001 - closing on the way out, nothing useful to do with an error here
                 pass
         launcher_settings.save(self.settings)

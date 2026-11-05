@@ -4,7 +4,7 @@ Data model for SSP - Song and Setlist Planner.
 Deliberately plain: every entity is a dict that round-trips straight to/from
 JSON (see server/storage.py). These helpers exist to keep "what a fresh
 Song/Section/Hint/etc. looks like" and "what counts as valid" in one place,
-not to introduce an ORM. See claude/WORKPLAN.md's "Data model & storage
+not to introduce an ORM. See WORKPLAN.md's "Data model & storage
 layout" for the authoritative shape.
 
 Timing model: a Section stores only its own `bars` (and an optional `bpm`
@@ -15,6 +15,7 @@ and `song_total_bars` below).
 
 from __future__ import annotations
 
+import re
 import time
 import uuid
 
@@ -22,6 +23,23 @@ VALID_COUNT_IN_STYLES = ("sticks", "click", "verbal", "none")
 VALID_ROLES = ("Drums", "Bass", "Guitar", "Vocals", "Keys", "Other")
 MIN_BPM = 20
 MAX_BPM = 400
+
+# A recorded hint clip: data/audio/<12 hex>.<ext> -- nothing else is ever
+# served or deleted from that folder (see storage.py).
+AUDIO_EXTS = {
+    "webm": "audio/webm", "ogg": "audio/ogg", "m4a": "audio/mp4", "mp4": "audio/mp4",
+    "mp3": "audio/mpeg", "wav": "audio/wav", "aac": "audio/aac",
+}
+AUDIO_REF = re.compile(r"^[0-9a-f]{12}\.(" + "|".join(AUDIO_EXTS) + r")$")
+MAX_AUDIO_BYTES = 3 * 1024 * 1024  # ~3 MB: a short voice memo, not a song
+
+
+def audio_refs(song: dict) -> set:
+    """Every clip a song's hints point at."""
+    return {h["audio"] for s in song.get("sections", []) for h in s.get("hints", []) if h.get("audio")}
+
+
+ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,40}$")
 
 
 def new_id() -> str:
@@ -49,6 +67,29 @@ def new_player(name: str, role: str = "Other") -> dict:
     if role not in VALID_ROLES:
         role = "Other"
     return {"id": new_id(), "name": name, "role": role}
+
+
+def clean_band(payload: dict, existing: dict) -> dict:
+    """A band from an API payload: name, and players with a name, a known
+    role and an id each (a missing id gets a fresh one). Raises
+    ValidationError in plain words."""
+    name = str(payload.get("name", existing.get("name", "My Band")) or "").strip()[:80]
+    if not name:
+        raise ValidationError("the band needs a name")
+    players_in = payload.get("players", existing.get("players", []))
+    if not isinstance(players_in, list):
+        raise ValidationError("players must be a list")
+    players, seen = [], set()
+    for p in players_in:
+        if not isinstance(p, dict):
+            raise ValidationError("each player must be an object")
+        pid = str(p.get("id") or new_id())[:40]
+        if pid in seen or pid == "all":
+            pid = new_id()
+        seen.add(pid)
+        role = p.get("role") if p.get("role") in VALID_ROLES else "Other"
+        players.append({"id": pid, "name": str(p.get("name", "")).strip()[:60] or "Player", "role": role})
+    return {"id": "band", "name": name, "players": players}
 
 
 # ---------------------------------------------------------------------------
@@ -93,6 +134,15 @@ def validate_section(section: dict) -> None:
     style = count_in.get("style", "none")
     if style not in VALID_COUNT_IN_STYLES:
         raise ValidationError(f"section {section.get('id')!r}: invalid count_in style {style!r}")
+    ci_bars = count_in.get("bars", 0)
+    if not isinstance(ci_bars, int) or not (0 <= ci_bars <= 8):
+        raise ValidationError(f"section {section.get('id')!r}: count-in is 0 to 8 bars")
+    if bars > 999:
+        raise ValidationError(f"section {section.get('id')!r}: at most 999 bars in one section")
+    for hint in section.get("hints", []):
+        audio = hint.get("audio")
+        if audio is not None and not (isinstance(audio, str) and AUDIO_REF.match(audio)):
+            raise ValidationError(f"hint {hint.get('id')!r}: bad audio clip reference")
 
 
 # ---------------------------------------------------------------------------
@@ -153,4 +203,6 @@ def validate_setlist(setlist: dict) -> None:
     if not setlist.get("name", "").strip():
         raise ValidationError("setlist name cannot be empty")
     if not isinstance(setlist.get("songs"), list):
+        raise ValidationError("setlist songs must be a list of song ids")
+    if not all(isinstance(s, str) for s in setlist["songs"]):
         raise ValidationError("setlist songs must be a list of song ids")

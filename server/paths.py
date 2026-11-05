@@ -48,3 +48,9 @@ def default_data_dir() -> str:
     if is_frozen():
         return os.path.join(platform_dirs.user_app_dir(), "data")
     return os.path.normpath(os.path.join(THIS_DIR, "..", "data"))
+
+
+def demo_data_dir() -> str:
+    """The fictional demo band shipped with SSP (read-only; app.py's
+    prepare_demo() always serves a copy of it)."""
+    return os.path.join(bundle_dir(), "demo")

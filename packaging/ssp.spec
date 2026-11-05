@@ -43,8 +43,11 @@ a = Analysis(  # noqa: F821
     # bundled -- it's created at runtime wherever the user points the
     # launcher (defaulting to the per-OS app-support folder; see
     # server/platform_dirs.py).
-    datas=[(STATIC_DIR, os.path.join("web", "static"))],
-    hiddenimports=["app", "paths", "platform_dirs", "storage", "models", "settings"],
+    # The fictional demo band (demo/) is bundled read-only too, for the
+    # launcher's "Try the demo band" button (always served from a copy).
+    datas=[(STATIC_DIR, os.path.join("web", "static")), (os.path.join(ROOT, "demo"), "demo")],
+    hiddenimports=["app", "paths", "platform_dirs", "storage", "models", "settings", "timeline",
+                   "transport", "events", "export", "click_track", "qr", "version"],
     hookspath=[],
     runtime_hooks=[],
     excludes=[],

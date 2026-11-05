@@ -1,5 +1,5 @@
 """
-Plain-JSON, one-file-per-song storage (see claude/WORKPLAN.md's "Storage"
+Plain-JSON, one-file-per-song storage (see WORKPLAN.md's "Storage"
 decision).
 
 This module only talks to disk. The in-memory `Store` in app.py is the one
@@ -15,6 +15,11 @@ Layout:
       songs/<song-id>.json   # one song per file -- portable on its own
       setlists/<id>.json     # name + ordered [song_id, ...] -- a thin
                               # reference list, not a copy of the songs
+      audio/<clip>.<ext>     # recorded hint clips, referenced by hints
+                              # (v0.6). To move one song with its clips to
+                              # another setup, use the song's "Export"
+                              # button instead: that bundles both into one
+                              # .ssp.json file.
 """
 
 from __future__ import annotations
@@ -23,6 +28,7 @@ import json
 import os
 import tempfile
 
+import models
 from models import new_band
 
 
@@ -32,10 +38,12 @@ class Storage:
         self.band_path = os.path.join(data_dir, "band.json")
         self.songs_dir = os.path.join(data_dir, "songs")
         self.setlists_dir = os.path.join(data_dir, "setlists")
+        self.audio_dir = os.path.join(data_dir, "audio")
 
     def ensure_dirs(self) -> None:
         os.makedirs(self.songs_dir, exist_ok=True)
         os.makedirs(self.setlists_dir, exist_ok=True)
+        os.makedirs(self.audio_dir, exist_ok=True)
 
     # -- atomic write -------------------------------------------------
     @staticmethod
@@ -120,5 +128,36 @@ class Storage:
 
     def delete_setlist(self, setlist_id: str) -> None:
         path = self._setlist_path(setlist_id)
+        if os.path.exists(path):
+            os.remove(path)
+
+    # -- recorded hint clips ------------------------------------------------
+    def audio_path(self, ref: str) -> str:
+        """Path of a clip, or ValueError -- only well-formed refs, inside
+        data/audio/, are ever touched (no path tricks)."""
+        if not isinstance(ref, str) or not models.AUDIO_REF.match(ref):
+            raise ValueError("bad clip reference")
+        return os.path.join(self.audio_dir, ref)
+
+    def save_audio(self, data: bytes, ext: str) -> str:
+        if ext not in models.AUDIO_EXTS:
+            raise ValueError("unsupported audio type")
+        ref = f"{models.new_id()}.{ext}"
+        path = self.audio_path(ref)
+        fd, tmp_path = tempfile.mkstemp(dir=self.audio_dir, prefix=".tmp-")
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+        os.replace(tmp_path, path)
+        return ref
+
+    def read_audio(self, ref: str) -> bytes:
+        with open(self.audio_path(ref), "rb") as f:
+            return f.read()
+
+    def delete_audio(self, ref: str) -> None:
+        try:
+            path = self.audio_path(ref)
+        except ValueError:
+            return
         if os.path.exists(path):
             os.remove(path)
