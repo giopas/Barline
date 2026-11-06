@@ -33,7 +33,7 @@ During a count-in the screen turns yellow and says which section it's counting i
 
 ## Your hints, up front
 
-The panel next to (or under) the big section name shows the hints for right now. Yours come first, marked **For you**, then the ones for the whole band. Hints for other players stay out of the way ("+1 for other players"); tap that, or **Show everyone's hints**, to see them. Underneath, **Coming up** shows the next section's hints before you get there.
+The panel next to (or under) the big section name shows the hints for right now. Its **+ Hint** button adds a note to that section on the spot, handy at rehearsal ("we keep rushing here"). Yours come first, marked **For you**, then the ones for the whole band. Hints for other players stay out of the way ("+1 for other players"); tap that, or **Show everyone's hints**, to see them. Underneath, **Coming up** shows the next section's hints before you get there.
 
 The full song is listed below, and scrolls along with the band. On a phone, there's only room for what matters: where you are, what's next, and your hints.
 
@@ -45,6 +45,8 @@ On a laptop or a shared screen set to "Whole band", every hint shows, each label
 
 Each device can play its own metronome click, in time with everyone else. Tap **Click: tap to enable** once (browsers only allow sound after a tap), pick a sound and a volume. Nobody else hears your click unless you want them to. More in [[Metronome and Click Tracks]].
 
+The click only plays while the device's screen is on and SSP is in front. Phones cut the connection to the server when the screen goes off, and a click that can't hear "stop" shouldn't keep going. Turn the screen back on and it picks the song up again.
+
 ## Foot pedals and keyboards
 
 In the live view, the space bar starts and stops, and the arrow keys (or Page Up/Page Down) move through a setlist. That's what most Bluetooth page-turner pedals send, so a pedal works as a hands-free start button.
@@ -52,7 +54,7 @@ In the live view, the space bar starts and stops, and the arrow keys (or Page Up
 ## Before the show
 
 - Set each tablet's auto-lock to "never" (or a long time) for the gig. SSP can't keep a screen awake by itself over plain Wi-Fi.
-- If the Wi-Fi drops for a moment, the device says "reconnecting" and catches up by itself when it's back.
+- If the Wi-Fi drops for a moment, the device says "reconnecting" and catches up by itself when it's back. If it drops mid-song for more than a couple of bars, that device's click goes quiet ("Lost touch with the server") rather than clicking on blind.
 - Plug the server in. A laptop going to sleep takes everyone's screens with it; a Raspberry Pi doesn't have that problem.
 
 ## Why not just a PDF on a tablet?

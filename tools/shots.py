@@ -23,8 +23,10 @@ from __future__ import annotations
 import io
 import json
 import os
+import shutil
 import socket
 import subprocess
+import tempfile
 import sys
 import time
 import urllib.request
@@ -64,7 +66,12 @@ class DemoServer:
     def __enter__(self):
         self.port = free_port()
         self.base = f"http://127.0.0.1:{self.port}"
-        self.proc = subprocess.Popen([sys.executable, os.path.join(ROOT, "server", "app.py"), "--demo",
+        # a plain copy served as an ordinary band (not --demo), so the
+        # pictures don't carry the "Demo band" banner
+        self.tmp = tempfile.mkdtemp(prefix="ssp-shots-")
+        data = os.path.join(self.tmp, "data")
+        shutil.copytree(os.path.join(ROOT, "demo"), data)
+        self.proc = subprocess.Popen([sys.executable, os.path.join(ROOT, "server", "app.py"), "--data", data,
                                       "--port", str(self.port)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         for _ in range(50):
             try:
@@ -77,6 +84,7 @@ class DemoServer:
     def __exit__(self, *exc):
         self.proc.terminate()
         self.proc.wait(5)
+        shutil.rmtree(self.tmp, ignore_errors=True)
 
     def get(self, path):
         return json.loads(urllib.request.urlopen(self.base + path, timeout=5).read())
@@ -292,7 +300,7 @@ class Shooter:
         snap(300)
         vis = last.locator(".hint-visibility").last
         self.point(pg, vis)
-        vis.select_option(label="Sam (Bass)")
+        vis.select_option(label="For Sam (Bass)")
         pg.wait_for_timeout(200)
         snap(700)
         dup = last.locator(".duplicate-section")
@@ -353,7 +361,7 @@ class Shooter:
                 snap(160)
         vis = card.locator(".hint-visibility").last
         self.point(lap, vis)
-        vis.select_option(label="Sam (Bass)")
+        vis.select_option(label="For Sam (Bass)")
         snap(400)
         lap.wait_for_timeout(1000)
         snap(2800)

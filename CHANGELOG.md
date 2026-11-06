@@ -3,6 +3,42 @@
 All notable changes to this project are documented here. Versioning
 follows semver (MAJOR.MINOR.PATCH).
 
+## [0.9.1] -- 2026-11-06
+
+From the first real-device test (a Mac, an Android phone and an iPad).
+
+### Fixed
+
+- **No click on iPad/iPhone.** Safari starts its audio engine a moment
+  after the tap, and the click waited for it, so a run started straight
+  after the tap never got a click. The click now gets scheduled straight
+  away. The click also asks Safari for "playback" audio, so silent mode no
+  longer mutes it (Safari 16.4 or newer), and the sounds are built at the
+  device's own sample rate.
+- **Click kept going on Android with the screen off**, even after the song
+  was stopped: Android keeps playing sound in the background but drops
+  the page's connection, so "stop" never arrived. The click now stops as
+  soon as the screen goes off or the page is hidden, and when you come
+  back it picks the song up again if it's still playing. If a device hears
+  nothing from the server for a couple of bars mid-song, it silences its
+  click and says so.
+- On a phone with nothing cued, the live view hid the list of songs and
+  setlists to pick from.
+- `--demo` now deletes its throwaway copy when the server stops.
+
+### Added
+
+- **Demo band from the web app**: "Try the demo band" (bottom of the
+  sidebar) switches every connected device to a throwaway copy of the demo
+  band, with a banner on every screen; "Back to my band" switches back.
+  Your own songs aren't touched. Also works after the control panel's demo
+  button, which now remembers the band folder to go back to.
+- **Easier hints**: a labelled "+ Add hint" button on every section, a
+  short explanation when a section has none, and "For the whole band" /
+  "For Sam (Bass)" in the menu. In the live view, "+ Hint" adds one to the
+  current section on the spot.
+- The app's version shows at the bottom of the sidebar.
+
 ## [0.9.0] -- 2026-11-05
 
 Everything planned for 1.0 is in. 1.0.0 gets tagged once it's been played

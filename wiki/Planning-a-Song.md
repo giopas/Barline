@@ -41,7 +41,7 @@ Press the ♫ button on a section to hear its count-in and first two bars on thi
 
 A hint is a short note on a section: a reminder the band (or one player) needs right then. "Root notes only here", "watch for the tempo drop", "everyone in on the 'and'".
 
-Click **+** under Hints on any section. The menu next to each hint picks who it's for: the whole band, or one player. A hint for one player stands out on that player's screen (with "For you" on it) and stays out of everyone else's way, though anyone can still choose to see it.
+Every section has a **+ Add hint** button. Type the note, then use the menu next to it to pick who it's for: **For the whole band** (the default), or **For** one player. That's all there is to it; it saves as you type. A hint for one player stands out on that player's screen (with "For you" on it) and stays out of everyone else's way, though anyone can still choose to see it.
 
 Players are set up on the **Band** page: a name and an instrument each.
 

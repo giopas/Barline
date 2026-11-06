@@ -70,7 +70,9 @@ On a laptop, open the control panel:
    the address.
 4. Start planning. Everything is saved as you go.
 
-Want to look around first? **Try the demo band** loads a fictional band
+Want to look around first? **Try the demo band** (in the control panel, or
+at the bottom of the sidebar in the app itself, where it switches every
+connected device at once) loads a fictional band
 (The Paper Lanterns) with six songs and two setlists. It's a throwaway
 copy, so nothing you do there sticks. From a terminal:
 `python3 server/app.py --demo`.

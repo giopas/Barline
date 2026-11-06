@@ -88,6 +88,43 @@ class BrowserSync(unittest.TestCase):
         tab.wait_for_selector("#live-start:not(.hidden)")
         self.assertEqual(self.s.store.hub and self.s.httpd.ssp_transport.snapshot()["state"], "stopped")
 
+    def test_click_stops_when_screen_goes_off_and_comes_back(self):
+        """Android keeps sound going with the screen off but drops the
+        connection: the click must stop when the page is hidden, and pick
+        the run back up when it's on screen again."""
+        song = demo_song(self.s, "Slow Tide")
+        pg = self.page(viewport={"width": 1024, "height": 768})
+        pg.goto(f"{self.s.base}/#/song/{song['id']}")
+        pg.wait_for_selector(".section-card")
+        pg.click("#song-live-btn")
+        pg.wait_for_selector("#live-chart .chart-row")
+        pg.click("#click-toggle")  # the tap that allows sound
+        pg.click("#live-start")
+        pg.wait_for_function("window.SSP.metronome.job !== null")
+        hide = """(h) => { Object.defineProperty(document, 'hidden', {configurable: true, get: () => h});
+                           document.dispatchEvent(new Event('visibilitychange')); }"""
+        pg.evaluate(hide, True)
+        self.assertTrue(pg.evaluate("window.SSP.metronome.job === null"))
+        pg.evaluate(hide, False)
+        pg.wait_for_function("window.SSP.metronome.job !== null", timeout=5000)
+        # stopped elsewhere while hidden: coming back doesn't restart it
+        pg.evaluate(hide, True)
+        self.s.httpd.ssp_transport.stop()
+        pg.evaluate(hide, False)
+        pg.wait_for_selector("#live-start:not(.hidden)")
+        self.assertTrue(pg.evaluate("window.SSP.metronome.job === null"))
+
+    def test_sound_is_scheduled_before_the_engine_reports_running(self):
+        """Safari starts its audio engine a moment after the tap; the click
+        must not wait for that (it used to, and the iPad stayed silent)."""
+        pg = self.page()
+        pg.goto(f"{self.s.base}/#/live")
+        pg.wait_for_selector("#live-view:not(.hidden)")
+        ok = pg.evaluate("""() => { const m = window.SSP.metronome; m.unlock();
+            const real = m.ctx; Object.defineProperty(real, 'state', {configurable: true, get: () => 'suspended'});
+            return m.unlocked; }""")
+        self.assertTrue(ok)
+
 
 if __name__ == "__main__":
     unittest.main()

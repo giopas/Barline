@@ -880,6 +880,7 @@ body.is-live { background: var(--live-bg); }
 }
 .big-stop { background: var(--danger); color: #fff; }
 .live-driver { color: var(--text-dim); font-size: 13px; }
+.live-driver.warn { color: var(--warn); font-weight: 600; }
 .click-controls { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 .click-controls input[type="range"] { width: 110px; }
 
@@ -931,4 +932,55 @@ body.is-live { background: var(--live-bg); }
 @media (max-width: 520px) {
   .live-shape .song-shape-block { line-height: 24px; font-size: 10px; }
   .toolbar .btn, .toolbar select { font-size: 12px; padding: 5px 8px; }
+}
+
+/* hints: an obvious way in */
+.hint-empty { color: var(--text-dim); font-size: 13px; list-style: none; padding: 4px 0; }
+.section-hints-head .add-hint { font-size: 12px; }
+.hints-now-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.hints-now-head h3 { margin: 0; }
+.quick-hint { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.quick-hint input { flex: 1 1 200px; font-size: 16px; padding: 7px 9px; }
+.quick-hint select { font-size: 14px; }
+
+/* demo band banner, on every device while the demo is on */
+.demo-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 34px;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 12px;
+  background: #4a3a12;
+  color: #ffe8a8;
+  font-size: 13px;
+  border-bottom: 1px solid var(--warn);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.demo-banner span { overflow: hidden; text-overflow: ellipsis; }
+.demo-banner .btn-small { color: #ffe8a8; border-color: var(--warn); flex-shrink: 0; }
+body.is-demo .app { height: calc(100vh - 34px); margin-top: 34px; }
+body.is-demo .live { top: 34px; }
+.btn-link { background: none; border: none; color: var(--accent); cursor: pointer; padding: 0; font-size: 12px; }
+.btn-link:hover { text-decoration: underline; }
+.version-label { margin-left: auto; color: var(--text-dim); font-size: 11px; }
+@media (max-width: 820px) {
+  body.is-demo .app { height: auto; }
+  body.is-demo .sidebar { top: 34px; }
+  .demo-banner .demo-long { display: none; }
+}
+.demo-short { display: none; }
+@media (max-width: 820px) { .demo-banner .demo-short { display: inline; } }
+
+/* nothing cued: the song picker lives in the chart area -- phones must see it */
+.live.nothing-cued .live-shape, .live.nothing-cued .live-hints { display: none; }
+@media (max-width: 520px) {
+  .live.nothing-cued .live-chart { display: block; }
+  .live.nothing-cued { grid-template-rows: auto auto 1fr auto; grid-template-areas: "top" "now" "chart" "controls"; }
 }

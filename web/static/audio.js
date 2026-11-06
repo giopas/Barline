@@ -21,14 +21,14 @@
   const LOOKAHEAD_MS = 160;
   const TICK_MS = 25;
 
-  function clickSamples(freq, amp) {
+  function clickSamples(freq, amp, RATE) {
     const n = Math.floor((RATE * 25) / 1000);
     const out = new Float32Array(n);
     for (let i = 0; i < n; i++) out[i] = amp * Math.sin((2 * Math.PI * freq * i) / RATE) * Math.exp((-6.0 * i) / n);
     return out;
   }
 
-  function woodSamples(accent) {
+  function woodSamples(accent, RATE) {
     const [f, amp] = accent ? [1500, 0.95] : [900, 0.65];
     const n = Math.floor((RATE * 30) / 1000);
     const out = new Float32Array(n);
@@ -39,7 +39,7 @@
     return out;
   }
 
-  function tickSamples(accent) {
+  function tickSamples(accent, RATE) {
     const n = Math.floor((RATE * (accent ? 40 : 12)) / 1000);
     const amp = accent ? 0.9 : 0.5;
     const out = new Float32Array(n);
@@ -53,10 +53,13 @@
     return out;
   }
 
-  function samplesFor(sound, accent) {
-    if (sound === "wood") return woodSamples(accent);
-    if (sound === "tick") return tickSamples(accent);
-    return accent ? clickSamples(1600, 0.9) : clickSamples(1000, 0.6);
+  // `rate` defaults to the click track's 22050 Hz; the live metronome
+  // builds them at the device's own rate (same formulas, so same sound).
+  function samplesFor(sound, accent, rate) {
+    const r = rate || RATE;
+    if (sound === "wood") return woodSamples(accent, r);
+    if (sound === "tick") return tickSamples(accent, r);
+    return accent ? clickSamples(1600, 0.9, r) : clickSamples(1000, 0.6, r);
   }
 
   class Metronome {
@@ -73,34 +76,57 @@
       this.onbeat = null;
     }
 
+    // Sound has been allowed (a tap created the audio engine). Safari
+    // starts the engine a moment *after* the tap, so this deliberately
+    // doesn't wait for "running": clicks get scheduled straight away and
+    // the engine catches up -- waiting here was why an iPad stayed silent.
     get unlocked() {
-      return !!this.ctx && this.ctx.state === "running";
+      return !!this.ctx && this.ctx.state !== "closed";
     }
 
     unlock() {
       const AC = root.AudioContext || root.webkitAudioContext;
       if (!AC) return false;
+      // iPhone/iPad: by default Web Audio is muted by silent mode. Asking
+      // for "playback" makes the click behave like music instead (Safari 16.4+).
+      try {
+        if (navigator.audioSession) navigator.audioSession.type = "playback";
+      } catch (err) {
+        /* older Safari: silent mode mutes the click */
+      }
       if (!this.ctx) {
         this.ctx = new AC();
+        const rate = this.ctx.sampleRate;
         this.gain = this.ctx.createGain();
         this.gain.gain.value = this.volume;
         this.gain.connect(this.ctx.destination);
         for (const s of SOUNDS) {
           for (const accent of [true, false]) {
-            const data = samplesFor(s, accent);
-            const buf = this.ctx.createBuffer(1, data.length, RATE);
+            const data = samplesFor(s, accent, rate);
+            const buf = this.ctx.createBuffer(1, data.length, rate);
             buf.getChannelData(0).set(data);
             this.buffers[`${s}:${accent ? 1 : 0}`] = buf;
           }
         }
+        // iOS can "interrupt" the engine (a call, Siri, another app);
+        // pick it up again as soon as we're allowed
+        document.addEventListener("visibilitychange", () => {
+          if (!document.hidden) this.wake();
+        });
       }
-      if (this.ctx.state !== "running") this.ctx.resume();
+      this.wake();
       // a silent buffer, so iOS really opens the audio path on this tap
       const src = this.ctx.createBufferSource();
-      src.buffer = this.ctx.createBuffer(1, 1, RATE);
+      src.buffer = this.ctx.createBuffer(1, 1, this.ctx.sampleRate);
       src.connect(this.ctx.destination);
       src.start();
       return true;
+    }
+
+    wake() {
+      if (this.ctx && this.ctx.state !== "running" && this.ctx.state !== "closed") {
+        this.ctx.resume().catch(() => {});
+      }
     }
 
     setVolume(v) {
@@ -111,15 +137,22 @@
     // performance.now() milliseconds -> AudioContext seconds
     audioTimeFor(perfMs) {
       const ctx = this.ctx;
+      const now = performance.now();
       if (ctx.getOutputTimestamp) {
         const ts = ctx.getOutputTimestamp();
-        if (ts && ts.performanceTime) return ts.contextTime + (perfMs - ts.performanceTime) / 1000;
+        // only trust it when it's plausible -- some Safari versions report
+        // zeros or a stale stamp while the engine is still starting
+        if (ts && ts.performanceTime > 0 && Math.abs(now - ts.performanceTime) < 500 &&
+            Math.abs(ctx.currentTime - ts.contextTime) < 0.5) {
+          return ts.contextTime + (perfMs - ts.performanceTime) / 1000;
+        }
       }
-      return ctx.currentTime + (perfMs - performance.now()) / 1000 - (ctx.outputLatency || 0);
+      return ctx.currentTime + (perfMs - now) / 1000 - (ctx.outputLatency || 0);
     }
 
     play(sound, accent, perfMs) {
       if (!this.unlocked || !this.enabled) return;
+      if (this.ctx.state !== "running") this.wake();
       const buf = this.buffers[`${sound}:${accent ? 1 : 0}`];
       if (!buf) return;
       const src = this.ctx.createBufferSource();

@@ -11,6 +11,10 @@
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
+  <div id="demo-banner" class="demo-banner hidden">
+    <span><strong>Demo band</strong><span class="demo-long">: a throwaway copy to try things on. Nothing here is kept, and your own songs aren't touched.</span><span class="demo-short">: nothing here is kept</span></span>
+    <button class="btn-small" id="demo-off-btn">Back to my band</button>
+  </div>
   <div id="app" class="app">
 
     <aside class="sidebar" id="sidebar">
@@ -53,6 +57,10 @@
         <div class="footer-row">
           <button class="chip" id="who-btn" title="Who's using this device?">Whole band</button>
           <button class="btn-small" id="connect-btn" title="Show the address and QR code for phones and tablets">Connect a device</button>
+        </div>
+        <div class="footer-row">
+          <button class="btn-link" id="demo-on-btn" title="Switch every device to a throwaway demo band to try things out">Try the demo band</button>
+          <span class="version-label" id="version-label"></span>
         </div>
       </footer>
     </aside>
@@ -264,7 +272,7 @@
       <div class="section-hints">
         <div class="section-hints-head">
           <h3>Hints</h3>
-          <button class="btn-icon add-hint" title="Add hint">+</button>
+          <button class="btn-small add-hint" title="Add a note for the whole band or for one player">+ Add hint</button>
         </div>
         <ul class="hint-list"></ul>
       </div>
@@ -273,9 +281,9 @@
 
   <template id="hint-row-template">
     <li class="hint-row">
-      <input class="hint-text" type="text" placeholder="Hint text" />
+      <input class="hint-text" type="text" placeholder="e.g. Watch Ruby for the stop" />
       <select class="hint-visibility">
-        <option value="all">Whole band</option>
+        <option value="all">For the whole band</option>
       </select>
       <button class="btn-icon hint-play hidden" title="Play the voice memo">&#9654;</button>
       <button class="btn-icon hint-record" title="Record or attach a short voice memo">&#127908;</button>

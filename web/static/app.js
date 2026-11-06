@@ -853,6 +853,10 @@ const canRecord = () => !!(window.isSecureContext && navigator.mediaDevices && w
 function renderHints(container, section) {
   const template = document.getElementById("hint-row-template");
   container.innerHTML = "";
+  if (!section.hints.length) {
+    container.appendChild(el("li", "hint-empty",
+      "No hints yet. Add a note for this section: for the whole band, or aimed at one player."));
+  }
 
   for (const hint of section.hints) {
     const node = template.content.cloneNode(true);
@@ -869,7 +873,7 @@ function renderHints(container, section) {
     const visSelect = node.querySelector(".hint-visibility");
     visSelect.dataset.focusKey = `${hint.id}:vis`;
     for (const p of state.band.players) {
-      const opt = el("option", "", `${p.name} (${p.role})`);
+      const opt = el("option", "", `For ${p.name} (${p.role})`);
       opt.value = p.id;
       visSelect.appendChild(opt);
     }
@@ -1235,6 +1239,43 @@ Sync.on("status", (ok) => {
   document.body.classList.toggle("offline", !ok);
 });
 
+// ---------------------------------------------------------------------
+// Demo band: the whole server (so every device) switches to a throwaway
+// copy of the fictional demo band, and back. Every device reloads.
+// ---------------------------------------------------------------------
+
+function renderDemo() {
+  const on = !!(state.demo && state.demo.on);
+  document.body.classList.toggle("is-demo", on);
+  document.getElementById("demo-banner").classList.toggle("hidden", !on);
+  document.getElementById("demo-off-btn").classList.toggle("hidden", !(on && state.demo.can_return));
+  document.getElementById("demo-on-btn").textContent = on ? "Fresh copy of the demo" : "Try the demo band";
+}
+
+async function switchDemo(on) {
+  const msg = on
+    ? "Switch to the demo band?\n\nEvery connected device switches with you. Your own songs are kept safe and come back with \"Back to my band\"."
+    : "Back to your band's own songs? Everything changed in the demo is thrown away, on every connected device.";
+  if (!confirm(msg)) return;
+  try {
+    await api("POST", "/demo", { on });
+  } catch (err) {
+    toast("Couldn't switch: " + err.message, "error");
+  }
+}
+
+document.getElementById("demo-on-btn").addEventListener("click", () => switchDemo(true));
+document.getElementById("demo-off-btn").addEventListener("click", () => switchDemo(false));
+
+// Someone switched bands: start this page fresh on the new one (stays in
+// live view if that's where we were). A half-typed edit is dropped -- it
+// belonged to the other band anyway.
+Sync.on("reload", () => {
+  const keepLive = state.view === "live";
+  history.replaceState(null, "", location.pathname + (keepLive ? "#/live" : "#/"));
+  location.reload();
+});
+
 // after a Wi-Fi blip, catch up on anything missed while away
 Sync.on("reconnect", () => loadState(true));
 
@@ -1249,6 +1290,9 @@ async function loadState(again) {
   state.setlists = s.setlists;
   state.presence = s.presence;
   state.transport = s.transport;
+  state.demo = s.demo || { on: false, can_return: false };
+  renderDemo();
+  document.getElementById("version-label").textContent = s.version ? "v" + s.version : "";
   if (state.me && !playerById(state.me)) state.me = null;
   renderSidebar();
   renderPresence();

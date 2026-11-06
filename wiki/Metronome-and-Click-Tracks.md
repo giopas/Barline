@@ -12,6 +12,10 @@ In the live view, every phone and tablet can play its own click, in time with th
 
 The drummer might want it in their in-ears while the singer leaves it off. Each device remembers its own choice.
 
+The click needs the screen on: when a phone or tablet goes to sleep it stops clicking (it can't hear "stop" any more), and starts again when you wake it, if the song is still going.
+
+**iPhone and iPad:** on a recent iOS/iPadOS (16.4 or newer) the click plays even in silent mode. On older versions, silent mode mutes it; switch silent mode off.
+
 During a *sticks* count-in, the click switches to a different sound for those bars, so a stick count-in sounds different from the song itself.
 
 The click follows the song's tempo map exactly, including sections with their own BPM and count-ins in the middle of a song.

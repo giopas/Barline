@@ -194,9 +194,9 @@ class LauncherApp:
             messagebox.showerror("SSP - Song and Setlist Planner", f"Couldn't set up the demo:\n{exc}")
             return
         self._enqueue_log("Demo band copied to " + target + " (reset every time you press the demo button).")
-        self._start_server(data_dir=target, remember=False)
+        self._start_server(data_dir=target, remember=False, demo=True)
 
-    def _start_server(self, data_dir: str = None, remember: bool = True) -> None:
+    def _start_server(self, data_dir: str = None, remember: bool = True, demo: bool = False) -> None:
         if data_dir is None:
             data_dir = self.data_dir_var.get().strip()
         else:
@@ -214,7 +214,10 @@ class LauncherApp:
             return
 
         try:
-            httpd, store = server_app.build_server(data_dir, static_dir, port)
+            # in the demo, the web app's "Back to my band" goes to the folder
+            # that was picked before the demo button was pressed
+            home = (getattr(self, "_pre_demo_dir", None) or None) if demo else None
+            httpd, store = server_app.build_server(data_dir, static_dir, port, demo=demo, home_dir=home)
         except OSError as exc:
             messagebox.showerror("SSP - Song and Setlist Planner", f"Couldn't start the server:\n{exc}")
             return

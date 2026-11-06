@@ -346,6 +346,49 @@ class SyncTests(unittest.TestCase):
             socket.create_connection(("127.0.0.1", port), timeout=1)
 
 
+class DemoSwitchTests(unittest.TestCase):
+    def test_switch_to_demo_and_back_leaves_band_untouched(self):
+        app.Handler.log_hook = lambda line: None
+        tmp = tempfile.mkdtemp(prefix="ssp-test-")
+        try:
+            home = os.path.join(tmp, "band")
+            httpd, store = app.build_server(home, os.path.join(ROOT, "web", "static"), 0)
+            threading.Thread(target=httpd.serve_forever, daemon=True).start()
+            s = Server.__new__(Server)
+            s.base = f"http://127.0.0.1:{httpd.server_address[1]}"
+            s.json("POST", "/api/songs", {"title": "Our Song"})
+            lst = Listener(s.base)
+            lst.wait_for("presence")
+            status, st = s.json("POST", "/api/demo", {"on": True})
+            self.assertEqual((status, st), (200, {"on": True, "can_return": True}))
+            self.assertEqual(lst.wait_for("reload")["data"]["on"], True)
+            titles = {x["title"] for x in s.json("GET", "/api/songs")[1]}
+            self.assertIn("Harbour Lights", titles)
+            self.assertNotIn("Our Song", titles)
+            demo_tmp = store._demo_tmp
+            # edits in the demo go to the throwaway copy
+            s.json("POST", "/api/songs", {"title": "Demo scribble"})
+            self.assertEqual(s.json("POST", "/api/demo", {"on": False})[1], {"on": False, "can_return": False})
+            titles = {x["title"] for x in s.json("GET", "/api/songs")[1]}
+            self.assertEqual(titles, {"Our Song"})
+            self.assertFalse(os.path.exists(demo_tmp), "demo copy cleaned up")
+            self.assertEqual(len(os.listdir(os.path.join(home, "songs"))), 1)
+            lst.close()
+            app.stop_server(httpd)
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_demo_only_server_cannot_go_back(self):
+        s = Server()  # started on the demo alone, like `--demo`
+        try:
+            s.store.demo = True
+            s.store.home_dir = None
+            self.assertEqual(s.json("GET", "/api/state")[1]["demo"], {"on": True, "can_return": False})
+            self.assertEqual(s.json("POST", "/api/demo", {"on": False})[0], 400)
+        finally:
+            s.close()
+
+
 class StorageCompatTests(unittest.TestCase):
     def test_v01_song_without_new_fields_still_loads(self):
         tmp = tempfile.mkdtemp()

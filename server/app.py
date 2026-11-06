@@ -29,10 +29,12 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import atexit
 import json
 import os
 import re
 import shutil
+import signal
 import socket
 import sys
 import tempfile
@@ -97,13 +99,58 @@ def local_addresses() -> list:
 # ---------------------------------------------------------------------------
 
 class Store:
-    def __init__(self, storage: Storage, hub: events.Hub):
+    def __init__(self, storage: Storage, hub: events.Hub, home_dir: str = None, demo: bool = False):
         self.storage = storage
         self.hub = hub
         self.lock = threading.RLock()
         self.band = storage.load_band()
         self.songs = storage.load_all_songs()
         self.setlists = storage.load_all_setlists()
+        # Demo switch: `home_dir` is the band's own data folder ("Back to my
+        # band"); None when the server was started on the demo alone.
+        self.home_dir = home_dir
+        self.demo = demo
+        self._demo_tmp = None
+
+    def _swap(self, storage: Storage) -> None:
+        with self.lock:
+            self.storage = storage
+            self.band = storage.load_band()
+            self.songs = storage.load_all_songs()
+            self.setlists = storage.load_all_setlists()
+
+    def demo_state(self) -> dict:
+        return {"on": self.demo, "can_return": bool(self.demo and self.home_dir)}
+
+    def set_demo(self, on: bool) -> dict:
+        """Switch every connected device to a fresh, throwaway copy of the
+        demo band -- or back to the band's own songs, which the demo never
+        touches. Everyone reloads (a "reload" broadcast)."""
+        with self.lock:
+            if on:
+                old_tmp = self._demo_tmp
+                self._demo_tmp = tempfile.mkdtemp(prefix="ssp-demo-")
+                target = prepare_demo(os.path.join(self._demo_tmp, "data"))
+                storage = Storage(target)
+                storage.ensure_dirs()
+                self._swap(storage)
+                self.demo = True
+                if old_tmp:
+                    shutil.rmtree(old_tmp, ignore_errors=True)
+            else:
+                if not self.home_dir:
+                    raise ValidationError("this server was started with the demo only; there's no band folder to go back to")
+                if self.demo:
+                    storage = Storage(self.home_dir)
+                    storage.ensure_dirs()
+                    self._swap(storage)
+                    self.demo = False
+                    if self._demo_tmp:
+                        shutil.rmtree(self._demo_tmp, ignore_errors=True)
+                        self._demo_tmp = None
+            state = self.demo_state()
+        self.hub.publish("reload", state)
+        return state
 
     # -- band -------------------------------------------------------------
     def get_band(self) -> dict:
@@ -413,7 +460,12 @@ class Handler(BaseHTTPRequestHandler):
                     "version": VERSION, "band": store.get_band(), "songs": store.list_songs(),
                     "setlists": store.list_setlists(), "transport": tr.snapshot(),
                     "presence": self.hub.presence(), "now": transport.now_ms(),
+                    "demo": store.demo_state(),
                 })
+            if route == ["demo"] and method == "POST":
+                on = bool(self._read_json_body().get("on"))
+                tr.cue(None, None, origin)  # nothing from one band stays cued on the other
+                return self._send_json(200, store.set_demo(on))
             if route == ["presence"] and method == "POST":
                 body = self._read_json_body()
                 self.hub.set_player(str(body.get("client", ""))[:40], body.get("player_id"))
@@ -606,12 +658,16 @@ class SSPServer(ThreadingHTTPServer):
     allow_reuse_address = True
 
 
-def build_server(data_dir: str, static_root: str, port: int) -> tuple:
+def build_server(data_dir: str, static_root: str, port: int, demo: bool = False, home_dir: str = None) -> tuple:
     """Build (but don't run) the server: loads/creates the data dir, loads
     everything into memory, and constructs the HTTP server. Returns
     (httpd, store) so a caller -- the CLI's main() below, or the Tkinter
     launcher running this in a background thread -- can start it and later
     call stop_server(httpd) to stop it cleanly.
+
+    `demo=True` means data_dir is a throwaway demo copy; `home_dir` is then
+    the band's own folder that "Back to my band" switches to (None: the
+    demo is all there is). Without demo, data_dir is the band's folder.
 
     Raises OSError (e.g. port already in use) to the caller rather than
     printing and exiting, so a GUI can show it."""
@@ -621,7 +677,8 @@ def build_server(data_dir: str, static_root: str, port: int) -> tuple:
     storage = Storage(data_dir)
     storage.ensure_dirs()
     hub = events.Hub()
-    store = Store(storage, hub)
+    home = (os.path.abspath(home_dir) if home_dir else None) if demo else data_dir
+    store = Store(storage, hub, home, demo)
     tr = transport.Transport(store, hub)
 
     httpd = SSPServer(("0.0.0.0", port), Handler)
@@ -632,6 +689,7 @@ def build_server(data_dir: str, static_root: str, port: int) -> tuple:
     Handler.port = httpd.server_address[1]
     httpd.ssp_hub = hub
     httpd.ssp_transport = tr
+    httpd.ssp_store = store
     return httpd, store
 
 
@@ -646,6 +704,9 @@ def stop_server(httpd) -> None:
         hub.close()
     httpd.shutdown()
     httpd.server_close()
+    store = getattr(httpd, "ssp_store", None)
+    if store is not None and store._demo_tmp:
+        shutil.rmtree(store._demo_tmp, ignore_errors=True)  # a demo switched on from the web app
 
 
 def prepare_demo(target: str = None) -> str:
@@ -684,7 +745,13 @@ def main() -> None:
     args = parser.parse_args()
 
     data = prepare_demo() if args.demo else (args.data or paths.default_data_dir())
-    httpd, store = build_server(data, args.static, args.port)
+    if args.demo:
+        # the throwaway copy goes when the server does (also on a plain
+        # `kill`, which normally skips atexit)
+        atexit.register(shutil.rmtree, data, True)
+        signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
+    # with --demo, --data (if given) is where "Back to my band" goes
+    httpd, store = build_server(data, args.static, args.port, demo=args.demo, home_dir=args.data)
     print(startup_banner(httpd, store, data, args.static))
     if args.demo:
         print("  DEMO MODE: changes go to a temporary copy and are thrown away.")
@@ -694,7 +761,7 @@ def main() -> None:
     thread.start()
     try:
         thread.join()
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, SystemExit):
         print("\nShutting down.")
         stop_server(httpd)
 

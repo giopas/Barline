@@ -156,6 +156,7 @@
     const box = $("live-chart");
     box.innerHTML = "";
     const song = live.song;
+    $("live-view").classList.toggle("nothing-cued", !song);
     if (!song) {
       box.appendChild(renderPicker());
       return;
@@ -248,9 +249,17 @@
     const h = hintsFor(section);
     const count = h.mine.length + h.all.length + (live.showAll || !S.state.me ? h.others.length : 0);
     const othersHidden = S.state.me && !live.showAll ? h.others.length : 0;
-    now.appendChild(S.el("h3", "", count ? `Hints: ${section.label}`
+    const head = S.el("div", "hints-now-head");
+    head.appendChild(S.el("h3", "", count ? `Hints: ${section.label}`
       : othersHidden ? `${section.label}: nothing for you (${othersHidden} for others)` : `${section.label}: no hints`));
+    const add = S.el("button", "btn-small", "+ Hint");
+    add.title = `Add a hint to ${section.label}`;
+    add.addEventListener("click", () => openQuickHint(section));
+    head.appendChild(add);
+    now.appendChild(head);
     now.appendChild(hintList(section, true));
+    // a hint being typed survives the panel moving on to the next section
+    if (live.quickForm) now.appendChild(live.quickForm);
     box.appendChild(now);
     if (nextSection) {
       const nx = S.el("div", "hints-next");
@@ -264,6 +273,60 @@
         box.appendChild(nx);
       }
     }
+  }
+
+  // Jot a hint from the stage view: it's saved to the song for everyone,
+  // on the section it was opened for (even if the band has moved on).
+  function openQuickHint(section) {
+    if (live.quickForm) live.quickForm.remove();
+    const form = S.el("form", "quick-hint");
+    const input = S.el("input");
+    input.placeholder = `Hint for ${section.label}`;
+    input.maxLength = 200;
+    const who = S.el("select");
+    const all = S.el("option", "", "For the whole band");
+    all.value = "all";
+    who.appendChild(all);
+    for (const p of S.state.band.players) {
+      const o = S.el("option", "", `For ${p.name}`);
+      o.value = p.id;
+      who.appendChild(o);
+    }
+    const save = S.el("button", "btn-small", "Add");
+    save.type = "submit";
+    const cancel = S.el("button", "btn-small", "Cancel");
+    cancel.type = "button";
+    const close = () => {
+      form.remove();
+      live.quickForm = null;
+    };
+    cancel.addEventListener("click", close);
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const text = input.value.trim();
+      if (!text || !live.song) return;
+      try {
+        const song = await S.api("GET", `/songs/${live.song.id}`);
+        const target = song.sections.find((x) => x.id === section.id);
+        if (!target) throw new Error("that section is gone");
+        const a = new Uint8Array(6);
+        crypto.getRandomValues(a);
+        const id = Array.from(a, (b) => b.toString(16).padStart(2, "0")).join("");
+        target.hints.push({ id, text, audio: null, visibility: who.value });
+        await S.api("PUT", `/songs/${song.id}`, song);
+        live.song = song;
+        close();
+        renderChart();
+        renderHintsPanel(true);
+        S.toast(`Hint added to ${section.label}`);
+      } catch (err) {
+        S.toast("Couldn't add the hint: " + err.message, "error");
+      }
+    });
+    form.append(input, who, save, cancel);
+    live.quickForm = form;
+    renderHintsPanel(true, live.transport.state === "running" ? section : null);
+    input.focus();
   }
 
   function renderNowBars(section, index, barInSection, countIn) {
@@ -433,12 +496,54 @@
     live.lastSection = null;
     $("live-now").classList.add("running");
     $("now-label").textContent = (t.timeline.bars[0] || {}).label || "";
-    if (metronome.unlocked && metronome.enabled) metronome.run(t.timeline, Sync.toLocal(t.started_at), S.soundForBar);
+    live.lastHeard = performance.now();
+    clickOn();
     if (!live.raf) live.raf = requestAnimationFrame(frame);
+    if (!live.watchdog) live.watchdog = setInterval(watchdog, 1000);
+  }
+
+  // Start (or restart) this device's click for the current run. Only while
+  // the page is on screen and the server is still in touch: a click that
+  // can't hear "stop" must not keep going.
+  function clickOn() {
+    const t = live.transport;
+    if (t.state !== "running" || document.hidden || live.lostClock) return;
+    if (metronome.unlocked && metronome.enabled) metronome.run(t.timeline, Sync.toLocal(t.started_at), S.soundForBar);
+  }
+
+  // The server announces every bar. If nothing has come through for a
+  // couple of bars (Wi-Fi gone, phone asleep), silence the click and say
+  // so, rather than click on after the band has stopped.
+  function watchdog() {
+    const t = live.transport;
+    if (t.state !== "running" || !t.timeline) return;
+    const bar = t.timeline.bars[0];
+    const limit = Math.max(5000, bar ? bar.beat_ms * bar.beats * 2.5 : 5000);
+    const quiet = performance.now() - (live.lastHeard || 0);
+    if (quiet > limit && !live.lostClock) {
+      live.lostClock = true;
+      metronome.stop();
+      $("live-driver").textContent = "Lost touch with the server: click paused";
+      $("live-driver").classList.add("warn");
+    }
+  }
+
+  function heard() {
+    live.lastHeard = performance.now();
+    if (live.lostClock) {
+      live.lostClock = false;
+      $("live-driver").classList.remove("warn");
+      renderControls();
+      clickOn();
+    }
   }
 
   function stopRunning() {
     metronome.stop();
+    if (live.watchdog) clearInterval(live.watchdog);
+    live.watchdog = null;
+    live.lostClock = false;
+    $("live-driver").classList.remove("warn");
     if (live.raf) cancelAnimationFrame(live.raf);
     live.raf = null;
     $("now-label").style.color = "";
@@ -474,7 +579,7 @@
     }
     S.prefs.set("click", metronome.enabled);
     const t = live.transport;
-    if (t.state === "running" && metronome.enabled) metronome.run(t.timeline, Sync.toLocal(t.started_at), S.soundForBar);
+    if (t.state === "running" && metronome.enabled) clickOn();
     if (!metronome.enabled) metronome.stop();
     setTimeout(renderClick, 50);
   });
@@ -483,7 +588,7 @@
     metronome.sound = ev.target.value;
     S.prefs.set("sound", metronome.sound);
     const t = live.transport;
-    if (t.state === "running" && metronome.enabled) metronome.run(t.timeline, Sync.toLocal(t.started_at), S.soundForBar);
+    if (t.state === "running" && metronome.enabled) clickOn();
   });
 
   $("live-volume").addEventListener("input", (ev) => {
@@ -582,9 +687,35 @@
   }
 
   Sync.on("transport", (t) => applyTransport(t));
-  Sync.on("position", () => {
-    /* positions are worked out locally from the shared clock; the server's
-       per-bar message is for devices without a clock fix yet. */
+  // Positions are worked out locally from the shared clock; the server's
+  // per-bar message is the heartbeat that says "the run is still on".
+  Sync.on("position", () => heard());
+  Sync.on("transport", () => heard());
+
+  // Screen off, app switched, tab hidden: stop the click straight away
+  // (Android keeps sound playing in the background but drops the
+  // connection, so it would never hear "stop"). Back on screen: re-sync
+  // the clock, ask the server where the band is, and pick up from there.
+  document.addEventListener("visibilitychange", async () => {
+    if (document.hidden) {
+      metronome.stop();
+      return;
+    }
+    if (!live.visibleNow) return;
+    await Sync.syncClock(4);
+    try {
+      const t = await S.api("GET", "/transport");
+      live.lastHeard = performance.now();
+      live.lostClock = false;
+      if (t.run === live.transport.run && t.state === live.transport.state) {
+        clickOn(); // same run still going: just bring the click back
+        renderControls();
+      } else {
+        await applyTransport(t);
+      }
+    } catch (err) {
+      /* the stream's own reconnect will catch us up */
+    }
   });
 
   window.SSPLive = {
