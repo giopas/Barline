@@ -439,7 +439,7 @@ def launcher_shot():
 
     server_app.local_addresses = lambda: ["192.168.1.20"]  # no real address in the picture
     root = tk.Tk()
-    root.geometry("760x600")
+    root.geometry("940x790")
     panel = gui.LauncherApp(root)
     panel.port_var.set("8420")
     try:  # show the default port in the picture when it's free
@@ -453,7 +453,15 @@ def launcher_shot():
         panel.port_var.set(str(port))
         panel._start_demo()
         panel.data_dir_var.set("~/Library/Application Support/SingleSongPlanner/demo-data")
-        root.after(800, shoot)
+        # two pretend devices and a cued song, so "On stage" has something to show
+        store, hub = panel.store, server_app.Handler.hub
+        players = {p["role"]: p["id"] for p in store.band.get("players", [])}
+        hub.subscribe("shot-ipad", players.get("Drums"), "iPad")
+        hub.subscribe("shot-phone", players.get("Bass"), "Android phone")
+        setlist = next(iter(sorted(store.setlists.values(), key=lambda s: s.get("name", ""))), None)
+        if setlist and setlist.get("songs"):
+            server_app.Handler.transport.cue(setlist["songs"][0], setlist["id"])
+        root.after(1500, shoot)
 
     def shoot():
         root.update()

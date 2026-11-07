@@ -34,7 +34,9 @@ The control panel shows a QR code and one or more addresses, something like:
 http://192.168.1.20:8420/
 ```
 
-That's what every phone and tablet in the room opens.
+That's what every phone and tablet in the room opens. Click the address to open it on this computer too.
+
+Underneath, the **On stage** card fills in as people connect: one chip per phone or tablet, with the player it's set to ("Sam · Bass"), and the song that's on the live screens. The top-right corner says how many devices are connected. If something looks wrong, **Show log** at the bottom opens the server's log.
 
 ## Step 4: Get everyone on the same Wi-Fi
 

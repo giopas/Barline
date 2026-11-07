@@ -85,7 +85,8 @@ Or run it from the source code, on a laptop:
 ![The control panel](screenshots/13-launcher.png)
 
 1. Pick (or create) a folder for your band's songs. The panel remembers it.
-2. Click **Start server**. It shows the address and a QR code.
+2. Click **Start server**. It shows the address and a QR code, and the
+   **On stage** card lists each phone or tablet as it connects.
 3. On each phone or tablet, join the same Wi-Fi and scan the code or type
    the address.
 4. Start planning. Everything is saved as you go.
@@ -136,6 +137,9 @@ moving songs between setups, and running SSP on a Raspberry Pi.
   `python3 tools/shots.py` retakes every screenshot and GIF in
   `screenshots/` from the demo band.
 - `tools/make_voice.sh` rebuilds the spoken count-in (`web/static/voice/`).
+- `python3 tools/make_icons.py` redraws the app icon (the bar square with
+  beat 1 lit) and writes every size: browser tab, home screen, macOS
+  `.icns`, Windows `.ico` (needs Pillow).
 - `launchers/pi/install.sh` sets up a Raspberry Pi in one command (see the
   wiki's "Running on a Raspberry Pi").
 - No build step: the web app in `web/static/` is plain HTML, CSS and
@@ -146,7 +150,7 @@ moving songs between setups, and running SSP on a Raspberry Pi.
 SSP's song-structure focus takes its cue from
 [song-map.com](https://song-map.com/). The "one local server, every device a
 synced client" pattern, the per-player "tablet on stage" idea, the QR code
-encoder and the click-track sounds are adapted from
+encoder, the click-track sounds and the look of the control panel are adapted from
 [QLC+ Swiss Knife](https://github.com/giopas/qlc-plus-swiss-knife-tool-script).
 
 ## License

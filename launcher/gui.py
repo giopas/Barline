@@ -3,12 +3,14 @@
 SSP - Song and Setlist Planner -- desktop launcher.
 
 A small Tkinter control panel for the server (same spirit as QLC+ Swiss
-Knife being a Tkinter desktop app): pick a data folder, pick a port, start
-or stop the server, see the addresses to open on each phone/tablet, and
-watch a live log -- without touching a terminal. This is a control panel
-for the server process, not a second editor; the actual drafting/live UI
-stays the one web app in web/static (see PROJECT_CHARTER.md's "no separate
-native desktop editor" decision -- this doesn't reopen that, it's a launcher).
+Knife being a desktop app, and dressed like it: a dark window, a top bar
+with the status, numbered cards): pick a data folder, pick a port, start
+or stop the server, scan the QR code on each phone/tablet, see who's
+connected and what's on stage, and watch a live log -- without touching a
+terminal. This is a control panel for the server process, not a second
+editor; the actual drafting/live UI stays the one web app in web/static
+(see PROJECT_CHARTER.md's "no separate native desktop editor" decision --
+this doesn't reopen that, it's a launcher).
 
 Settings (which data folder, which port, and a short list of recently used
 data folders -- "sessions") persist between runs via launcher/settings.py.
@@ -27,6 +29,7 @@ import threading
 import tkinter as tk
 import webbrowser
 from tkinter import filedialog, messagebox, ttk
+from tkinter import font as tkfont
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 _SERVER_DIR = os.path.join(_HERE, "..", "server")
@@ -40,106 +43,354 @@ import platform_dirs  # server/platform_dirs.py
 import qr  # server/qr.py
 import settings as launcher_settings  # launcher/settings.py
 
+TITLE = "SSP - Song and Setlist Planner"
+
+# SSP's own colors (web/static/style.css), laid out the way Swiss Knife's
+# tokens.css does it: a dark window, slightly lighter cards, one accent.
+C = {
+    "bg": "#121418",
+    "bar": "#191b20",
+    "card": "#1d2026",
+    "line": "#2c3039",
+    "field": "#0f1114",
+    "text": "#e8e9ec",
+    "dim": "#9aa0ab",
+    "faint": "#6b717d",
+    "accent": "#5b8cff",
+    "accent_hover": "#7aa3ff",
+    "accent_soft": "#232f4d",
+    "btn": "#2a2e37",
+    "btn_hover": "#353a45",
+    "ok": "#45c08a",
+    "ok_soft": "#1b3229",
+    "danger": "#ff8a80",
+    "danger_soft": "#3b2224",
+    "danger_hover": "#4a2a2d",
+}
+
+
+# -- small building blocks ------------------------------------------------
+
+class FlatButton(tk.Label):
+    """A colored button that looks the same on every OS (ttk/tk buttons
+    ignore colors on macOS). Keyboard: Tab to it, Space/Return to press."""
+
+    KINDS = {
+        # kind: (background, text, hover background)
+        "primary": (C["accent"], "#ffffff", C["accent_hover"]),
+        "danger": (C["danger_soft"], C["danger"], C["danger_hover"]),
+        "secondary": (C["btn"], C["text"], C["btn_hover"]),
+        "ghost": (None, C["accent"], C["accent_soft"]),  # None: the parent's background
+        "quiet": (None, C["dim"], C["btn"]),
+    }
+
+    def __init__(self, parent, text, command, kind="secondary", font=None, padx=14, pady=7):
+        super().__init__(parent, text=text, font=font, padx=padx, pady=pady, cursor="hand2",
+                         takefocus=1, highlightthickness=1)
+        self.command = command
+        self.kind = kind
+        self.enabled = True
+        self.hover = False
+        self._paint()
+        self.bind("<Enter>", lambda _e: self._set_hover(True))
+        self.bind("<Leave>", lambda _e: self._set_hover(False))
+        self.bind("<ButtonRelease-1>", self._click)
+        self.bind("<Return>", self._click)
+        self.bind("<space>", self._click)
+        self.bind("<FocusIn>", lambda _e: self._paint())
+        self.bind("<FocusOut>", lambda _e: self._paint())
+
+    def set(self, text=None, enabled=None, kind=None) -> None:
+        if text is not None:
+            self.configure(text=text)
+        if enabled is not None:
+            self.enabled = enabled
+        if kind is not None:
+            self.kind = kind
+        self._paint()
+
+    def _set_hover(self, on: bool) -> None:
+        self.hover = on
+        self._paint()
+
+    def _click(self, event=None) -> None:
+        if not self.enabled:
+            return
+        if event is not None and event.type == tk.EventType.ButtonRelease:
+            # released outside the button: not a click
+            if not (0 <= event.x < self.winfo_width() and 0 <= event.y < self.winfo_height()):
+                return
+        self.command()
+
+    def _paint(self) -> None:
+        bg, fg, hover_bg = self.KINDS[self.kind]
+        parent_bg = self.master.cget("bg")
+        if not self.enabled:
+            bg, fg, hover_bg = (None if bg is None else C["btn"]), C["faint"], None
+        bg = bg or parent_bg
+        try:
+            focused = self.focus_displayof() is self
+        except (KeyError, tk.TclError):
+            focused = False
+        self.configure(bg=hover_bg if (self.hover and hover_bg) else bg, fg=fg,
+                       cursor="hand2" if self.enabled else "arrow",
+                       highlightbackground=parent_bg,
+                       highlightcolor=C["accent_hover"] if focused else parent_bg)
+
+
+class Card(tk.Frame):
+    """A Swiss Knife-style card: a numbered badge, a title, a hint line,
+    and a body frame for the content."""
+
+    def __init__(self, parent, number, title, hint, fonts):
+        super().__init__(parent, bg=C["card"], highlightthickness=1, highlightbackground=C["line"])
+        head = tk.Frame(self, bg=C["card"])
+        head.pack(fill="x", padx=16, pady=(14, 0))
+        badge = tk.Canvas(head, width=22, height=22, bg=C["card"], highlightthickness=0)
+        badge.create_oval(1, 1, 21, 21, fill=C["accent_soft"], outline="")
+        badge.create_text(11, 11, text=str(number), fill=C["accent"], font=fonts["badge"])
+        badge.pack(side="left")
+        tk.Label(head, text=title, bg=C["card"], fg=C["text"], font=fonts["h"]).pack(side="left", padx=(8, 0))
+        self.hint = tk.Label(self, text=hint, bg=C["card"], fg=C["dim"], font=fonts["small"],
+                             anchor="w", justify="left")
+        self.hint.pack(fill="x", padx=16, pady=(4, 0))
+        self.body = tk.Frame(self, bg=C["card"])
+        self.body.pack(fill="both", expand=True, padx=16, pady=(10, 16))
+
+
+def _pick_family(preferred, fallback):
+    available = set(tkfont.families())
+    for name in preferred:
+        if name in available:
+            return name
+    return fallback
+
+
+# -- the window -------------------------------------------------------------
 
 class LauncherApp:
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("SSP - Song and Setlist Planner")
-        self.root.minsize(560, 480)
+        self.root.title(TITLE)
+        self.root.configure(bg=C["bg"])
+        self.root.minsize(820, 640)
 
         self.settings = launcher_settings.load()
         self.httpd = None
         self.store = None
         self.server_thread = None
         self.log_queue: "queue.Queue[str]" = queue.Queue()
+        self._live_sig = None
+        self._demo = False
 
         self.data_dir_var = tk.StringVar(value=self.settings.get("data_dir") or paths.default_data_dir())
         self.port_var = tk.StringVar(value=str(self.settings.get("port", server_app.DEFAULT_PORT)))
         self.static_dir_var = tk.StringVar(value=paths.default_static_dir())
         self.status_var = tk.StringVar(value="Stopped")
+        self.footer_var = tk.StringVar(value="")
         self.advanced_visible = tk.BooleanVar(value=False)
 
+        self._make_fonts()
+        self._make_style()
         self._build_widgets()
+        self._set_running_ui(False, None)
+        self.footer_var.set("Ready. Pick your songs folder and start the server.")
         self._drain_log_queue()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
-    # -- layout ------------------------------------------------------------
+    # -- look -----------------------------------------------------------------
+
+    def _make_fonts(self) -> None:
+        base = tkfont.nametofont("TkDefaultFont").actual()
+        family = _pick_family(["Inter", "SF Pro Text", "Segoe UI"], base["family"])
+        mono = _pick_family(["SF Mono", "Menlo", "JetBrains Mono", "Cascadia Mono", "Consolas",
+                             "DejaVu Sans Mono"], tkfont.nametofont("TkFixedFont").actual()["family"])
+        self.fonts = {
+            "brand": (family, 16, "bold"),
+            "title": (family, 12),
+            "h": (family, 13, "bold"),
+            "badge": (family, 10, "bold"),
+            "body": (family, 12),
+            "bold": (family, 12, "bold"),
+            "small": (family, 11),
+            "caps": (family, 10, "bold"),
+            "button": (family, 12),
+            "big_button": (family, 13, "bold"),
+            "mono": (mono, 11),
+            "chip": (mono, 10),
+            "url": (mono, 15, "bold"),
+            "band": (family, 15, "bold"),
+        }
+
+    def _make_style(self) -> None:
+        style = ttk.Style(self.root)
+        style.theme_use("clam")  # the one built-in theme that takes colors everywhere
+        field = dict(fieldbackground=C["field"], foreground=C["text"], background=C["btn"],
+                     bordercolor=C["line"], lightcolor=C["field"], darkcolor=C["field"],
+                     insertcolor=C["text"], arrowcolor=C["dim"], arrowsize=14, padding=6,
+                     selectbackground=C["accent_soft"], selectforeground=C["text"])
+        style.configure("TEntry", **field)
+        style.map("TEntry", bordercolor=[("focus", C["accent"])], lightcolor=[("focus", C["accent"])],
+                  foreground=[("disabled", C["faint"])], fieldbackground=[("disabled", C["card"])])
+        style.configure("TCombobox", **field)
+        style.map("TCombobox", fieldbackground=[("disabled", C["card"]), ("readonly", C["field"])],
+                  foreground=[("disabled", C["faint"]), ("readonly", C["text"])],
+                  background=[("active", C["btn_hover"]), ("readonly", C["btn"])],
+                  bordercolor=[("focus", C["accent"])], arrowcolor=[("disabled", C["faint"])],
+                  selectbackground=[("readonly", C["field"])], selectforeground=[("readonly", C["text"])])
+        self.root.option_add("*TCombobox*Listbox.background", C["field"])
+        self.root.option_add("*TCombobox*Listbox.foreground", C["text"])
+        self.root.option_add("*TCombobox*Listbox.selectBackground", C["accent_soft"])
+        self.root.option_add("*TCombobox*Listbox.selectForeground", C["text"])
+        self.root.option_add("*TCombobox*Listbox.font", self.fonts["body"])
+        style.configure("TCheckbutton", background=C["card"], foreground=C["dim"], font=self.fonts["small"],
+                        indicatorbackground=C["field"], indicatorforeground=C["accent"], focuscolor=C["card"],
+                        bordercolor=C["line"], lightcolor=C["field"], darkcolor=C["field"])
+        style.map("TCheckbutton", background=[("active", C["card"])], foreground=[("active", C["text"])],
+                  indicatorbackground=[("selected", C["field"])])
+        style.configure("Vertical.TScrollbar", background=C["btn"], troughcolor=C["field"],
+                        bordercolor=C["field"], lightcolor=C["btn"], darkcolor=C["btn"],
+                        arrowcolor=C["dim"], gripcount=0)
+        style.map("Vertical.TScrollbar", background=[("active", C["btn_hover"])])
+
+    def _label(self, parent, text="", font="body", fg="text", **kw):
+        return tk.Label(parent, text=text, bg=parent.cget("bg"), fg=C[fg], font=self.fonts[font],
+                        anchor="w", justify="left", **kw)
+
+    # -- layout ---------------------------------------------------------------
 
     def _build_widgets(self) -> None:
-        pad = {"padx": 10, "pady": 6}
+        f = self.fonts
 
-        header = ttk.Frame(self.root)
-        header.pack(fill="x", **pad)
-        ttk.Label(header, text="SSP - Song and Setlist Planner", font=("", 15, "bold")).pack(side="left")
-        self.status_dot = tk.Canvas(header, width=12, height=12, highlightthickness=0)
-        self.status_dot.pack(side="right", padx=(0, 4))
-        self._draw_status_dot(False)
-        ttk.Label(header, textvariable=self.status_var).pack(side="right")
+        # -- top bar: logo, name, version, status pill -------------------------
+        bar = tk.Frame(self.root, bg=C["bar"])
+        bar.pack(fill="x")
+        tk.Frame(self.root, bg=C["line"], height=1).pack(fill="x")
+        inner = tk.Frame(bar, bg=C["bar"])
+        inner.pack(fill="x", padx=18, pady=12)
+        self.logo = None
+        try:
+            self.logo = tk.PhotoImage(file=os.path.join(paths.default_static_dir(), "icon-40.png"))
+            tk.Label(inner, image=self.logo, bg=C["bar"]).pack(side="left", padx=(0, 12))
+        except tk.TclError:
+            pass
+        tk.Label(inner, text="SSP", bg=C["bar"], fg=C["text"], font=f["brand"]).pack(side="left")
+        tk.Label(inner, text="Song and Setlist Planner", bg=C["bar"], fg=C["dim"],
+                 font=f["title"]).pack(side="left", padx=(10, 10), pady=(3, 0))
+        tk.Label(inner, text=f" v{server_app.VERSION} ", bg=C["btn"], fg=C["dim"],
+                 font=f["chip"]).pack(side="left", pady=(3, 0))
 
-        # -- data folder --------------------------------------------------
-        data_frame = ttk.LabelFrame(self.root, text="Data folder (your band's songs and setlists)")
-        data_frame.pack(fill="x", **pad)
+        self.pill = tk.Frame(inner, bg=C["btn"])
+        self.pill.pack(side="right")
+        self.pill_dot = tk.Canvas(self.pill, width=10, height=10, highlightthickness=0, bg=C["btn"])
+        self.pill_dot.pack(side="left", padx=(12, 6), pady=8)
+        self.pill_label = tk.Label(self.pill, textvariable=self.status_var, bg=C["btn"], fg=C["text"],
+                                   font=f["bold"])
+        self.pill_label.pack(side="left", padx=(0, 14))
+        self.status_dot = self.pill_dot  # older name, kept for anyone scripting this
 
-        row1 = ttk.Frame(data_frame)
-        row1.pack(fill="x", padx=8, pady=(8, 2))
-        self.data_entry = ttk.Entry(row1, textvariable=self.data_dir_var)
+        # -- status line at the very bottom (packed first so it stays visible) --
+        foot = tk.Frame(self.root, bg=C["bar"])
+        foot.pack(side="bottom", fill="x")
+        tk.Frame(self.root, bg=C["line"], height=1).pack(side="bottom", fill="x")
+        self.log_btn = FlatButton(foot, "Show log  ▴", self._toggle_log, kind="quiet", font=f["small"],
+                                  padx=8, pady=2)
+        self.log_btn.pack(side="right", padx=(0, 12), pady=4)
+        tk.Label(foot, textvariable=self.footer_var, bg=C["bar"], fg=C["dim"], font=f["small"],
+                 anchor="w").pack(side="left", padx=18, pady=6)
+
+        # -- log: hidden until "Show log" (packed above the footer) -------------
+        self.log_panel = tk.Frame(self.root, bg=C["field"], highlightthickness=1, highlightbackground=C["line"])
+        self.log_text = tk.Text(self.log_panel, height=8, wrap="word", state="disabled", bg=C["field"],
+                                fg=C["dim"], font=f["mono"], relief="flat", borderwidth=0, highlightthickness=0,
+                                padx=14, pady=10, insertbackground=C["text"], selectbackground=C["accent_soft"])
+        scroll = ttk.Scrollbar(self.log_panel, command=self.log_text.yview)
+        self.log_text.configure(yscrollcommand=scroll.set)
+        scroll.pack(side="right", fill="y")
+        self.log_text.pack(side="left", fill="both", expand=True)
+        self.log_visible = False
+
+        # -- body: two columns of cards, the log underneath ---------------------
+        self._body = body = tk.Frame(self.root, bg=C["bg"])
+        body.pack(fill="both", expand=True, padx=18, pady=16)
+        body.columnconfigure(0, weight=3, uniform="col")
+        body.columnconfigure(1, weight=2, uniform="col")
+
+        left = tk.Frame(body, bg=C["bg"])
+        left.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
+        right = tk.Frame(body, bg=C["bg"])
+        right.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
+
+        # 1 -- songs folder
+        card1 = Card(left, 1, "Songs folder", "Your band's songs, setlists and voice memos live here.", f)
+        card1.pack(fill="x")
+        self.band_label = self._label(card1.body, "", font="band")
+        self.band_meta = self._label(card1.body, "", font="small", fg="dim")
+        self._folder_row = row = tk.Frame(card1.body, bg=C["card"])
+        row.pack(fill="x")
+        self.data_entry = ttk.Entry(row, textvariable=self.data_dir_var, font=f["body"])
         self.data_entry.pack(side="left", fill="x", expand=True)
-        ttk.Button(row1, text="Browse…", command=self._browse_data_dir).pack(side="left", padx=(6, 0))
-
-        row2 = ttk.Frame(data_frame)
-        row2.pack(fill="x", padx=8, pady=(2, 8))
-        ttk.Label(row2, text="Recent:").pack(side="left")
-        self.recent_combo = ttk.Combobox(row2, state="readonly", values=self._recent_values())
-        self.recent_combo.pack(side="left", fill="x", expand=True, padx=(6, 0))
+        self.browse_btn = FlatButton(row, "Browse…", self._browse_data_dir, font=f["button"])
+        self.browse_btn.pack(side="left", padx=(8, 0))
+        row = tk.Frame(card1.body, bg=C["card"])
+        row.pack(fill="x", pady=(8, 0))
+        self._label(row, "Recent", font="small", fg="dim").pack(side="left", padx=(0, 8))
+        self.recent_combo = ttk.Combobox(row, state="readonly", values=self._recent_values(), font=f["body"])
+        self.recent_combo.pack(side="left", fill="x", expand=True)
         self.recent_combo.bind("<<ComboboxSelected>>", self._on_recent_selected)
 
-        # -- server ---------------------------------------------------------
-        server_frame = ttk.LabelFrame(self.root, text="Server")
-        server_frame.pack(fill="x", **pad)
-
-        row3 = ttk.Frame(server_frame)
-        row3.pack(fill="x", padx=8, pady=8)
-        ttk.Label(row3, text="Port:").pack(side="left")
-        ttk.Entry(row3, textvariable=self.port_var, width=8).pack(side="left", padx=(6, 16))
-        self.start_stop_btn = ttk.Button(row3, text="Start server", command=self._toggle_server)
+        # 2 -- server
+        card2 = Card(left, 2, "Server", "One server for the whole band: this computer, or a Raspberry Pi.", f)
+        card2.pack(fill="x", pady=(16, 0))
+        row = tk.Frame(card2.body, bg=C["card"])
+        row.pack(fill="x")
+        self.start_stop_btn = FlatButton(row, "▶  Start server", self._toggle_server, kind="primary",
+                                         font=f["big_button"], padx=18, pady=9)
         self.start_stop_btn.pack(side="left")
-        self.open_browser_btn = ttk.Button(
-            row3, text="Open in browser", command=self._open_browser, state="disabled"
-        )
+        self.open_browser_btn = FlatButton(row, "Open in browser", self._open_browser, font=f["button"], pady=9)
         self.open_browser_btn.pack(side="left", padx=(8, 0))
-        self.demo_btn = ttk.Button(row3, text="Try the demo band", command=self._start_demo)
-        self.demo_btn.pack(side="right")
+        self.port_entry = ttk.Entry(row, textvariable=self.port_var, width=6, font=f["body"])
+        self.port_entry.pack(side="right")
+        self._label(row, "Port", font="small", fg="dim").pack(side="right", padx=(16, 6))
 
-        adv_toggle = ttk.Checkbutton(
-            server_frame,
-            text="Advanced: web app folder",
-            variable=self.advanced_visible,
-            command=self._toggle_advanced,
-        )
-        adv_toggle.pack(fill="x", padx=8, anchor="w")
-        self.advanced_frame = ttk.Frame(server_frame)
-        self.static_entry = ttk.Entry(self.advanced_frame, textvariable=self.static_dir_var)
-        self.static_entry.pack(side="left", fill="x", expand=True, padx=(0, 6))
-        ttk.Button(self.advanced_frame, text="Browse…", command=self._browse_static_dir).pack(side="left")
+        row = tk.Frame(card2.body, bg=C["card"])
+        row.pack(fill="x", pady=(12, 0))
+        self.demo_btn = FlatButton(row, "Try the demo band", self._start_demo, kind="ghost",
+                                   font=f["button"], padx=8, pady=4)
+        self.demo_btn.pack(side="left")
+        self._label(row, "a throwaway copy, your songs aren't touched", font="small",
+                    fg="faint").pack(side="left", padx=(4, 0))
+        self.adv_btn = FlatButton(card2.body, "▸  Advanced: web app folder", self._toggle_advanced_btn,
+                                  kind="quiet", font=f["small"], padx=4, pady=2)
+        self.adv_btn.pack(pady=(8, 0), anchor="w")
+        self.advanced_frame = tk.Frame(card2.body, bg=C["card"])
+        self.static_entry = ttk.Entry(self.advanced_frame, textvariable=self.static_dir_var, font=f["body"])
+        self.static_entry.pack(side="left", fill="x", expand=True, padx=(0, 8))
+        FlatButton(self.advanced_frame, "Browse…", self._browse_static_dir, font=f["button"]).pack(side="left")
         # advanced_frame is packed/unpacked by _toggle_advanced
 
-        # -- addresses --------------------------------------------------------
-        self.addresses_frame = ttk.LabelFrame(self.root, text="Open on each phone/tablet (same Wi-Fi), or scan")
-        self.qr_canvas = tk.Canvas(self.addresses_frame, width=148, height=148, highlightthickness=0, bg="white")
-        self.qr_canvas.pack(side="left", padx=8, pady=8)
-        self.addresses_text = tk.Text(self.addresses_frame, height=6, wrap="none")
-        self.addresses_text.pack(side="left", fill="both", expand=True, padx=(0, 8), pady=8)
-        self.addresses_text.configure(state="disabled")
-        # addresses_frame is packed/unpacked when the server starts/stops
+        # 3 -- connect (right column)
+        card3 = Card(right, 3, "Connect phones & tablets", "Same Wi-Fi as this computer, then scan.", f)
+        card3.pack(fill="both", expand=True)
+        self.qr_canvas = tk.Canvas(card3.body, width=196, height=196, highlightthickness=0, bg=C["card"])
+        self.qr_canvas.pack(pady=(4, 12))
+        self.url_label = self._label(card3.body, "", font="url", fg="accent", cursor="hand2")
+        self.url_label.configure(anchor="center", justify="center")
+        self.url_label.pack(fill="x")
+        self.url_label.bind("<Button-1>", lambda _e: self._open_url(self.url_label.cget("text")))
+        self.other_urls = self._label(card3.body, "", font="mono", fg="dim")
+        self.other_urls.configure(anchor="center", justify="center")
+        self.other_urls.pack(fill="x", pady=(6, 0))
+        self.addresses_frame = card3  # older name, kept for anyone scripting this
 
-        # -- log ------------------------------------------------------------
-        log_frame = ttk.LabelFrame(self.root, text="Log")
-        log_frame.pack(fill="both", expand=True, **pad)
-        self.log_text = tk.Text(log_frame, height=10, wrap="word", state="disabled")
-        scroll = ttk.Scrollbar(log_frame, command=self.log_text.yview)
-        self.log_text.configure(yscrollcommand=scroll.set)
-        self.log_text.pack(side="left", fill="both", expand=True, padx=(8, 0), pady=8)
-        scroll.pack(side="right", fill="y", pady=8, padx=(0, 8))
+        # 4 -- on stage (full width)
+        card4 = Card(body, 4, "On stage", "Who's connected, and what the band sees right now.", f)
+        card4.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(16, 0))
+        self.live_song = self._label(card4.body, "", font="bold")
+        self.live_song.pack(fill="x")
+        self.devices_frame = tk.Frame(card4.body, bg=C["card"])
+        self.devices_frame.pack(fill="x", pady=(8, 0))
+
 
     def _recent_values(self) -> list:
         return self.settings.get("recent_data_dirs", [])
@@ -147,6 +398,8 @@ class LauncherApp:
     # -- data / static folder pickers ---------------------------------------
 
     def _browse_data_dir(self) -> None:
+        if self.httpd is not None:
+            return
         chosen = filedialog.askdirectory(
             title="Choose (or create) a folder for your band's songs and setlists",
             initialdir=self.data_dir_var.get() or os.path.expanduser("~"),
@@ -155,6 +408,8 @@ class LauncherApp:
             self.data_dir_var.set(chosen)
 
     def _browse_static_dir(self) -> None:
+        if self.httpd is not None:
+            return
         chosen = filedialog.askdirectory(
             title="Choose the web app folder (web/static) -- advanced, leave default normally",
             initialdir=self.static_dir_var.get() or os.path.expanduser("~"),
@@ -167,9 +422,29 @@ class LauncherApp:
         if value:
             self.data_dir_var.set(value)
 
+    def _toggle_advanced_btn(self) -> None:
+        self.advanced_visible.set(not self.advanced_visible.get())
+        self.adv_btn.set(text=("▾" if self.advanced_visible.get() else "▸") + "  Advanced: web app folder")
+        self._toggle_advanced()
+
+    def _toggle_log(self) -> None:
+        """Show/hide the log under the cards; the window grows to make room."""
+        self.root.update_idletasks()
+        w, h = self.root.winfo_width(), self.root.winfo_height()
+        self.log_visible = not self.log_visible
+        if self.log_visible:
+            self.log_panel.pack(side="bottom", fill="x", before=self._body)
+            self.root.update_idletasks()
+            self.root.geometry(f"{w}x{h + self.log_panel.winfo_reqheight()}")
+        else:
+            extra = self.log_panel.winfo_height()
+            self.log_panel.pack_forget()
+            self.root.geometry(f"{w}x{max(h - extra, 640)}")
+        self.log_btn.set(text="Hide log  ▾" if self.log_visible else "Show log  ▴")
+
     def _toggle_advanced(self) -> None:
         if self.advanced_visible.get():
-            self.advanced_frame.pack(fill="x", padx=8, pady=(0, 8))
+            self.advanced_frame.pack(fill="x", pady=(8, 0))
         else:
             self.advanced_frame.pack_forget()
 
@@ -191,7 +466,7 @@ class LauncherApp:
         try:
             target = server_app.prepare_demo(os.path.join(platform_dirs.user_app_dir(), "demo-data"))
         except OSError as exc:
-            messagebox.showerror("SSP - Song and Setlist Planner", f"Couldn't set up the demo:\n{exc}")
+            messagebox.showerror(TITLE, f"Couldn't set up the demo:\n{exc}")
             return
         self._enqueue_log("Demo band copied to " + target + " (reset every time you press the demo button).")
         self._start_server(data_dir=target, remember=False, demo=True)
@@ -203,14 +478,14 @@ class LauncherApp:
             self.data_dir_var.set(data_dir)
         static_dir = self.static_dir_var.get().strip()
         if not data_dir:
-            messagebox.showerror("SSP - Song and Setlist Planner", "Choose a data folder first.")
+            messagebox.showerror(TITLE, "Choose a data folder first.")
             return
         try:
             port = int(self.port_var.get().strip())
             if not (1 <= port <= 65535):
                 raise ValueError
         except ValueError:
-            messagebox.showerror("SSP - Song and Setlist Planner", "Port must be a number between 1 and 65535.")
+            messagebox.showerror(TITLE, "Port must be a number between 1 and 65535.")
             return
 
         try:
@@ -219,14 +494,15 @@ class LauncherApp:
             home = (getattr(self, "_pre_demo_dir", None) or None) if demo else None
             httpd, store = server_app.build_server(data_dir, static_dir, port, demo=demo, home_dir=home)
         except OSError as exc:
-            messagebox.showerror("SSP - Song and Setlist Planner", f"Couldn't start the server:\n{exc}")
+            messagebox.showerror(TITLE, f"Couldn't start the server:\n{exc}")
             return
         except Exception as exc:  # noqa: BLE001 - surface any startup problem to the user, not a traceback
-            messagebox.showerror("SSP - Song and Setlist Planner", f"Couldn't start the server:\n{exc}")
+            messagebox.showerror(TITLE, f"Couldn't start the server:\n{exc}")
             return
 
         self.httpd = httpd
         self.store = store
+        self._demo = demo
         server_app.Handler.log_hook = self._enqueue_log
 
         banner = server_app.startup_banner(httpd, store, data_dir, static_dir)
@@ -249,6 +525,7 @@ class LauncherApp:
         self._enqueue_log("Shutting down...")
         httpd = self.httpd
         self.httpd = None
+        self.store = None
         server_app.Handler.log_hook = None
 
         def _shutdown():
@@ -260,58 +537,182 @@ class LauncherApp:
         if getattr(self, "_pre_demo_dir", None) is not None:
             self.data_dir_var.set(self._pre_demo_dir)  # back to the band's own folder
             self._pre_demo_dir = None
+        self._demo = False
 
     def _set_running_ui(self, running: bool, port) -> None:
         self.status_var.set("Running" if running else "Stopped")
         self._draw_status_dot(running)
-        self.start_stop_btn.configure(text="Stop server" if running else "Start server")
-        self.open_browser_btn.configure(state="normal" if running else "disabled")
-        self.data_entry.configure(state="disabled" if running else "normal")
-        self.static_entry.configure(state="disabled" if running else "normal")
-        self.demo_btn.configure(state="disabled" if running else "normal")
+        self.start_stop_btn.set(text="■  Stop server" if running else "▶  Start server",
+                                kind="danger" if running else "primary")
+        self.open_browser_btn.set(enabled=running)
+        self.browse_btn.set(enabled=not running)
+        self.demo_btn.set(enabled=not running)
+        state = "disabled" if running else "normal"
+        for entry in (self.data_entry, self.static_entry, self.port_entry):
+            entry.configure(state=state)
+        self.recent_combo.configure(state="disabled" if running else "readonly")
+        self._live_sig = None
         if running and port:
             self._show_addresses(port)
-            self.addresses_frame.pack(fill="x", padx=10, pady=6, before=self._log_frame())
+            self._refresh_live()
         else:
-            self.addresses_frame.pack_forget()
+            self._show_addresses(None)
+            self._show_band(None)
+            self._show_live(None, [])
+            self.footer_var.set("Stopped. Your songs are saved; nothing runs until you press Start.")
 
-    def _log_frame(self):
-        return self.log_text.master
+    # -- addresses / QR ---------------------------------------------------
 
-    def _show_addresses(self, port: int) -> None:
+    def _show_addresses(self, port) -> None:
+        if not port:
+            self.url_label.configure(text="")
+            self.other_urls.configure(text="The QR code and address\nappear here once the server runs.")
+            self._draw_qr(None)
+            return
         ips = server_app.local_addresses()
-        lines = [f"http://{ip}:{port}/" for ip in ips]
-        lines.append(f"http://localhost:{port}/   (this computer only)")
-        self._draw_qr(f"http://{ips[0]}:{port}/" if ips else None)
-        self.addresses_text.configure(state="normal")
-        self.addresses_text.delete("1.0", "end")
-        self.addresses_text.insert("1.0", "\n".join(lines))
-        self.addresses_text.configure(state="disabled")
+        main = f"http://{ips[0]}:{port}/" if ips else f"http://localhost:{port}/"
+        self.url_label.configure(text=main.replace("http://", "").rstrip("/"))
+        others = [f"{ip}:{port}" for ip in ips[1:]]
+        others.append(f"localhost:{port}  (this computer)")
+        if not ips:
+            others = ["No Wi-Fi address found:", "is this computer on a network?"]
+        self.other_urls.configure(text="\n".join(others))
+        self._draw_qr(main if ips else None)
 
     def _draw_qr(self, url) -> None:
         c = self.qr_canvas
         c.delete("all")
+        size = int(c.cget("width"))
         if not url:
-            c.create_text(74, 74, text="no Wi-Fi\naddress found", justify="center")
+            # a dashed frame with the bar square, faint, as a placeholder
+            c.create_rectangle(2, 2, size - 2, size - 2, outline=C["line"], dash=(4, 4), width=2)
+            m = size / 2
+            c.create_rectangle(m - 34, m - 34, m + 34, m + 34, outline=C["line"], width=3)
+            for dx in (-15, 15):
+                for dy in (-15, 15):
+                    c.create_oval(m + dx - 9, m + dy - 9, m + dx + 9, m + dy + 9, fill=C["line"], outline="")
             return
-        m = qr.encode(url)
-        quiet = 2
-        n = len(m) + 2 * quiet
-        cell = 148 / n
-        for y, row in enumerate(m):
+        matrix = qr.encode(url)
+        quiet = 3
+        n = len(matrix) + 2 * quiet
+        cell = size // n
+        offset = (size - cell * n) // 2
+        c.create_rectangle(offset, offset, offset + cell * n, offset + cell * n, fill="#ffffff", outline="")
+        for y, row in enumerate(matrix):
             for x, v in enumerate(row):
                 if v:
-                    x0, y0 = (x + quiet) * cell, (y + quiet) * cell
-                    c.create_rectangle(x0, y0, x0 + cell, y0 + cell, fill="black", outline="black")
+                    x0, y0 = offset + (x + quiet) * cell, offset + (y + quiet) * cell
+                    c.create_rectangle(x0, y0, x0 + cell, y0 + cell, fill="#000000", outline="")
 
     def _open_browser(self) -> None:
+        if self.httpd is None:
+            return
         port = self.port_var.get().strip()
         webbrowser.open(f"http://localhost:{port}/")
+
+    def _open_url(self, text: str) -> None:
+        if text and self.httpd is not None:
+            webbrowser.open("http://" + text + "/")
+
+    # -- band, devices, what's on stage (polled while running) ----------------
+
+    def _refresh_live(self) -> None:
+        store = self.store
+        if store is None:
+            return
+        try:
+            band = store.band or {}
+            hub, tr = server_app.Handler.hub, server_app.Handler.transport
+            presence = hub.presence() if hub else []
+            snap = tr.snapshot() if tr else {}
+            sig = (band.get("name"), len(band.get("players", [])), len(store.songs), len(store.setlists),
+                   tuple((p["client_id"], p["player_id"], p["device"]) for p in presence),
+                   snap.get("state"), snap.get("song_id"), snap.get("setlist_id"), self._demo)
+            if sig != self._live_sig:
+                self._live_sig = sig
+                self._show_band(store)
+                self._show_live(snap, presence, band)
+                n = len(presence)
+                self.status_var.set("Running" if not n else f"Running · {n} device{'s' if n != 1 else ''}")
+                where = "the demo band (a throwaway copy)" if self._demo else (band.get("name") or "your band")
+                self.footer_var.set(f"Serving {where} on your local Wi-Fi only.")
+        except Exception:  # noqa: BLE001 - a display glitch must never take the server down
+            pass
+        self.root.after(1000, self._refresh_live)
+
+    def _show_band(self, store) -> None:
+        if store is None:
+            self.band_label.pack_forget()
+            self.band_meta.pack_forget()
+            return
+        band = store.band or {}
+        songs, sets, players = len(store.songs), len(store.setlists), len(band.get("players", []))
+
+        def n(count, word):
+            return f"{count} {word}{'' if count == 1 else 's'}"
+
+        self.band_label.configure(text=(band.get("name") or "Unnamed band") + ("  ·  demo" if self._demo else ""))
+        self.band_meta.configure(text=" · ".join((n(songs, "song"), n(sets, "setlist"), n(players, "player"))))
+        self.band_label.pack(fill="x", before=self._folder_row)
+        self.band_meta.pack(fill="x", pady=(0, 10), before=self._folder_row)
+
+    def _show_live(self, snap, presence, band=None) -> None:
+        for w in self.devices_frame.winfo_children():
+            w.destroy()
+        if snap is None:
+            self.live_song.configure(text="Nothing yet: start the server, then open SSP on each device.",
+                                     fg=C["dim"], font=self.fonts["body"])
+            return
+        store = self.store
+        song = store.songs.get(snap.get("song_id")) if store and snap.get("song_id") else None
+        setlist = store.setlists.get(snap.get("setlist_id")) if store and snap.get("setlist_id") else None
+        if song:
+            playing = snap.get("state") == "running"
+            text = f"{'▶  Playing' if playing else 'Cued'}:  {song.get('title') or 'Untitled'}"
+            if setlist:
+                text += f"    ·    {setlist.get('name') or 'Setlist'}"
+            self.live_song.configure(text=text, fg=C["ok"] if playing else C["text"], font=self.fonts["bold"])
+        else:
+            self.live_song.configure(text="No song on the live screens yet.", fg=C["dim"],
+                                     font=self.fonts["body"])
+
+        players = {p["id"]: p for p in (band or {}).get("players", [])}
+        if not presence:
+            self._label(self.devices_frame, "No devices connected. Scan the QR code on a phone or tablet.",
+                        font="small", fg="faint").pack(anchor="w")
+            return
+        shown = presence[:6]
+        for p in shown:
+            chip = tk.Frame(self.devices_frame, bg=C["btn"])
+            chip.pack(side="left", padx=(0, 8), pady=2)
+            dot = tk.Canvas(chip, width=8, height=8, bg=C["btn"], highlightthickness=0)
+            dot.create_oval(0, 0, 8, 8, fill=C["ok"], outline="")
+            dot.pack(side="left", padx=(10, 6), pady=7)
+            player = players.get(p.get("player_id"))
+            if player:
+                who = player.get("name") or "Player"
+                if player.get("role"):
+                    who += f" · {player['role']}"
+            else:
+                who = "Whole band"
+            tk.Label(chip, text=who, bg=C["btn"], fg=C["text"], font=self.fonts["small"]).pack(side="left")
+            if p.get("device"):
+                tk.Label(chip, text="  " + p["device"], bg=C["btn"], fg=C["faint"],
+                         font=self.fonts["small"]).pack(side="left")
+            tk.Frame(chip, bg=C["btn"], width=10).pack(side="left")
+        if len(presence) > len(shown):
+            self._label(self.devices_frame, f"+{len(presence) - len(shown)} more", font="small",
+                        fg="dim").pack(side="left")
 
     # -- logging --------------------------------------------------------
 
     def _enqueue_log(self, message: str) -> None:
         self.log_queue.put(message)
+
+    def _clear_log(self) -> None:
+        self.log_text.configure(state="normal")
+        self.log_text.delete("1.0", "end")
+        self.log_text.configure(state="disabled")
 
     def _drain_log_queue(self) -> None:
         try:
@@ -326,9 +727,12 @@ class LauncherApp:
         self.root.after(150, self._drain_log_queue)
 
     def _draw_status_dot(self, running: bool) -> None:
-        self.status_dot.delete("all")
-        color = "#45c08a" if running else "#8a8f99"
-        self.status_dot.create_oval(1, 1, 11, 11, fill=color, outline="")
+        bg = C["ok_soft"] if running else C["btn"]
+        for w in (self.pill, self.pill_dot, self.pill_label):
+            w.configure(bg=bg)
+        self.pill_label.configure(fg=C["ok"] if running else C["dim"])
+        self.pill_dot.delete("all")
+        self.pill_dot.create_oval(1, 1, 9, 9, fill=C["ok"] if running else C["faint"], outline="")
 
     # -- shutdown -------------------------------------------------------
 
@@ -394,6 +798,7 @@ def main() -> None:
         root.iconphoto(True, tk.PhotoImage(file=os.path.join(paths.default_static_dir(), "icon-192.png")))
     except tk.TclError:
         pass
+    root.geometry("940x790")
     LauncherApp(root)
     root.mainloop()
 

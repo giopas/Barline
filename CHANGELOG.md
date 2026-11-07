@@ -3,6 +3,34 @@
 All notable changes to this project are documented here. Versioning
 follows semver (MAJOR.MINOR.PATCH).
 
+## [Unreleased]
+
+A real app icon, and a control panel that looks like the rest of SSP.
+
+### Added
+
+- **App icon**: the bar square from the editor (four beat dots) with beat 1
+  lit white, on a dark tile. Used for the browser tab, the home-screen icon
+  on phones and tablets, the macOS app, the Windows app and the control
+  panel. `tools/make_icons.py` draws it and writes every size, so it can be
+  redrawn in one go.
+- **On stage** card in the control panel: each connected phone or tablet,
+  with the player it's set to, and which song (and setlist) is on the live
+  screens. The status in the top bar counts connected devices.
+- The control panel shows the band's name and how many songs, setlists and
+  players are in the folder it's serving.
+
+### Changed
+
+- The control panel is dark, in SSP's colors, laid out like QLC+ Swiss
+  Knife: a top bar with the version and status, numbered cards (songs
+  folder, server, connect, on stage), a bigger QR code with the address
+  under it (click it to open), and a status line. The log is one click away
+  (**Show log**) instead of always taking space. Same buttons, same
+  behaviour.
+- The macOS icon has the standard margin, so it's the same size as other
+  apps in the Dock.
+
 ## [0.10.1] -- 2026-11-07
 
 Downloadable apps for macOS, Windows and Linux.
