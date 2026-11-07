@@ -438,6 +438,7 @@ def launcher_shot():
     import gui
 
     server_app.local_addresses = lambda: ["192.168.1.20"]  # no real address in the picture
+    gui.update.check = lambda force=False: gui.update.status()  # pictures never ask GitHub
     root = tk.Tk()
     root.geometry("940x790")
     panel = gui.LauncherApp(root)

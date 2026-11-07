@@ -62,6 +62,14 @@ The first time a phone opens SSP, it asks who's using it. Pick yourself, and hin
 
 Anyone on that Wi-Fi who has the address can see and change everything. There's no separate login per band member. Treat the address the way you'd treat a whiteboard in your rehearsal room: anyone standing in the room can write on it. That's fine for a band that trusts each other in a room they control, which is what SSP is built for.
 
+## Keeping SSP up to date
+
+When a new version comes out, a blue bar appears at the top of the control panel: **SSP 0.13.0 is out**. **What's new** shows what changed; **Update and restart** downloads it, checks it isn't damaged or tampered with, closes SSP and opens the new one. Your songs, setlists and settings stay exactly where they are. If the server was running, press **Start server** again and the phones and tablets reconnect by themselves.
+
+SSP looks for a new version once when the control panel opens. That's the only time it talks to the internet, it sends nothing about you or your band, and with no internet (at a venue, say) it just stays quiet. To turn it off, click **Auto-check updates: on** at the bottom; **Check for updates** asks whenever you like.
+
+Running SSP from the source code? The bar tells you to run `git pull` in the SSP folder instead. On a Raspberry Pi, see "Updating" in [[Running on a Raspberry Pi]].
+
 ## Next
 
 Head to **[[Planning a Song]]** to type up your first song.

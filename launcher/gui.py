@@ -42,6 +42,7 @@ import paths  # server/paths.py
 import platform_dirs  # server/platform_dirs.py
 import qr  # server/qr.py
 import settings as launcher_settings  # launcher/settings.py
+import update  # server/update.py
 
 TITLE = "SSP - Song and Setlist Planner"
 
@@ -182,6 +183,8 @@ class LauncherApp:
         self.log_queue: "queue.Queue[str]" = queue.Queue()
         self._live_sig = None
         self._demo = False
+        self.update_info = None  # the last update check's answer (server/update.py)
+        self._update_busy = False
 
         self.data_dir_var = tk.StringVar(value=self.settings.get("data_dir") or paths.default_data_dir())
         self.port_var = tk.StringVar(value=str(self.settings.get("port", server_app.DEFAULT_PORT)))
@@ -197,6 +200,8 @@ class LauncherApp:
         self.footer_var.set("Ready. Pick your songs folder and start the server.")
         self._drain_log_queue()
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+        if update.enabled():
+            self.root.after(1500, lambda: self._check_updates(force=False, quiet=True))
 
     # -- look -----------------------------------------------------------------
 
@@ -265,7 +270,8 @@ class LauncherApp:
         # -- top bar: logo, name, version, status pill -------------------------
         bar = tk.Frame(self.root, bg=C["bar"])
         bar.pack(fill="x")
-        tk.Frame(self.root, bg=C["line"], height=1).pack(fill="x")
+        self._top_line = tk.Frame(self.root, bg=C["line"], height=1)
+        self._top_line.pack(fill="x")
         inner = tk.Frame(bar, bg=C["bar"])
         inner.pack(fill="x", padx=18, pady=12)
         self.logo = None
@@ -289,6 +295,21 @@ class LauncherApp:
         self.pill_label.pack(side="left", padx=(0, 14))
         self.status_dot = self.pill_dot  # older name, kept for anyone scripting this
 
+        # -- update banner: only when a newer version is out --------------------
+        self.update_banner = tk.Frame(self.root, bg=C["accent_soft"])
+        ub = tk.Frame(self.update_banner, bg=C["accent_soft"])
+        ub.pack(fill="x", padx=18, pady=8)
+        self.update_text = tk.Label(ub, text="", bg=C["accent_soft"], fg=C["text"], font=f["bold"], anchor="w")
+        self.update_text.pack(side="left")
+        self.update_sub = tk.Label(ub, text="", bg=C["accent_soft"], fg=C["dim"], font=f["small"], anchor="w")
+        self.update_sub.pack(side="left", padx=(10, 0))
+        FlatButton(ub, "✕", self._hide_update_banner, kind="quiet", font=f["small"], padx=6, pady=2).pack(side="right")
+        self.update_btn = FlatButton(ub, "Update and restart", self._install_update, kind="primary",
+                                     font=f["button"], padx=12, pady=5)
+        self.update_btn.pack(side="right", padx=(8, 4))
+        self.notes_btn = FlatButton(ub, "What's new", self._open_release_page, font=f["button"], padx=12, pady=5)
+        self.notes_btn.pack(side="right")
+
         # -- status line at the very bottom (packed first so it stays visible) --
         foot = tk.Frame(self.root, bg=C["bar"])
         foot.pack(side="bottom", fill="x")
@@ -296,6 +317,12 @@ class LauncherApp:
         self.log_btn = FlatButton(foot, "Show log  ▴", self._toggle_log, kind="quiet", font=f["small"],
                                   padx=8, pady=2)
         self.log_btn.pack(side="right", padx=(0, 12), pady=4)
+        self.check_btn = FlatButton(foot, "Check for updates", lambda: self._check_updates(force=True),
+                                    kind="quiet", font=f["small"], padx=8, pady=2)
+        self.check_btn.pack(side="right", pady=4)
+        self.auto_btn = FlatButton(foot, "", self._toggle_auto_update, kind="quiet", font=f["small"], padx=8, pady=2)
+        self.auto_btn.pack(side="right", pady=4)
+        self._paint_auto_btn()
         tk.Label(foot, textvariable=self.footer_var, bg=C["bar"], fg=C["dim"], font=f["small"],
                  anchor="w").pack(side="left", padx=18, pady=6)
 
@@ -421,6 +448,113 @@ class LauncherApp:
         value = self.recent_combo.get()
         if value:
             self.data_dir_var.set(value)
+
+    # -- updates (server/update.py, the same as QLC+ Swiss Knife) -----------
+
+    def _paint_auto_btn(self) -> None:
+        self.auto_btn.set(text="Auto-check updates: on" if update.enabled() else "Auto-check updates: off")
+
+    def _toggle_auto_update(self) -> None:
+        update.set_enabled(not update.enabled())
+        self._paint_auto_btn()
+        if update.enabled():
+            self._check_updates(force=False, quiet=True)
+
+    def _check_updates(self, force: bool, quiet: bool = False) -> None:
+        """Ask GitHub in the background (a few seconds at most); the window
+        never waits on the network. quiet: say nothing unless there's news."""
+        if self._update_busy:
+            return
+        self._update_busy = True
+        self.check_btn.set(text="Checking…", enabled=False)
+        box = {}
+
+        def work():
+            box["info"] = update.check(force=force)
+
+        def wait():
+            if "info" not in box:
+                self.root.after(200, wait)
+                return
+            self._update_busy = False
+            self.check_btn.set(text="Check for updates", enabled=True)
+            self._show_update(box["info"], quiet)
+
+        threading.Thread(target=work, daemon=True).start()
+        self.root.after(200, wait)
+
+    def _show_update(self, info: dict, quiet: bool) -> None:
+        self.update_info = info
+        if info.get("newer"):
+            self.update_text.configure(text=f"SSP {info.get('latest')} is out")
+            if info.get("can_install") and info.get("asset"):
+                size = (info["asset"].get("size") or 0) / 1e6
+                sub = f"you have {info['current']} · {size:.0f} MB, checked before it's installed" if size \
+                    else f"you have {info['current']}"
+                self.update_btn.set(text="Update and restart", enabled=True, kind="primary")
+                self.update_btn.pack(side="right", padx=(8, 4))
+            elif info.get("pending"):
+                sub = f"you have {info['current']} · the download for this computer is still being built, " \
+                      "try again in a few minutes"
+                self.update_btn.pack_forget()
+            else:  # running from the source code
+                sub = f"you have {info['current']} · update with  git pull  in the SSP folder"
+                self.update_btn.pack_forget()
+            self.update_sub.configure(text=sub)
+            self.update_banner.pack(fill="x", after=self._top_line)
+            self._enqueue_log(f"Update: SSP {info.get('latest')} is available (this is {info['current']}).")
+        elif not quiet:
+            if info.get("error"):
+                msg = "Couldn't check for updates (no internet?). SSP doesn't need it."
+            else:
+                msg = f"You have the latest version ({info['current']})."
+            self.footer_var.set(msg)
+            self._enqueue_log(msg)
+
+    def _hide_update_banner(self) -> None:
+        self.update_banner.pack_forget()
+
+    def _open_release_page(self) -> None:
+        url = (self.update_info or {}).get("url") or ""
+        if not url.startswith(f"https://github.com/{update.REPO}/"):
+            url = f"https://github.com/{update.REPO}/releases/latest"  # only the project's own pages
+        webbrowser.open(url)
+
+    def _install_update(self) -> None:
+        info = self.update_info or {}
+        if self._update_busy or not info.get("newer"):
+            return
+        running = self.httpd is not None
+        if not messagebox.askyesno(
+                TITLE,
+                f"Update SSP to {info.get('latest')}?\n\n"
+                "SSP downloads it from GitHub, checks it against the release's SHA-256 list, "
+                "then closes and starts again."
+                + ("\n\nThe server stops for a moment: phones and tablets reconnect on their own "
+                   "once you press Start again." if running else "")
+                + "\n\nYour songs and settings aren't touched."):
+            return
+        self._update_busy = True
+        self.update_btn.set(text="Downloading…", enabled=False)
+        self.footer_var.set(f"Downloading SSP {info.get('latest')}…")
+        box = {}
+        threading.Thread(target=lambda: box.update(res=update.install(info)), daemon=True).start()
+
+        def wait():
+            if "res" not in box:
+                self.root.after(250, wait)
+                return
+            self._update_busy = False
+            res = box["res"]
+            self._enqueue_log("Update: " + res.get("message", ""))
+            if res.get("ok") and res.get("restart"):
+                self.footer_var.set(res["message"])
+                self.root.after(800, self._on_close)  # the swap script waits for this process to end
+            else:
+                self.update_btn.set(text="Update and restart", enabled=True)
+                messagebox.showerror(TITLE, res.get("message") or "Couldn't update.")
+
+        self.root.after(250, wait)
 
     def _toggle_advanced_btn(self) -> None:
         self.advanced_visible.set(not self.advanced_visible.get())
@@ -559,7 +693,7 @@ class LauncherApp:
             self._show_addresses(None)
             self._show_band(None)
             self._show_live(None, [])
-            self.footer_var.set("Stopped. Your songs are saved; nothing runs until you press Start.")
+            self.footer_var.set("Stopped. Your songs are saved.")
 
     # -- addresses / QR ---------------------------------------------------
 
@@ -635,7 +769,7 @@ class LauncherApp:
                 n = len(presence)
                 self.status_var.set("Running" if not n else f"Running · {n} device{'s' if n != 1 else ''}")
                 where = "the demo band (a throwaway copy)" if self._demo else (band.get("name") or "your band")
-                self.footer_var.set(f"Serving {where} on your local Wi-Fi only.")
+                self.footer_var.set(f"Serving {where}.")
         except Exception:  # noqa: BLE001 - a display glitch must never take the server down
             pass
         self.root.after(1000, self._refresh_live)
@@ -793,6 +927,7 @@ def main() -> None:
         sys.argv = [sys.argv[0]] + args[1:]
         server_app.main()
         return
+    update.cleanup_after_update()  # a packaged app just updated: remove the previous version
     root = tk.Tk()
     try:  # the app's icon in the window / taskbar
         root.iconphoto(True, tk.PhotoImage(file=os.path.join(paths.default_static_dir(), "icon-192.png")))

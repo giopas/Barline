@@ -76,6 +76,14 @@ else to install:
 The apps aren't signed yet. On a Mac, the first time: right-click SSP ->
 **Open**. On Windows: "More info" -> **Run anyway**.
 
+After that, SSP keeps itself up to date: when a new version is out, the
+control panel says so and **Update and restart** downloads it, checks it
+against the release's checksums and swaps it in, the same way QLC+ Swiss
+Knife does. Your songs and settings live outside the app and are never
+touched. It's one quiet request to GitHub when the panel opens (nothing about
+you or your band is sent), and **Auto-check updates** at the bottom turns it
+off; **Check for updates** asks on demand.
+
 Or run it from the source code, on a laptop:
 
 - macOS: double-click `launchers/start-macos.command`
@@ -150,7 +158,7 @@ moving songs between setups, and running SSP on a Raspberry Pi.
 SSP's song-structure focus takes its cue from
 [song-map.com](https://song-map.com/). The "one local server, every device a
 synced client" pattern, the per-player "tablet on stage" idea, the QR code
-encoder, the click-track sounds and the look of the control panel are adapted from
+encoder, the click-track sounds, the updater and the look of the control panel are adapted from
 [QLC+ Swiss Knife](https://github.com/giopas/qlc-plus-swiss-knife-tool-script).
 
 ## License

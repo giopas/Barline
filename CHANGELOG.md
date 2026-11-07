@@ -3,6 +3,32 @@
 All notable changes to this project are documented here. Versioning
 follows semver (MAJOR.MINOR.PATCH).
 
+## [0.12.0] -- 2026-11-08
+
+Updates from inside the app, the same way QLC+ Swiss Knife does it.
+
+### Added
+
+- **Update and restart** (`server/update.py`, ported from Swiss Knife's
+  `core/update.py`): when the control panel opens it asks GitHub once for
+  the latest release (cached 12 hours; offline is fine). A newer version
+  shows a bar with **What's new** and **Update and restart**, which
+  downloads this computer's package, checks it against the release's
+  `SHA256SUMS`, unpacks it safely and swaps it in once SSP has closed (the
+  Windows uninstaller is kept). Run from the source code, the bar says
+  `git pull` instead. **Auto-check updates** at the bottom turns the check
+  off, **Check for updates** asks on demand. Nothing about you or your band
+  is sent; songs and settings live outside the app and are never touched.
+- The macOS release also has a `.tar.gz` per chip, for the updater (a
+  `.tar.gz` keeps the `.app`'s internal links, a `.zip` doesn't). The
+  release build bundles `certifi` so the packaged app can reach GitHub.
+
+### Note
+
+- Coming from 0.11.0 or older, download this version by hand once (the
+  `.dmg`, installer or `.zip` as before). From then on SSP offers each new
+  version itself.
+
 ## [0.11.0] -- 2026-11-08
 
 A real app icon, and a control panel that looks like the rest of SSP.

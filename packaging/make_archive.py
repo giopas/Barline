@@ -4,7 +4,7 @@
     pyinstaller --noconfirm packaging/ssp.spec
     python packaging/make_archive.py      # -> release/SSP-<version>-<os>-<arch>.<ext>
 
-  macOS    .dmg (drag SSP into Applications)
+  macOS    .dmg (drag SSP into Applications), and a .tar.gz the in-app updater uses
   Windows  -setup.exe (installer, per user, no admin; needs Inno Setup) and a portable .zip
   Linux    .tar.gz
 """
@@ -30,8 +30,10 @@ def platform_key():
     return system, arch
 
 
-def asset_name(ext: str) -> str:
-    o, a = platform_key()
+def asset_name(ext: str, o: str = None, a: str = None) -> str:
+    """The file name server/update.py looks for (its _ASSET_RE)."""
+    if not o:
+        o, a = platform_key()
     return f"SSP-{VERSION}-{o}-{a}.{ext}"
 
 
@@ -41,6 +43,11 @@ def main() -> int:
     system = platform.system()
     if system == "Darwin":
         app = os.path.join(dist, "SSP.app")
+        # The updater's archive is a .tar.gz, not a .zip: Python's zipfile writes the .app's
+        # symlinks (Frameworks/, Resources/) as plain text files and the updated app then
+        # can't start (found the hard way in QLC+ Swiss Knife). tarfile keeps links and modes.
+        with tarfile.open(os.path.join(out, asset_name("tar.gz")), "w:gz") as t:
+            t.add(app, arcname="SSP.app")
         stage = os.path.join(out, "dmg-stage")
         shutil.rmtree(stage, ignore_errors=True)
         os.makedirs(stage)

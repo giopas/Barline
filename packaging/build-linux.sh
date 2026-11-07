@@ -3,7 +3,7 @@
 # Pushing a version tag builds every OS on GitHub instead: .github/workflows/release.yml
 #
 # Needs python3 with tkinter (Debian/Ubuntu: sudo apt install python3-tk) and
-# `pip install pyinstaller`.
+# `pip install pyinstaller certifi` (certifi: the update check).
 set -e
 cd "$(dirname "$0")/.."
 python3 -c "import tkinter" 2>/dev/null || {

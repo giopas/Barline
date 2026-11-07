@@ -34,7 +34,9 @@ DOWNLOADS = """
 Open SSP, pick a folder for your songs, press **Start server**, and scan the QR
 code with each phone and tablet. No Python needed. The apps aren't signed yet:
 on a Mac, the first time, right-click SSP -> **Open**; on Windows, "More info"
--> **Run anyway**. `SHA256SUMS` lists every file's checksum.
+-> **Run anyway**. `SHA256SUMS` lists every file's checksum. The macOS
+`.tar.gz` files are for the app's own **Update and restart**; download the
+`.dmg` instead. Already have SSP 0.12 or later? It offers this update itself.
 A Raspberry Pi runs SSP from the source instead: see the wiki page
 "Running on a Raspberry Pi". Full history: [CHANGELOG](https://github.com/{repo}/blob/main/CHANGELOG.md).
 """
