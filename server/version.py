@@ -1,3 +1,3 @@
 """The one place SSP's version number lives (server banner, API, web app)."""
 
-VERSION = "0.10.0"
+VERSION = "0.10.1"

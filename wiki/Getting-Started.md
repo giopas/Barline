@@ -6,9 +6,13 @@ You don't need to install anything fancy, and nobody in the band needs an accoun
 
 This computer is home base for your band's songs. Pick whoever's laptop is usually around at rehearsal, or a cheap little computer like a Raspberry Pi that stays plugged in at your rehearsal space (see [[Running on a Raspberry Pi]]).
 
-- **On a Mac:** double-click `start-macos.command` in the `launchers` folder (or the packaged `SSP - Song and Setlist Planner.app` if you have that).
-- **On Windows:** double-click `start-windows.bat` (or the packaged `.exe`).
-- **On Linux:** run `start-linux.sh` (or the packaged build).
+The easy way: download SSP for your computer from the [latest release](https://github.com/giopas/SSP---Song-and-Setlist-Planner/releases/latest). Nothing else to install.
+
+- **On a Mac:** the `.dmg` (`arm64` for M1 and newer Macs, `x86_64` for older Intel ones). Open it and drag **SSP** into Applications. The first time, right-click SSP and choose **Open**: it isn't signed by Apple yet, so macOS asks once.
+- **On Windows:** the `-setup.exe`. It installs just for you (no admin password) and puts SSP in the Start menu. If Windows says "protected your PC", click **More info**, then **Run anyway**. The `.zip` works too, with no install.
+- **On Linux:** unpack the `.tar.gz` and run `SSP/SSP`.
+
+Got the source code instead (from GitHub, or for a Raspberry Pi)? Double-click `start-macos.command` or `start-windows.bat` in the `launchers` folder, or run `start-linux.sh`. Updating the app never touches your songs: they live in their own folder.
 
 A small window opens. That's the control panel, the only screen that looks like a normal computer program. Everything else happens in a browser, even on this same machine.
 

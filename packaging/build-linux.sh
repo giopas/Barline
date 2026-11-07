@@ -1,20 +1,17 @@
 #!/bin/bash
-# Build a standalone Linux package of the SSP - Song and Setlist Planner launcher.
-# Run this ON Linux (PyInstaller does not cross-compile).
+# Build the standalone Linux app of SSP here (PyInstaller doesn't cross-compile).
+# Pushing a version tag builds every OS on GitHub instead: .github/workflows/release.yml
 #
-# Requires: python3 with tkinter (on Debian/Ubuntu: `sudo apt install python3-tk`)
-# and `pip install pyinstaller`.
+# Needs python3 with tkinter (Debian/Ubuntu: sudo apt install python3-tk) and
+# `pip install pyinstaller`.
 set -e
 cd "$(dirname "$0")/.."
-
 python3 -c "import tkinter" 2>/dev/null || {
   echo "tkinter isn't available for this Python. On Debian/Ubuntu: sudo apt install python3-tk" >&2
   exit 1
 }
-
-pyinstaller packaging/ssp.spec --distpath dist/linux --workpath build/linux --noconfirm
-
+pyinstaller --noconfirm packaging/ssp.spec
+dist/SSP/SSP --smoke
+python3 packaging/make_archive.py
 echo
-echo "Built: dist/linux/SingleSongPlanner/"
-echo "Run it with: dist/linux/SingleSongPlanner/SingleSongPlanner"
-echo "Zip the whole SingleSongPlanner/ folder to distribute it."
+echo "Built: dist/SSP/SSP   (download file in release/)"

@@ -33,3 +33,6 @@ archive/
 /CLAUDE.md
 /PROJECT_CHARTER.md
 /WORKPLAN.md
+
+# packaged downloads (packaging/make_archive.py)
+release/

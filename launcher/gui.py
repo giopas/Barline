@@ -342,8 +342,58 @@ class LauncherApp:
         self.root.destroy()
 
 
+# A windowed build on Windows has no console: print() and the server's log
+# would write to None and crash. Send them nowhere instead.
+for _name in ("stdout", "stderr"):
+    if getattr(sys, _name) is None:
+        setattr(sys, _name, open(os.devnull, "w", encoding="utf-8"))
+
+
+def smoke() -> int:
+    """Check a packaged build without opening a window (the release
+    workflow runs this on every OS): the server starts from the bundle,
+    serves the web app, the spoken count-in and the API, and the demo band
+    is there. Prints what it checked; exit code 0 when all is well."""
+    import tempfile
+    import urllib.request
+
+    data = tempfile.mkdtemp(prefix="ssp-smoke-")
+    httpd, _store = server_app.build_server(data, paths.default_static_dir(), 0)
+    port = httpd.server_address[1]
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    ok = True
+    try:
+        for path, want in (("/", b"<title>"), ("/app.js", b"Metronome"), ("/voice/one.wav", b"RIFF"),
+                           ("/manifest.webmanifest", b"standalone"), ("/api/state", b"songs")):
+            with urllib.request.urlopen(f"http://127.0.0.1:{port}{path}", timeout=10) as r:
+                body = r.read()
+            good = r.status == 200 and want in body
+            ok = ok and good
+            print(f"{'ok ' if good else 'BAD'} {path}")
+        demo = os.path.isfile(os.path.join(paths.demo_data_dir(), "band.json"))
+        ok = ok and demo
+        print(f"{'ok ' if demo else 'BAD'} demo band")
+    finally:
+        server_app.stop_server(httpd)
+    print(f"SSP {server_app.VERSION}: {'smoke test passed' if ok else 'smoke test FAILED'}")
+    return 0 if ok else 1
+
+
 def main() -> None:
+    args = sys.argv[1:]
+    if args[:1] == ["--smoke"]:
+        sys.exit(smoke())
+    if args[:1] == ["--headless"]:
+        # the packaged app as a plain server, no window (e.g. a Linux box
+        # with no screen): any server option works, e.g. --headless --port 80
+        sys.argv = [sys.argv[0]] + args[1:]
+        server_app.main()
+        return
     root = tk.Tk()
+    try:  # the app's icon in the window / taskbar
+        root.iconphoto(True, tk.PhotoImage(file=os.path.join(paths.default_static_dir(), "icon-192.png")))
+    except tk.TclError:
+        pass
     LauncherApp(root)
     root.mainloop()
 

@@ -1,21 +1,13 @@
 @echo off
-REM Build a standalone Windows package of the SSP - Song and Setlist Planner launcher.
-REM Run this ON Windows (PyInstaller does not cross-compile).
-REM
-REM Requires: python.org's Python (bundles Tk by default) and `pip install pyinstaller`.
-
-cd /d "%~dp0.."
-
-python -c "import tkinter" 2>NUL
-if errorlevel 1 (
-  echo tkinter isn't available for this Python install. Use the python.org installer, which bundles it.
-  exit /b 1
-)
-
-pyinstaller packaging\ssp.spec --distpath dist\windows --workpath build\windows --noconfirm
-
+rem Build SSP for Windows here (PyInstaller doesn't cross-compile).
+rem Pushing a version tag builds every OS on GitHub instead: .github\workflows\release.yml
+rem
+rem Needs Python from python.org (tkinter included) and `pip install pyinstaller`.
+rem With Inno Setup 6 installed, the installer (-setup.exe) is built too.
+cd /d "%~dp0\.."
+python -c "import tkinter" 2>nul || (echo tkinter isn't available for this Python. Use the installer from python.org. & exit /b 1)
+pyinstaller --noconfirm packaging\ssp.spec || exit /b 1
+"dist\SSP\SSP Server.exe" --smoke || exit /b 1
+python packaging\make_archive.py || exit /b 1
 echo.
-echo Built: dist\windows\SingleSongPlanner\
-echo Run it with: dist\windows\SingleSongPlanner\SingleSongPlanner.exe
-echo Zip the whole SingleSongPlanner\ folder to distribute it.
-pause
+echo Built: dist\SSP\SSP.exe   (downloads in release\)

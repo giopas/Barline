@@ -3,6 +3,35 @@
 All notable changes to this project are documented here. Versioning
 follows semver (MAJOR.MINOR.PATCH).
 
+## [0.10.1] -- 2026-11-07
+
+Downloadable apps for macOS, Windows and Linux.
+
+### Added
+
+- **Standalone apps on every release**, built on GitHub when a version tag
+  is pushed (`.github/workflows/release.yml`, the same recipe as QLC+ Swiss
+  Knife): `.dmg` for macOS (Apple silicon and Intel), an installer and a
+  portable `.zip` for Windows, a `.tar.gz` for Linux, plus `SHA256SUMS`.
+  Each build is smoke-tested before it's published; the Windows installer
+  is installed, tested and uninstalled. The release text is that version's
+  CHANGELOG section (`tools/release_notes.py`).
+- The packaged app checks itself with `--smoke` and runs as a plain server
+  with `--headless [server options]`. On Windows, `SSP Server.exe` (next to
+  `SSP.exe`) is the console version for both.
+- App icon for macOS, Windows and the control panel window
+  (`packaging/icons/`).
+- `.github/workflows/tests.yml`: the whole test suite, browser tests
+  included, on every push.
+
+### Changed
+
+- The packaged program is called **SSP** (`SSP.app`, `SSP.exe`, `SSP/SSP`)
+  instead of `SingleSongPlanner`. Settings and the default songs folder keep
+  their old location, so nothing moves.
+- A windowed Windows build no longer risks crashing on its own log output
+  (no console to write to).
+
 ## [0.10.0] -- 2026-11-07
 
 Making SSP easy for a drummer to switch to from a metronome app.

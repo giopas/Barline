@@ -1,21 +1,19 @@
 #!/bin/bash
-# Build a standalone macOS .app of the SSP - Song and Setlist Planner launcher.
-# Run this ON macOS (PyInstaller does not cross-compile).
+# Build SSP.app and the .dmg on this Mac (PyInstaller doesn't cross-compile;
+# the app is for this Mac's chip, Apple silicon or Intel).
+# Pushing a version tag builds every OS on GitHub instead: .github/workflows/release.yml
 #
-# Requires: python3.org's Python (bundles Tk) or Homebrew's `python-tk`,
-# and `pip install pyinstaller`.
+# Needs a python3 with tkinter (the python.org installer has it) and
+# `pip install pyinstaller`.
 set -e
 cd "$(dirname "$0")/.."
-
 python3 -c "import tkinter" 2>/dev/null || {
-  echo "tkinter isn't available for this Python. With Homebrew: brew install python-tk" >&2
+  echo "tkinter isn't available for this Python. Use the installer from python.org." >&2
   exit 1
 }
-
-pyinstaller packaging/ssp.spec --distpath dist/macos --workpath build/macos --noconfirm
-
+pyinstaller --noconfirm packaging/ssp.spec
+dist/SSP.app/Contents/MacOS/SSP --smoke
+python3 packaging/make_archive.py
 echo
-echo "Built: dist/macos/SSP - Song and Setlist Planner.app"
-echo "Not code-signed or notarised (see PROJECT_CHARTER.md section 4) -- the first"
-echo "launch needs a right-click > Open (or System Settings > Privacy & Security > Open Anyway)."
-echo "Zip the .app to distribute it."
+echo "Built: dist/SSP.app   (and the .dmg in release/)"
+echo "Not signed: the first time, right-click SSP.app -> Open (or System Settings -> Privacy & Security -> Open Anyway)."

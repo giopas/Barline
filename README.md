@@ -63,10 +63,22 @@ you'd treat a whiteboard in your rehearsal room.
 
 ## Getting started
 
-On a laptop, open the control panel:
+**Download the app** from the [latest release](https://github.com/giopas/SSP---Song-and-Setlist-Planner/releases/latest), with nothing
+else to install:
 
-- macOS: double-click `launchers/start-macos.command` (or a packaged
-  `SSP - Song and Setlist Planner.app`, see below)
+| | |
+|---|---|
+| macOS, Apple silicon (M1 and later) | `SSP-<version>-macos-arm64.dmg` |
+| macOS, Intel | `SSP-<version>-macos-x86_64.dmg` |
+| Windows | `SSP-<version>-windows-x64-setup.exe` (or the `.zip`, no install) |
+| Linux | `SSP-<version>-linux-x64.tar.gz` |
+
+The apps aren't signed yet. On a Mac, the first time: right-click SSP ->
+**Open**. On Windows: "More info" -> **Run anyway**.
+
+Or run it from the source code, on a laptop:
+
+- macOS: double-click `launchers/start-macos.command`
 - Windows: double-click `launchers/start-windows.bat`
 - Linux: run `launchers/start-linux.sh`
 
@@ -95,9 +107,16 @@ installers for Windows and macOS; on Linux, `sudo apt install python3-tk`).
 
 ### Packaged builds
 
-`packaging/` has a PyInstaller spec and a build script per OS that produce
-a double-click-to-run build with nothing to install. Each has to be built on
-its own OS (PyInstaller doesn't cross-compile).
+Pushing a version tag (`git tag v0.10.1 && git push origin v0.10.1`) builds
+the apps for every OS on GitHub (`.github/workflows/release.yml`), checks
+each one starts and serves the web app, and attaches them to the release
+with that version's CHANGELOG section. The same recipe as QLC+ Swiss Knife.
+
+To build one yourself, on its own OS (PyInstaller doesn't cross-compile):
+`packaging/build-macos.sh`, `packaging\build-windows.bat` or
+`packaging/build-linux.sh`. Any build checks itself with `--smoke`, and
+`--headless [server options]` runs it as a plain server with no window
+(on Windows, use `SSP Server.exe` for both).
 
 ## More
 

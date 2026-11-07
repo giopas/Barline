@@ -1,97 +1,89 @@
 # -*- mode: python ; coding: utf-8 -*-
 #
-# PyInstaller spec for the SSP - Song and Setlist Planner desktop launcher.
+# PyInstaller spec for SSP - Song and Setlist Planner: the server, the web
+# app and the desktop control panel (launcher/gui.py) as one standalone
+# app, so a band member doesn't need Python installed at all. Same idea as
+# QLC+ Swiss Knife's packaged builds.
 #
-# Packages launcher/gui.py (the Tkinter control panel) together with the
-# server package and the web app's static files into a standalone,
-# double-click-to-run build -- same idea as QLC+ Swiss Knife's packaged
-# builds, so a band member doesn't need Python installed at all.
+#   pip install pyinstaller
+#   pyinstaller --noconfirm packaging/ssp.spec
 #
-# PyInstaller can't cross-compile: run this ON each target OS (see the
-# platform-specific scripts alongside this file). The one-directory
-# ("onedir") output below starts faster than --onefile and is easier to
-# inspect/debug; zip the resulting folder to distribute it.
+# -> dist/SSP.app (macOS), dist/SSP/SSP.exe + SSP Server.exe (Windows),
+#    dist/SSP/SSP (Linux). Check a build with:  <the app> --smoke
+# PyInstaller can't cross-compile: each OS builds its own (the release
+# workflow, .github/workflows/release.yml, does all of them on a tag).
 #
-# Usage (from the repo root):
-#   pyinstaller packaging/ssp.spec --distpath dist --workpath build --noconfirm
+# The app's *settings and songs* folder keeps its old technical name
+# (platform_dirs.APP_NAME = "SingleSongPlanner", and the macOS bundle id),
+# so nobody's saved songs move. Only the program's own name is "SSP".
 
 import os
 import sys
 
-block_cipher = None
-
-ROOT = os.path.abspath(os.path.join(SPECPATH, ".."))  # noqa: F821 - SPECPATH is injected by PyInstaller
+ROOT = os.path.abspath(os.path.join(SPECPATH, ".."))  # noqa: F821 - injected by PyInstaller
 SERVER_DIR = os.path.join(ROOT, "server")
 LAUNCHER_DIR = os.path.join(ROOT, "launcher")
-STATIC_DIR = os.path.join(ROOT, "web", "static")
+ICONS = os.path.join(ROOT, "packaging", "icons")
 
-# Technical identifier only -- kept stable across the "SSP - Song and
-# Setlist Planner" rename so it doesn't move or orphan a user's already
-# -saved settings file or data folder (see server/platform_dirs.py, which
-# uses the same name). The binary/folder on disk stays "SingleSongPlanner";
-# only user-facing display strings below (window titles, the macOS bundle
-# name) carry the new name.
-APP_NAME = "SingleSongPlanner"
+sys.path.insert(0, SERVER_DIR)
+from version import VERSION  # noqa: E402
 
 a = Analysis(  # noqa: F821
     [os.path.join(LAUNCHER_DIR, "gui.py")],
     pathex=[SERVER_DIR, LAUNCHER_DIR],
     binaries=[],
-    # Bundles the web app's static files read-only inside the package, at
-    # the same "web/static" relative path server/paths.py expects under
-    # sys._MEIPASS. The data/ folder (actual song/setlist storage) is never
-    # bundled -- it's created at runtime wherever the user points the
-    # launcher (defaulting to the per-OS app-support folder; see
-    # server/platform_dirs.py).
-    # The fictional demo band (demo/) is bundled read-only too, for the
-    # launcher's "Try the demo band" button (always served from a copy).
-    datas=[(STATIC_DIR, os.path.join("web", "static")), (os.path.join(ROOT, "demo"), "demo")],
+    # the web app (read-only, where server/paths.py looks for it) and the
+    # fictional demo band. Songs are never bundled: they live in the
+    # user's own folder (server/platform_dirs.py).
+    datas=[(os.path.join(ROOT, "web", "static"), os.path.join("web", "static")),
+           (os.path.join(ROOT, "demo"), "demo")],
     hiddenimports=["app", "paths", "platform_dirs", "storage", "models", "settings", "timeline",
                    "transport", "events", "export", "click_track", "qr", "version"],
-    hookspath=[],
-    runtime_hooks=[],
-    excludes=[],
+    excludes=["pytest", "playwright", "tests"],
     noarchive=False,
-    cipher=block_cipher,
 )
-pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)  # noqa: F821
+pyz = PYZ(a.pure)  # noqa: F821
+
+NAME = "SSP"
+WIN = sys.platform == "win32"
+MAC = sys.platform == "darwin"
 
 exe = EXE(  # noqa: F821
-    pyz,
-    a.scripts,
-    [],
+    pyz, a.scripts, [],
     exclude_binaries=True,
-    name=APP_NAME,
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
+    name=NAME,
+    console=not (WIN or MAC),  # Linux: run from a terminal it shows the log; double-clicked it doesn't matter
     upx=False,
-    console=False,  # windowed app -- no terminal popping up alongside the GUI
+    icon=os.path.join(ICONS, "icon.ico") if WIN else None,
 )
+if WIN:
+    # a window-only exe has no console: a second one that does, for
+    # "SSP Server.exe --headless" (a plain server in a terminal) and --smoke
+    exe_console = EXE(  # noqa: F821
+        pyz, a.scripts, [],
+        exclude_binaries=True,
+        name="SSP Server",
+        console=True,
+        upx=False,
+        icon=os.path.join(ICONS, "icon.ico"),
+    )
+    coll = COLLECT(exe, exe_console, a.binaries, a.datas, name=NAME, upx=False)  # noqa: F821
+else:
+    coll = COLLECT(exe, a.binaries, a.datas, name=NAME, upx=False)  # noqa: F821
 
-coll = COLLECT(  # noqa: F821
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    strip=False,
-    upx=False,
-    name=APP_NAME,
-)
-
-# On macOS, wrap the onedir build into a proper double-clickable .app.
-# No code signing / notarisation yet -- matches the charter's "later if
-# someone asks" stance (PROJECT_CHARTER.md section 4); an unsigned .app
-# will need an explicit "Open anyway" the first time (see README).
-if sys.platform == "darwin":
+if MAC:
     app = BUNDLE(  # noqa: F821
         coll,
-        name="SSP - Song and Setlist Planner.app",
-        icon=None,
-        bundle_identifier="com.giopas.singlesongplanner",
+        name="SSP.app",
+        icon=os.path.join(ICONS, "icon.icns"),
+        bundle_identifier="com.giopas.singlesongplanner",  # unchanged since 0.1: keeps macOS settings in place
         info_plist={
+            "CFBundleName": "SSP",
+            "CFBundleDisplayName": "SSP - Song and Setlist Planner",
+            "CFBundleShortVersionString": VERSION,
+            "CFBundleVersion": VERSION,
             "NSHighResolutionCapable": True,
-            "CFBundleShortVersionString": "0.1.0",
-            "CFBundleName": "SSP - Song and Setlist Planner",
+            "LSMinimumSystemVersion": "11.0",
+            "NSLocalNetworkUsageDescription": "SSP serves your band's songs to phones and tablets on this Wi-Fi.",
         },
     )
