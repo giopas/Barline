@@ -91,6 +91,43 @@
     return (song.sections || []).reduce((sum, s) => sum + (s.bars | 0), 0);
   }
 
+  // -- click options (0.10), mirrored from server/timeline.py -------------
+  const SUBDIVISIONS = { none: [], 8: [1 / 2], 16: [1 / 4, 1 / 2, 3 / 4], triplet: [1 / 3, 2 / 3] };
+  const CLICK_DEFAULTS = { subdivision: "none", voice: false, mode: "always" };
+
+  function clickOptions(raw) {
+    raw = raw || {};
+    const out = { ...CLICK_DEFAULTS };
+    if (Object.prototype.hasOwnProperty.call(SUBDIVISIONS, raw.subdivision)) out.subdivision = String(raw.subdivision);
+    out.voice = [true, 1, "1", "true", "on"].includes(raw.voice);
+    if (raw.mode === "always" || raw.mode === "countin") out.mode = raw.mode;
+    return out;
+  }
+
+  function clickEvents(timeline, options) {
+    const o = clickOptions(options);
+    const subs = SUBDIVISIONS[o.subdivision];
+    const bars = timeline.bars;
+    const out = [];
+    for (let i = 0; i < bars.length; i++) {
+      const bar = bars[i];
+      const ci = !!bar.count_in;
+      if (!ci && o.mode === "countin") continue;
+      const lastCi = ci && !(i + 1 < bars.length && bars[i + 1].count_in && bars[i + 1].section_id === bar.section_id);
+      for (let b = 0; b < bar.beats; b++) {
+        const t = bar.start_ms + b * bar.beat_ms;
+        if (ci && o.voice) {
+          if (lastCi) out.push({ t, kind: "voice", n: b + 1, bar: i });
+          else if (b % 2 === 0) out.push({ t, kind: "voice", n: b / 2 + 1, bar: i });
+          continue;
+        }
+        out.push({ t, kind: b === 0 ? "accent" : "beat", n: b + 1, bar: i });
+        if (!ci) for (const f of subs) out.push({ t: t + f * bar.beat_ms, kind: "sub", n: b + 1, bar: i });
+      }
+    }
+    return out;
+  }
+
   function durationMs(song) {
     return build(song).total_ms;
   }
@@ -100,7 +137,7 @@
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   }
 
-  const api = { BEATS_PER_BAR, build, barAt, sectionStartBar, songTotalBars, durationMs, fmtDuration, sortedSections };
+  const api = { BEATS_PER_BAR, SUBDIVISIONS, build, clickOptions, clickEvents, barAt, sectionStartBar, songTotalBars, durationMs, fmtDuration, sortedSections };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.SSPTiming = api;
 })(typeof window !== "undefined" ? window : globalThis);

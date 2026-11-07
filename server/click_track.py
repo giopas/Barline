@@ -21,6 +21,7 @@ from __future__ import annotations
 import array
 import io
 import math
+import os
 import sys
 import wave
 
@@ -78,10 +79,46 @@ def check_sound(sound) -> str:
     return sound
 
 
-def song_wav(song: dict, sound: str = DEFAULT_SOUND, count_in: bool = True) -> bytes:
-    """The whole song as a mono 16-bit WAV, clicks placed from the tempo map.
+VOICE_WORDS = ("one", "two", "three", "four")
+
+
+def _voice_samples(voice_dir: str) -> dict:
+    """The spoken count-in (web/static/voice/*.wav, 22050 Hz mono 16-bit),
+    {1: samples, ...}; empty if the files aren't there."""
+    out = {}
+    for n, word in enumerate(VOICE_WORDS, 1):
+        path = os.path.join(voice_dir or "", word + ".wav")
+        try:
+            with wave.open(path, "rb") as w:
+                if w.getframerate() != RATE or w.getnchannels() != 1 or w.getsampwidth() != 2:
+                    continue
+                data = array.array("h", w.readframes(w.getnframes()))
+                if sys.byteorder == "big":
+                    data.byteswap()
+                out[n] = data
+        except (OSError, wave.Error, EOFError):
+            continue
+    return out
+
+
+def _level(value, default: float) -> float:
+    try:
+        return max(0.0, min(1.0, float(value)))
+    except (TypeError, ValueError):
+        return default
+
+
+def song_wav(song: dict, sound: str = DEFAULT_SOUND, count_in: bool = True, options: dict = None,
+             voice_dir: str = None) -> bytes:
+    """The whole song as a 16-bit WAV, clicks placed from the tempo map.
+
+    `options` are the same per-device click choices as the live click
+    (timeline.click_options: subdivision, voice, mode) plus levels
+    (accent/beat/sub, 0..1) and channel ("both", "left", "right" -- left or
+    right makes a stereo file with the click in one ear only).
     Raises ValueError in plain words for an empty or over-long song."""
     sound = check_sound(sound)
+    options = options or {}
     tl = timeline.build(song, lead_in=count_in)
     if not count_in:
         tl["bars"] = [b for b in tl["bars"] if not b["count_in"]]
@@ -95,21 +132,65 @@ def song_wav(song: dict, sound: str = DEFAULT_SOUND, count_in: bool = True) -> b
     if tl["total_ms"] > MAX_MS:
         raise ValueError("A click track is at most 20 minutes long.")
 
+    levels = {"accent": _level(options.get("accent"), 1.0), "beat": _level(options.get("beat"), 1.0),
+              "sub": _level(options.get("sub"), 0.45)}
+    channel = options.get("channel") if options.get("channel") in ("left", "right") else "both"
+    voice = _voice_samples(voice_dir) if timeline.click_options(options)["voice"] else {}
     total = round(tl["total_ms"] * RATE / 1000)
-    pcm = array.array("h", bytes(2 * total))
+    mix = [0] * total
     high, low = sounds(sound)
-    for bar in tl["bars"]:
-        for beat in range(bar["beats"]):
-            start = round((bar["start_ms"] + beat * bar["beat_ms"]) * RATE / 1000)
-            ring = high if beat == 0 else low
-            end = min(start + len(ring), total)
-            pcm[start:end] = ring[: end - start]
+    stick_high, stick_low = sounds("wood" if sound == "tick" else "tick")
+    for ev in timeline.click_events(tl, options):
+        bar = tl["bars"][ev["bar"]]
+        sticks = bar["count_in"] and bar["count_in_style"] == "sticks"
+        if ev["kind"] == "voice" and ev["n"] in voice:
+            ring, gain = voice[ev["n"]], 1.0
+        else:
+            accent = ev["kind"] == "accent" or (ev["kind"] == "voice" and ev["n"] == 1)
+            ring = (stick_high if accent else stick_low) if sticks else (high if accent else low)
+            gain = levels["sub"] if ev["kind"] == "sub" else levels["accent"] if accent else levels["beat"]
+        if gain <= 0:
+            continue
+        start = round(ev["t"] * RATE / 1000)
+        for i in range(min(len(ring), total - start)):
+            mix[start + i] += ring[i] * gain
+    mono = array.array("h", (max(-32767, min(32767, round(v))) for v in mix))
+    if channel == "both":
+        pcm, channels = mono, 1
+    else:
+        pcm, channels = array.array("h", bytes(4 * total)), 2
+        pcm[(0 if channel == "left" else 1)::2] = mono
     if sys.byteorder == "big":
         pcm.byteswap()
     buf = io.BytesIO()
     with wave.open(buf, "wb") as w:
-        w.setnchannels(1)
+        w.setnchannels(channels)
         w.setsampwidth(2)
         w.setframerate(RATE)
         w.writeframes(pcm.tobytes())
+    return buf.getvalue()
+
+
+def setlist_zip(setlist: dict, songs: dict, sound: str = DEFAULT_SOUND, options: dict = None,
+                voice_dir: str = None) -> bytes:
+    """Practice pack: one numbered click track per song of a setlist, in a
+    .zip -- for playing along at home with no server, in any music player."""
+    import zipfile  # only needed here
+
+    buf = io.BytesIO()
+    n = 0
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for song_id in setlist.get("songs", []):
+            song = songs.get(song_id)
+            if not song:
+                continue
+            try:
+                wav = song_wav(song, sound, True, options, voice_dir)
+            except ValueError:
+                continue  # an empty song has no click to practise to
+            n += 1
+            safe = "".join(c for c in song.get("title", "song") if c.isalnum() or c in " .,()+-_").strip()[:60]
+            z.writestr(f"{n:02d} {safe or 'song'} ({song.get('default_bpm', '')} BPM).wav", wav)
+    if not n:
+        raise ValueError("None of the songs in this setlist has any bars yet.")
     return buf.getvalue()

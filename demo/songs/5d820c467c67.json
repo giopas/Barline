@@ -1,0 +1,21 @@
+{
+  "id": "5d820c467c67",
+  "title": "Encore Jam",
+  "default_bpm": 140,
+  "sections": [
+    {
+      "id": "e00f727b85d3",
+      "label": "Song",
+      "order": 0,
+      "bars": 140,
+      "bpm": null,
+      "count_in": {
+        "bars": 0,
+        "style": "none"
+      },
+      "hints": []
+    }
+  ],
+  "created_at": 1793836800.0,
+  "updated_at": 1793836800.0
+}

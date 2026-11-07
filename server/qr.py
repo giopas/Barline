@@ -212,3 +212,27 @@ def svg(text, quiet=4):
     t = n + 2 * quiet
     return (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {t} {t}" shape-rendering="crispEdges">'
             f'<rect width="{t}" height="{t}" fill="#fff"/><path d="{d}" fill="#000"/></svg>')
+
+
+def terminal(text, quiet=2):
+    """The QR code as text for a terminal: two rows of modules per line,
+    drawn with half-block characters (dark on a light background)."""
+    m = encode(text)
+    n = len(m) + 2 * quiet
+    grid = [[False] * n for _ in range(n)]
+    for y, row in enumerate(m):
+        for x, v in enumerate(row):
+            grid[y + quiet][x + quiet] = v
+    if n % 2:
+        grid.append([False] * n)
+    chars = {(False, False): '█', (True, False): '▄', (False, True): '▀', (True, True): ' '}
+    return '\n'.join(''.join(chars[(grid[y][x], grid[y + 1][x])] for x in range(n)) for y in range(0, len(grid), 2))
+
+
+def wifi_text(ssid, password=None):
+    """What a phone camera reads as "join this Wi-Fi"."""
+    special = set('\\;,:"')
+    esc = lambda s: ''.join('\\' + c if c in special else c for c in s)  # noqa: E731
+    if password:
+        return f'WIFI:T:WPA;S:{esc(ssid)};P:{esc(password)};;'
+    return f'WIFI:T:nopass;S:{esc(ssid)};;'

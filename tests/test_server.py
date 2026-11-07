@@ -22,6 +22,8 @@ import unittest
 import urllib.error
 import urllib.request
 import wave
+import zipfile
+import array
 import io
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -150,6 +152,77 @@ class ApiTests(unittest.TestCase):
             seconds = w.getnframes() / w.getframerate()
         self.assertAlmostEqual(seconds, timeline.duration_ms(song) / 1000, delta=0.01)
         self.assertEqual(self.s.call("GET", f"/api/songs/{song['id']}/click.wav?sound=cowbell")[0], 400)
+
+    def test_click_track_with_device_options(self):
+        """0.10: the .wav follows the device's click choices."""
+        song = demo_song(self.s, "Harbour Lights")
+        base = f"/api/songs/{song['id']}/click.wav?sound=wood"
+        _, plain, _ = self.s.call("GET", base)
+        status, body, _ = self.s.call("GET", base + "&subdivision=16&voice=1&channel=left&sub=0.5")
+        self.assertEqual(status, 200)
+        with wave.open(io.BytesIO(body)) as w:
+            self.assertEqual(w.getnchannels(), 2)
+            frames = w.readframes(w.getnframes())
+        pcm = array.array("h", frames)
+        if sys.byteorder == "big":
+            pcm.byteswap()
+        self.assertGreater(max(abs(x) for x in pcm[0::2]), 1000)  # left: the click
+        self.assertEqual(max(abs(x) for x in pcm[1::2]), 0)         # right: silent
+        # subdivisions add sound between the beats
+        with wave.open(io.BytesIO(plain)) as w:
+            mono = array.array("h", w.readframes(w.getnframes()))
+        self.assertGreater(sum(1 for x in pcm[0::2] if x), sum(1 for x in mono if x))
+        # count-in only: silent after the count-in
+        _, only, _ = self.s.call("GET", base + "&mode=countin")
+        with wave.open(io.BytesIO(only)) as w:
+            rate = w.getframerate()
+            mono = array.array("h", w.readframes(w.getnframes()))
+        first_bar_ms = timeline.build(song)["bars"][1]["start_ms"]
+        self.assertEqual(max(abs(x) for x in mono[int((first_bar_ms + 50) * rate / 1000):]), 0)
+
+    def test_setlist_practice_pack(self):
+        sl = next(iter(self.s.store.setlists.values()))
+        status, body, headers = self.s.call("GET", f"/api/setlists/{sl['id']}/clicks.zip?sound=beep&subdivision=8")
+        self.assertEqual(status, 200)
+        self.assertIn(".zip", headers["Content-Disposition"])
+        names = zipfile.ZipFile(io.BytesIO(body)).namelist()
+        playable = [x for x in sl["songs"] if x in self.s.store.songs and self.s.store.songs[x]["sections"]]
+        self.assertEqual(len(names), len(playable))
+        self.assertTrue(names[0].startswith("01 ") and names[0].endswith(".wav"))
+        self.assertEqual(self.s.call("GET", "/api/setlists/nope/clicks.zip")[0], 404)
+
+    def test_bundle_for_solo_mode(self):
+        status, b = self.s.json("GET", "/api/bundle")
+        self.assertEqual(status, 200)
+        self.assertEqual(len(b["songs"]), len(self.s.store.songs))
+        self.assertIn("sections", b["songs"][0])
+        self.assertEqual(len(b["setlists"]), len(self.s.store.setlists))
+
+    def test_static_extras_for_tablets(self):
+        status, body, headers = self.s.call("GET", "/manifest.webmanifest")
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(body)["display"], "standalone")
+        self.assertEqual(self.s.call("GET", "/apple-touch-icon.png")[2]["Content-Type"], "image/png")
+        for word in ("one", "two", "three", "four"):
+            self.assertEqual(self.s.call("GET", f"/voice/{word}.wav")[0], 200)
+        # Safari needs byte ranges to play the keep-awake video
+        req = urllib.request.Request(self.s.base + "/keepawake.mp4", headers={"Range": "bytes=0-9"})
+        with urllib.request.urlopen(req) as r:
+            self.assertEqual(r.status, 206)
+            self.assertEqual(len(r.read()), 10)
+            self.assertTrue(r.headers["Content-Range"].startswith("bytes 0-9/"))
+
+    def test_wifi_qr_and_terminal_qr(self):
+        self.assertEqual(qr.wifi_text("SSP;Band", "pa:ss"), "WIFI:T:WPA;S:SSP\\;Band;P:pa\\:ss;;")
+        status, body, _ = self.s.call("GET", "/api/qr.svg?text=" + urllib.request.quote(qr.wifi_text("SSP-Band", "secret123")))
+        self.assertEqual(status, 200)
+        app.Handler.wifi_ssid, app.Handler.wifi_password = "SSP-Band", "secret123"
+        try:
+            _, info = self.s.json("GET", "/api/connect")
+            self.assertEqual(info["wifi"]["ssid"], "SSP-Band")
+        finally:
+            app.Handler.wifi_ssid = app.Handler.wifi_password = None
+        self.assertIn("\u2588", qr.terminal("http://ssp.local/"))
 
     def test_click_samples_match_swiss_knife_formulas(self):
         # first-beat beep starts at zero and is a 25 ms decaying sine
@@ -318,7 +391,7 @@ class SyncTests(unittest.TestCase):
         lst.close()
 
     def test_transport_stop_next_prev(self):
-        sl = next(s for s in self.s.store.setlists.values() if len(s["songs"]) == 5)
+        sl = next(s for s in self.s.store.setlists.values() if s["name"] == "Friday at the Harbour Bar")
         self.s.json("POST", "/api/transport", {"action": "cue", "song_id": sl["songs"][0], "setlist_id": sl["id"]})
         self.assertEqual(self.s.json("POST", "/api/transport", {"action": "next"})[1]["song_id"], sl["songs"][1])
         self.assertEqual(self.s.json("POST", "/api/transport", {"action": "prev"})[1]["song_id"], sl["songs"][0])

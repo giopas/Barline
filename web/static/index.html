@@ -7,7 +7,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>SSP - Song and Setlist Planner</title>
+  <meta name="apple-mobile-web-app-title" content="SSP" />
   <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
@@ -73,7 +76,9 @@
       </div>
 
       <div id="empty-state" class="empty-state">
-        <p>Select a song to start planning its structure, or create a new one.</p>
+        <p>Select a song to start planning its structure, or add some.</p>
+        <button class="btn btn-go" id="empty-quick-btn">+ Add songs</button>
+        <p class="modal-note">Just titles and tempos is fine: paste a whole setlist in one go.</p>
       </div>
 
       <div id="song-view" class="song-view hidden">
@@ -84,18 +89,15 @@
               Default BPM
               <input id="song-bpm" type="number" min="20" max="400" data-focus-key="song:bpm" />
             </label>
+            <button class="btn tap-btn" id="song-tap" title="Tap along to set the tempo">Tap</button>
           </div>
         </header>
         <div class="toolbar">
           <button class="btn btn-go" id="song-live-btn" title="Put this song on every live screen">&#9654; Go live</button>
           <button class="btn" id="song-preview-btn" title="Hear the song's click on this device">&#9835; Preview click</button>
           <span class="tool-group">
-            <select id="click-sound" title="Click sound">
-              <option value="wood">wood</option>
-              <option value="beep">beep</option>
-              <option value="tick">tick</option>
-            </select>
-            <button class="btn" id="song-wav-btn" title="Download a practice click track (.wav)">&#8615; Click track</button>
+            <button class="btn" id="song-click-settings" title="This device's click: sound, subdivisions, spoken count-in, ear, test">&#9881; Click</button>
+            <button class="btn" id="song-wav-btn" title="Download a practice click track (.wav) with this device's click settings">&#8615; Click track</button>
           </span>
           <button class="btn" id="song-print-btn" title="Printable chart (whole band, or your part)">&#9113; Print chart</button>
           <button class="btn" id="song-export-btn" title="Download this song as one portable file, with its voice memos">&#8615; Export</button>
@@ -120,6 +122,7 @@
         <div class="toolbar">
           <button class="btn btn-go" id="setlist-live-btn" title="Put this setlist on every live screen">&#9654; Go live with this setlist</button>
           <button class="btn" id="setlist-print-btn" title="Printable charts for the whole set">&#9113; Print set</button>
+          <button class="btn" id="setlist-zip-btn" title="One click track per song, in a .zip, with this device's click settings: practise anywhere, no server needed">&#8615; Practice tracks</button>
           <button id="delete-setlist-btn" class="btn-danger">Delete</button>
         </div>
         <p id="setlist-summary" class="song-summary"></p>
@@ -159,9 +162,12 @@
           <button class="btn-small" id="live-next" title="Next song">&#9654;</button>
         </div>
         <span class="live-presence" id="live-presence"></span>
+        <button class="chip" id="live-solo">With the band</button>
+        <button class="chip" id="live-big" title="Drummer view: huge tempo, bar count and what's next">Big view</button>
         <button class="chip" id="live-who" title="Who's using this device?">Whole band</button>
       </header>
 
+      <div class="live-solo-note hidden" id="live-solo-note"></div>
       <div class="live-shape" id="live-shape"></div>
 
       <div class="live-now" id="live-now">
@@ -174,6 +180,11 @@
           <span class="beat"></span><span class="beat"></span><span class="beat"></span><span class="beat"></span>
         </div>
         <div class="now-next" id="now-next"></div>
+        <div class="now-stats" id="now-stats">
+          <div class="stat"><span class="stat-v" id="st-bpm">&ndash;</span><span class="stat-k">BPM</span></div>
+          <div class="stat"><span class="stat-v" id="st-bar">&ndash;</span><span class="stat-k" id="st-bar-k">bar</span></div>
+          <div class="stat stat-next"><span class="stat-v" id="st-next">&ndash;</span><span class="stat-k" id="st-next-k">next</span></div>
+        </div>
       </div>
 
       <div class="live-hints" id="live-hints"></div>
@@ -185,12 +196,8 @@
         <span class="live-driver" id="live-driver"></span>
         <span class="click-controls">
           <button class="chip" id="click-toggle" title="Metronome click on this device">&#128264; Click: tap to enable</button>
-          <select id="live-sound" title="Click sound on this device">
-            <option value="wood">wood</option>
-            <option value="beep">beep</option>
-            <option value="tick">tick</option>
-          </select>
           <input type="range" id="live-volume" min="0" max="1" step="0.05" title="Click volume" />
+          <button class="chip" id="live-click-settings" title="Click sound, subdivisions, spoken count-in, left/right ear, test">&#9881; Click</button>
         </span>
       </footer>
     </section>
@@ -204,11 +211,16 @@
         <button class="btn-icon" data-close>&times;</button>
       </div>
       <p class="modal-note">Same Wi-Fi as this server, then scan the code or type the address into any browser. No app, no account.</p>
+      <p class="modal-note"><strong>Make it feel like an app:</strong> on iPad/iPhone, Safari's Share &rarr; <em>Add to Home Screen</em>; on Android, Chrome's menu &rarr; <em>Add to Home screen</em>. It then opens full-screen, straight into the live view.</p>
       <div class="connect-body">
         <img id="connect-qr" class="qr" alt="QR code for the address" />
         <div>
           <select id="connect-address"></select>
           <p class="connect-url" id="connect-url"></p>
+          <div id="connect-wifi" class="hidden">
+            <h3>First, join the band's Wi-Fi</h3>
+            <button class="chip" id="connect-wifi-btn"></button>
+          </div>
           <h3>Straight to one player's live view</h3>
           <div id="connect-players" class="connect-players"></div>
         </div>
@@ -237,6 +249,101 @@
       </div>
       <p class="modal-note">Opens a printable page. Use your browser's Print, or "Save as PDF".</p>
       <div id="print-options" class="who-options"></div>
+    </div>
+  </div>
+
+  <!-- Quick add: a song in seconds, or a whole pasted list -->
+  <div class="modal hidden" id="quick-modal">
+    <div class="modal-card quick-card">
+      <div class="modal-head">
+        <h2>Add songs</h2>
+        <button class="btn-icon" data-close>&times;</button>
+      </div>
+      <div class="tabs">
+        <button class="tab active" data-tab="quick-one">One song</button>
+        <button class="tab" data-tab="quick-list">Paste a list</button>
+      </div>
+      <form id="quick-one" class="quick-pane">
+        <p class="modal-note">A title and a tempo is all the click needs. Plan the sections later, or never.</p>
+        <label>Title <input id="q-title" type="text" maxlength="120" placeholder="e.g. Seven Nation Army" autocomplete="off" /></label>
+        <div class="quick-row">
+          <label>BPM <input id="q-bpm" type="number" min="20" max="400" placeholder="120" /></label>
+          <button type="button" class="btn tap-btn" id="q-tap" title="Tap along to the song">Tap</button>
+          <label>Length <input id="q-length" type="text" placeholder="4:00" inputmode="numeric" pattern="\d{1,2}:[0-5]\d" title="minutes:seconds (optional, 4:00 if empty)" /></label>
+        </div>
+        <div class="ck-actions">
+          <button class="btn btn-go" type="submit" id="q-add">Add song</button>
+          <button class="btn" type="button" id="q-add-plan">Add and plan sections</button>
+        </div>
+        <p class="modal-note" id="q-added"></p>
+      </form>
+      <div id="quick-list" class="quick-pane hidden">
+        <p class="modal-note">One song per line: title, tempo, and (optional) length. "Song A - 128", "Song A, 128, 3:45", or paste two or three columns from a spreadsheet.</p>
+        <textarea id="q-paste" rows="7" placeholder="Seven Nation Army - 124 - 3:52&#10;Roxanne, 134&#10;Take Five 174 5:24"></textarea>
+        <table class="quick-preview" id="q-preview"></table>
+        <label class="ck-check"><input type="checkbox" id="q-make-setlist" checked /> Also make a setlist, in this order:
+          <input id="q-setlist-name" type="text" maxlength="120" /></label>
+        <div class="ck-actions">
+          <button class="btn btn-go" id="q-list-add" disabled>Add songs</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Click settings + click check (per device) -->
+  <div class="modal hidden" id="click-modal">
+    <div class="modal-card click-card">
+      <div class="modal-head">
+        <h2>Click on this device</h2>
+        <button class="btn-icon" data-close>&times;</button>
+      </div>
+      <p class="modal-note">Only this device changes. Every device keeps its own click; the beat is shared.</p>
+      <div class="click-grid">
+        <label>Sound
+          <select id="ck-sound"><option value="wood">wood</option><option value="beep">beep</option><option value="tick">tick</option></select>
+        </label>
+        <label>Subdivision
+          <select id="ck-subdivision">
+            <option value="none">quarters only</option>
+            <option value="8">8ths</option>
+            <option value="16">16ths</option>
+            <option value="triplet">triplets</option>
+          </select>
+        </label>
+        <label>Ear
+          <select id="ck-channel">
+            <option value="both">both ears</option>
+            <option value="left">left only</option>
+            <option value="right">right only</option>
+          </select>
+        </label>
+        <label>Click plays
+          <select id="ck-mode">
+            <option value="always">the whole song</option>
+            <option value="countin">count-ins only</option>
+          </select>
+        </label>
+        <label class="ck-wide ck-check"><input type="checkbox" id="ck-voice" /> Spoken count-in ("one, two, three, four")</label>
+        <label class="ck-wide ck-check"><input type="checkbox" id="ck-awake" /> Keep the screen on in the live view</label>
+        <label class="ck-wide ck-check"><input type="checkbox" id="ck-keep" /> If the server drops mid-song, keep playing on this device</label>
+        <label>Volume <input type="range" id="ck-volume" min="0" max="1" step="0.05" /></label>
+        <label>Beat 1 (accent) <input type="range" id="ck-accent" min="0" max="1" step="0.05" /></label>
+        <label>Other beats <input type="range" id="ck-beat" min="0" max="1" step="0.05" /></label>
+        <label>Subdivisions <input type="range" id="ck-sub" min="0" max="1" step="0.05" /></label>
+        <label class="ck-wide">Timing nudge <span id="ck-latency-val" class="ck-val"></span>
+          <input type="range" id="ck-latency" min="-150" max="150" step="5" />
+          <span class="ck-hint">Click late in your ears (e.g. Bluetooth)? Move left. Early? Move right.</span>
+        </label>
+      </div>
+      <div class="click-check">
+        <h3>Click check</h3>
+        <p class="modal-note">Plug in what you use on stage (splitter, in-ears), then test: a count-in and two bars at <span id="ck-test-bpm">120</span> BPM with the settings above.</p>
+        <div class="ck-actions">
+          <button class="btn btn-go" id="ck-test">&#9654; Test the click</button>
+          <button class="btn" id="ck-reset">Reset to defaults</button>
+        </div>
+        <dl class="ck-diag" id="ck-diag"></dl>
+      </div>
     </div>
   </div>
 
@@ -293,6 +400,7 @@
   </template>
 
   <script src="/timing.js"></script>
+  <script src="/quick.js"></script>
   <script src="/audio.js"></script>
   <script src="/sync.js"></script>
   <script src="/app.js"></script>

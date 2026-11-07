@@ -1,0 +1,16 @@
+{
+  "name": "SSP - Song and Setlist Planner",
+  "short_name": "SSP",
+  "description": "Song structures, setlists and a shared click for the band, on your own Wi-Fi.",
+  "start_url": "/#/live",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#16181d",
+  "theme_color": "#16181d",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

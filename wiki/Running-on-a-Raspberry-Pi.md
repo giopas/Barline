@@ -4,6 +4,21 @@ A laptop works, but it has to stay open, awake and plugged in for the whole show
 
 Any Raspberry Pi from the last few years is plenty (a Pi 3, 4, 5 or Zero 2 W). These steps assume you're comfortable typing a few commands; you do them once.
 
+## The one-command way
+
+Once SSP is on the Pi (steps 1 and 2 below), one command does steps 3 to 5 for you:
+
+```
+cd ~/ssp
+sudo ./launchers/pi/install.sh --hotspot SSP-Band "choose-a-password"
+```
+
+It starts SSP on every boot, on the plain address **`http://ssp.local/`** (no `:8420` to remember), and makes the Pi its own Wi-Fi called `SSP-Band`. Reboot, and from then on the Pi in your gig bag *is* the setup: plug it in, join `SSP-Band`, open `http://ssp.local/`. **Connect a device** inside SSP shows a QR code that joins the Wi-Fi, and another that opens SSP. Leave out `--hotspot …` to keep the Pi on your normal Wi-Fi. `--help` lists the other options (user, songs folder, port, name); running it again is safe.
+
+Turning the hotspot on takes the Pi off your home Wi-Fi. To get back on it for an update: `sudo nmcli connection down SSP-Hotspot` (and `up` to bring the hotspot back).
+
+The rest of this page is the same thing, step by step, for anyone who'd rather know what each piece does.
+
 ## 1. Set up the Pi
 
 Use Raspberry Pi Imager to write **Raspberry Pi OS Lite** to a microSD card. In the Imager's settings, set a username (these steps use `pi`), your Wi-Fi, turn on SSH, and set the hostname to `ssp`. Put the card in, power the Pi on, and from your computer:

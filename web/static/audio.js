@@ -62,18 +62,48 @@
     return accent ? clickSamples(1600, 0.9, r) : clickSamples(1000, 0.6, r);
   }
 
+  // Per-device click choices (0.10). Levels are 0..1 on top of the volume.
+  const DEFAULTS = {
+    sound: "wood", volume: 0.8, accent: 1, beat: 0.8, sub: 0.45,
+    subdivision: "none", voice: false, mode: "always", channel: "both", latencyMs: 0,
+  };
+  const VOICE = ["one", "two", "three", "four"];
+
   class Metronome {
     constructor() {
       this.ctx = null;
       this.gain = null;
       this.buffers = {};
+      this.voice = {};
       this.enabled = true;
-      this.sound = "wood";
-      this.volume = 0.8;
-      this.latencyMs = 0; // per-device nudge, e.g. for Bluetooth speakers
+      this.opts = { ...DEFAULTS };
       this.timer = null;
       this.job = null;
       this.onbeat = null;
+    }
+
+    // old names, still used around the app
+    get sound() { return this.opts.sound; }
+    set sound(v) { this.opts.sound = SOUNDS.includes(v) ? v : DEFAULTS.sound; }
+    get volume() { return this.opts.volume; }
+    get latencyMs() { return this.opts.latencyMs; }
+    set latencyMs(v) { this.opts.latencyMs = Number(v) || 0; }
+
+    // Change any of the options; unknown keys and bad values are ignored.
+    configure(changes) {
+      for (const [k, v] of Object.entries(changes || {})) {
+        if (!(k in DEFAULTS)) continue;
+        if (k === "sound") this.sound = v;
+        else if (k === "channel") this.opts.channel = ["left", "right"].includes(v) ? v : "both";
+        else if (k === "subdivision") this.opts.subdivision = ["8", "16", "triplet"].includes(String(v)) ? String(v) : "none";
+        else if (k === "mode") this.opts.mode = v === "countin" ? "countin" : "always";
+        else if (k === "voice") this.opts.voice = !!v;
+        else if (k === "latencyMs") this.opts.latencyMs = Math.max(-300, Math.min(300, Number(v) || 0));
+        else this.opts[k] = Math.max(0, Math.min(1, Number(v)));
+      }
+      if (this.gain) this.gain.gain.value = this.opts.volume;
+      this.route();
+      return { ...this.opts };
     }
 
     // Sound has been allowed (a tap created the audio engine). Safari
@@ -98,8 +128,8 @@
         this.ctx = new AC();
         const rate = this.ctx.sampleRate;
         this.gain = this.ctx.createGain();
-        this.gain.gain.value = this.volume;
-        this.gain.connect(this.ctx.destination);
+        this.gain.gain.value = this.opts.volume;
+        this.route();
         for (const s of SOUNDS) {
           for (const accent of [true, false]) {
             const data = samplesFor(s, accent, rate);
@@ -108,6 +138,7 @@
             this.buffers[`${s}:${accent ? 1 : 0}`] = buf;
           }
         }
+        this.loadVoice();
         // iOS can "interrupt" the engine (a call, Siri, another app);
         // pick it up again as soon as we're allowed
         document.addEventListener("visibilitychange", () => {
@@ -123,6 +154,40 @@
       return true;
     }
 
+    // The spoken count-in: four short recordings served with the app.
+    loadVoice() {
+      for (let i = 0; i < VOICE.length; i++) {
+        if (this.voice[i + 1]) continue;
+        fetch(`/voice/${VOICE[i]}.wav`)
+          .then((r) => r.arrayBuffer())
+          .then((data) => new Promise((ok, fail) => this.ctx.decodeAudioData(data, ok, fail)))
+          .then((buf) => (this.voice[i + 1] = buf))
+          .catch(() => {});
+      }
+    }
+
+    // Both ears, or only the left or right one -- with a Y-splitter into
+    // in-ears, a click in one ear can sit next to the band mix in the other.
+    route() {
+      if (!this.ctx || !this.gain) return;
+      try {
+        this.gain.disconnect();
+      } catch (err) {
+        /* not connected yet */
+      }
+      const ch = this.opts.channel;
+      const dest = this.ctx.destination;
+      if (ch === "both" || dest.maxChannelCount < 2) {
+        this.gain.connect(dest);
+        return;
+      }
+      if (!this.merger) {
+        this.merger = this.ctx.createChannelMerger(2);
+        this.merger.connect(dest);
+      }
+      this.gain.connect(this.merger, 0, ch === "left" ? 0 : 1);
+    }
+
     wake() {
       if (this.ctx && this.ctx.state !== "running" && this.ctx.state !== "closed") {
         this.ctx.resume().catch(() => {});
@@ -130,8 +195,7 @@
     }
 
     setVolume(v) {
-      this.volume = v;
-      if (this.gain) this.gain.gain.value = v;
+      this.configure({ volume: v });
     }
 
     // performance.now() milliseconds -> AudioContext seconds
@@ -150,15 +214,33 @@
       return ctx.currentTime + (perfMs - now) / 1000 - (ctx.outputLatency || 0);
     }
 
-    play(sound, accent, perfMs) {
+    // One sound at `perfMs`. kind: accent | beat | sub | voice (n = 1..4).
+    play(sound, kind, perfMs, n) {
       if (!this.unlocked || !this.enabled) return;
+      if (kind === true || kind === false) kind = kind ? "accent" : "beat"; // old play(sound, accent, t)
       if (this.ctx.state !== "running") this.wake();
-      const buf = this.buffers[`${sound}:${accent ? 1 : 0}`];
-      if (!buf) return;
+      let buf;
+      let level;
+      if (kind === "voice" && this.voice[n]) {
+        buf = this.voice[n];
+        level = 1;
+      } else {
+        const accent = kind === "accent" || (kind === "voice" && n === 1);
+        buf = this.buffers[`${sound}:${accent ? 1 : 0}`];
+        level = kind === "sub" ? this.opts.sub : accent ? this.opts.accent : this.opts.beat;
+      }
+      if (!buf || level <= 0) return;
       const src = this.ctx.createBufferSource();
       src.buffer = buf;
-      src.connect(this.gain);
-      const when = Math.max(this.ctx.currentTime, this.audioTimeFor(perfMs + this.latencyMs));
+      let out = this.gain;
+      if (level < 1) {
+        const g = this.ctx.createGain();
+        g.gain.value = level;
+        g.connect(this.gain);
+        out = g;
+      }
+      src.connect(out);
+      const when = Math.max(this.ctx.currentTime, this.audioTimeFor(perfMs + this.opts.latencyMs));
       src.start(when);
     }
 
@@ -166,29 +248,29 @@
      * Run a timeline. `startPerfMs` is when its first bar starts, on this
      * device's performance.now() clock (already corrected for the server's
      * clock by the caller). `soundFor(bar)` picks the sound per bar, so a
-     * "sticks" count-in can sound different from the song.
+     * "sticks" count-in can sound different from the song. What actually
+     * sounds (subdivisions, spoken count-in, count-in only) comes from the
+     * shared rules in timing.js, so it matches the downloadable .wav.
      */
     run(timeline, startPerfMs, soundFor) {
       this.stop();
-      const beats = [];
-      for (const bar of timeline.bars) {
-        for (let b = 0; b < bar.beats; b++) beats.push({ t: bar.start_ms + b * bar.beat_ms, accent: b === 0, bar, beat: b });
-      }
-      this.job = { beats, next: 0, startPerfMs, soundFor };
+      const T = root.SSPTiming;
+      const events = T.clickEvents(timeline, this.opts);
+      this.job = { events, bars: timeline.bars, next: 0, startPerfMs, soundFor };
       const tick = () => {
         const job = this.job;
         if (!job) return;
         const horizon = performance.now() + LOOKAHEAD_MS;
-        while (job.next < job.beats.length && job.startPerfMs + job.beats[job.next].t <= horizon) {
-          const bt = job.beats[job.next];
-          const at = job.startPerfMs + bt.t;
+        while (job.next < job.events.length && job.startPerfMs + job.events[job.next].t <= horizon) {
+          const ev = job.events[job.next];
+          const at = job.startPerfMs + ev.t;
           if (at >= performance.now() - 30) {
-            const sound = job.soundFor ? job.soundFor(bt.bar) : this.sound;
-            if (sound) this.play(sound, bt.accent, at);
+            const sound = job.soundFor ? job.soundFor(job.bars[ev.bar]) : this.opts.sound;
+            if (sound) this.play(sound, ev.kind, at, ev.n);
           }
           job.next++;
         }
-        if (job.next >= job.beats.length) this.job = null;
+        if (job.next >= job.events.length) this.job = null;
       };
       tick();
       this.timer = setInterval(tick, TICK_MS);
@@ -200,6 +282,20 @@
       this.timer = null;
     }
 
+    // What the click check shows: is the engine really making sound?
+    diagnostics() {
+      const c = this.ctx;
+      return {
+        engine: c ? c.state : "not started (tap to enable)",
+        sampleRate: c ? c.sampleRate : null,
+        outputLatencyMs: c && c.outputLatency ? Math.round(c.outputLatency * 1000) : null,
+        baseLatencyMs: c && c.baseLatency ? Math.round(c.baseLatency * 1000) : null,
+        channels: c ? c.destination.maxChannelCount : null,
+        voiceLoaded: Object.keys(this.voice).length === VOICE.length,
+        silentModeSafe: !!(navigator.audioSession && navigator.audioSession.type === "playback"),
+      };
+    }
+
     playClip(url) {
       const a = new Audio(url);
       a.play().catch(() => {});
@@ -207,5 +303,5 @@
     }
   }
 
-  root.SSPAudio = { Metronome, SOUNDS, RATE, samplesFor };
+  root.SSPAudio = { Metronome, SOUNDS, RATE, DEFAULTS, samplesFor };
 })(window);

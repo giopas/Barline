@@ -19,12 +19,18 @@ moving through the song together, each with its own click.
 - **Everyone edits the same copy.** Change a bar count on the laptop and the
   singer's phone updates a moment later. No refresh, no "which version is
   the latest".
-- **Build setlists** and switch between songs instantly.
+- **Build setlists** and switch between songs instantly. In a hurry? Paste
+  your set ("Song A - 124", one per line) or tap a tempo in: a title and a
+  BPM is all the click needs.
 - **Play it live.** Anyone can press Start -- usually the drummer. Every
   screen follows the song bar by bar, shows what's coming next, and puts
-  *your* hints up front. Each device plays its own metronome click in time.
+  *your* hints up front. Each device plays its own metronome click in time,
+  set up its own way: subdivisions, a spoken count-in, one ear only for a
+  Y-splitter into in-ears, a click for count-ins only. Drummers get a big
+  view (tempo, bar, bars to the next part), and a device keeps playing on
+  its own if the server drops mid-song.
 - **Take it with you.** Download a practice click track (`.wav`) that follows
-  the song's tempo changes, print a chart for the whole band or one player,
+  the song's tempo changes (or a `.zip` of them for a whole setlist), print a chart for the whole band or one player,
   or export a song (voice memos included) as a single file for another band.
 
 | On the drummer's tablet | On the bassist's phone |
@@ -32,6 +38,8 @@ moving through the song together, each with its own click.
 | ![Live view on a tablet, as the drummer](screenshots/07-live-tablet-drums.png) | ![Live view on a phone, as the bass player](screenshots/08-live-phone-bass.png) |
 
 ![One tap on the tablet: tablet and phone follow the song together](screenshots/live.gif)
+
+Coming from a metronome app? See [For Drummers](https://github.com/giopas/SSP---Song-and-Setlist-Planner/wiki/For-Drummers).
 
 ## How it works
 
@@ -73,7 +81,7 @@ On a laptop, open the control panel:
 Want to look around first? **Try the demo band** (in the control panel, or
 at the bottom of the sidebar in the app itself, where it switches every
 connected device at once) loads a fictional band
-(The Paper Lanterns) with six songs and two setlists. It's a throwaway
+(The Paper Lanterns) with seven songs and two setlists. It's a throwaway
 copy, so nothing you do there sticks. From a terminal:
 `python3 server/app.py --demo`.
 
@@ -108,6 +116,9 @@ moving songs between setups, and running SSP on a Raspberry Pi.
 - `python3 tools/make_demo_data.py` regenerates `demo/`;
   `python3 tools/shots.py` retakes every screenshot and GIF in
   `screenshots/` from the demo band.
+- `tools/make_voice.sh` rebuilds the spoken count-in (`web/static/voice/`).
+- `launchers/pi/install.sh` sets up a Raspberry Pi in one command (see the
+  wiki's "Running on a Raspberry Pi").
 - No build step: the web app in `web/static/` is plain HTML, CSS and
   JavaScript.
 

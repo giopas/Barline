@@ -4,6 +4,14 @@ This is where the band agrees, in writing, how a song actually goes, so nobody's
 
 ![Adding a section, setting its bars and tempo, aiming a hint, duplicating it](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/planning.gif)
 
+## The quick way: just a title and a tempo
+
+The **+** next to *Songs* opens **Add songs**. A title and a tempo is enough for the click: SSP makes one section long enough for the length you give (four minutes if you don't). **Tap** sets the tempo by tapping along. **Add and plan sections** takes you straight to the full editor; **Add song** clears the form for the next one.
+
+**Paste a list** takes a whole set at once, one song per line: `Harbour Lights - 124`, `Paper Boats, 96, 3:45`, or two or three columns pasted from a spreadsheet. It shows what it understood before adding anything, reuses songs you already have, and can make the setlist in the same order. The editor has a **Tap** button next to *Default BPM* too.
+
+![Pasting a set](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/15-quick-add.png)
+
 ## Sections
 
 A song is a list of sections, in order: intro, verse, chorus, bridge, outro, whatever your song has. Click **+ Add section** and give it a name. The sections show up as a row of colored blocks along the top, one color each, so you can see the shape of the song at a glance. Click a block to jump to that section.

@@ -25,6 +25,14 @@ To start somewhere other than the top, tap a section in the list (or in the colo
 |---|---|
 | ![Tablet during a song](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/07-live-tablet-drums.png) | ![Phone during a song](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/08-live-phone-bass.png) |
 
+## Big view (drummers)
+
+**Big view** at the top swaps the song list for three huge numbers: the tempo, the bar you're on in this part ("3/8"), and how many bars until the next part (yellow when it's two or fewer). It's on by itself on a device held by a drummer, and anyone can switch it on or off.
+
+## Solo: just this device
+
+**With the band** at the top switches to **Solo: this device only**. Start, Stop and the song arrows then only work on your own device, from its own copy of the songs: for practising a song while the others tune, or when there's no server. Tap it again to rejoin the band. If the server drops off mid-song, a device switches to solo by itself and keeps playing (see [[For Drummers]]).
+
 ## Count-ins on screen
 
 During a count-in the screen turns yellow and says which section it's counting into, with the beat lit up. A count-in in the middle of a song (after a stop, say) shows the same way.
@@ -50,6 +58,10 @@ The click only plays while the device's screen is on and SSP is in front. Phones
 ## Foot pedals and keyboards
 
 In the live view, the space bar starts and stops, and the arrow keys (or Page Up/Page Down) move through a setlist. That's what most Bluetooth page-turner pedals send, so a pedal works as a hands-free start button.
+
+## Make it an app
+
+On iPad/iPhone: Safari's Share → **Add to Home Screen**. On Android: Chrome's menu → **Add to Home screen**. SSP gets its own icon and opens full-screen, straight into the live view.
 
 ## Before the show
 

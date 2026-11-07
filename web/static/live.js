@@ -32,20 +32,41 @@
     lastBeat: -1,
     lastSection: null,
     showAll: S.prefs.get("showAllHints", false),
+    big: S.prefs.get("bigView", null), // null: not chosen yet -> on for drummers
     wakeLock: null,
   };
 
   // -- data ---------------------------------------------------------------
+  // In solo mode songs come from this device's copy (S.bundle, kept fresh
+  // while the server is reachable), so it keeps working without one.
+
+  async function getSong(id) {
+    if (live.solo) {
+      const s = S.bundleSong(id);
+      if (!s) throw new Error("not on this device");
+      return s;
+    }
+    return S.api("GET", `/songs/${id}`);
+  }
+
+  async function getSetlist(id) {
+    if (live.solo) {
+      const s = S.bundleSetlist(id);
+      if (!s) throw new Error("not on this device");
+      return s;
+    }
+    return S.api("GET", `/setlists/${id}`);
+  }
 
   async function loadCued() {
     const t = live.transport;
     try {
-      live.song = t.song_id ? await S.api("GET", `/songs/${t.song_id}`) : null;
+      live.song = t.song_id ? await getSong(t.song_id) : null;
     } catch (err) {
       live.song = null;
     }
     try {
-      live.setlist = t.setlist_id ? await S.api("GET", `/setlists/${t.setlist_id}`) : null;
+      live.setlist = t.setlist_id ? await getSetlist(t.setlist_id) : null;
     } catch (err) {
       live.setlist = null;
     }
@@ -66,6 +87,144 @@
       else out.others.push(h);
     }
     return out;
+  }
+
+  // -- solo: this device runs its own transport ------------------------------
+  // Same shape and rules as server/transport.py (cue, start with a lead
+  // time, stop, next/prev, end of song cues the next one in the setlist),
+  // but on this device's clock only. Used when the drummer practises alone,
+  // or automatically when the server drops off mid-song.
+
+  const solo = {
+    run: 0,
+    timer: null,
+    state: { state: "stopped", song_id: null, setlist_id: null, start_section_id: null, started_at: null, timeline: null, driver: null, run: 0 },
+    publish(extra) {
+      applyTransport({ ...this.state, ...(extra || {}) });
+    },
+    stopLocked() {
+      clearTimeout(this.timer);
+      this.timer = null;
+      Object.assign(this.state, { state: "stopped", started_at: null, timeline: null, driver: null });
+    },
+    songsOf(setlistId) {
+      const sl = S.bundleSetlist(setlistId);
+      return sl ? sl.songs.filter((id) => S.bundleSong(id)) : [];
+    },
+    cue(songId, setlistId) {
+      this.stopLocked();
+      Object.assign(this.state, { song_id: songId || null, setlist_id: setlistId || null, start_section_id: null });
+      this.publish();
+    },
+    start(body) {
+      const songId = body.song_id || this.state.song_id;
+      const song = songId && S.bundleSong(songId);
+      if (!song) throw new Error("that song isn't on this device");
+      const tl = Timing.build(song, body.start_section_id);
+      if (!tl.bars.length) throw new Error("this song has no bars to play yet");
+      this.stopLocked();
+      this.run += 1;
+      this.state = {
+        state: "running", song_id: songId, setlist_id: body.setlist_id !== undefined ? body.setlist_id : this.state.setlist_id,
+        start_section_id: body.start_section_id || null, started_at: Sync.serverNow() + 1500, timeline: tl,
+        driver: { client_id: Sync.clientId, name: "you" }, run: "solo-" + this.run,
+      };
+      this.arm();
+      this.publish();
+    },
+    // finish at the end of the timeline (also used to adopt a server run)
+    arm() {
+      clearTimeout(this.timer);
+      const t = this.state;
+      const left = t.started_at + t.timeline.total_ms - Sync.serverNow();
+      const run = t.run;
+      this.timer = setTimeout(() => this.finish(run), Math.max(0, left) + 50);
+    },
+    finish(run) {
+      if (this.state.run !== run) return;
+      const { song_id: songId, setlist_id: setlistId } = this.state;
+      this.stopLocked();
+      const ids = setlistId ? this.songsOf(setlistId) : [];
+      const i = ids.indexOf(songId);
+      if (i >= 0 && i + 1 < ids.length) this.state.song_id = ids[i + 1];
+      this.state.start_section_id = null;
+      this.publish({ finished: true });
+    },
+    step(dir) {
+      const ids = this.songsOf(this.state.setlist_id);
+      if (!ids.length) return;
+      const i = ids.indexOf(this.state.song_id);
+      this.cue(ids[Math.max(0, Math.min(ids.length - 1, i + dir))], this.state.setlist_id);
+    },
+    command(body) {
+      if (body.action === "cue") return this.cue(body.song_id, body.setlist_id);
+      if (body.action === "start") return this.start(body);
+      if (body.action === "stop") {
+        this.stopLocked();
+        return this.publish();
+      }
+      if (body.action === "next" || body.action === "prev") return this.step(body.action === "next" ? 1 : -1);
+      return null;
+    },
+  };
+
+  // Every transport button goes through here: to the server, or to this
+  // device's own transport in solo mode.
+  async function command(body) {
+    if (live.solo) return solo.command(body);
+    return S.api("POST", "/transport", body);
+  }
+
+  // Switch solo on (taking over whatever is cued or running right now, so a
+  // song in progress plays on) or off (back to the band's shared run).
+  async function setSolo(on, why) {
+    if (on === live.solo) return;
+    live.solo = on;
+    live.soloWhy = on ? why || "chosen" : null;
+    document.body.classList.toggle("is-solo", on);
+    if (on) {
+      const t = live.transport;
+      solo.stopLocked();
+      solo.state = { ...solo.state, song_id: t.song_id || null, setlist_id: t.setlist_id || null, start_section_id: t.start_section_id || null };
+      if (t.state === "running" && t.timeline) {
+        Object.assign(solo.state, { state: "running", started_at: t.started_at, timeline: t.timeline, driver: t.driver, run: t.run });
+        solo.arm();
+      }
+      live.lostClock = false;
+      renderSolo();
+      renderControls();
+      return;
+    }
+    solo.stopLocked();
+    renderSolo();
+    try {
+      await applyTransport(await S.api("GET", "/transport"));
+      live.lastHeard = performance.now();
+    } catch (err) {
+      S.toast("The server is still out of reach.", "warn");
+      live.solo = true;
+      live.soloWhy = "lost";
+      document.body.classList.add("is-solo");
+      renderSolo();
+    }
+  }
+
+  function renderSolo() {
+    const b = $("live-solo");
+    b.textContent = live.solo ? "Solo: this device only" : "With the band";
+    b.classList.toggle("active", live.solo);
+    b.title = live.solo
+      ? "Start/stop here only affects this device. Tap to rejoin the band."
+      : "Tap to play on your own (practice, or no server): Start/Stop only affect this device.";
+    const note = $("live-solo-note");
+    if (live.solo && live.soloWhy === "lost") {
+      note.textContent = Sync.connected
+        ? "The server is back. You'll rejoin the band when this song stops."
+        : "Server out of reach: playing on, on this device only.";
+      note.classList.remove("hidden");
+    } else {
+      note.classList.add("hidden");
+    }
   }
 
   // -- static parts (redrawn when the song or setlist changes) --------------
@@ -204,12 +363,12 @@
       wrap.appendChild(ul);
     };
     mk("Setlists", S.state.setlists.map((x) => ({ label: x.name, id: x.id })), async (it) => {
-      const sl = await S.api("GET", `/setlists/${it.id}`);
+      const sl = await getSetlist(it.id);
       const first = sl.songs.find((id) => S.state.songs.some((s) => s.id === id));
-      if (first) S.api("POST", "/transport", { action: "cue", song_id: first, setlist_id: sl.id });
+      if (first) command({ action: "cue", song_id: first, setlist_id: sl.id });
     });
     mk("Songs", S.state.songs.map((x) => ({ label: x.title, id: x.id })), (it) =>
-      S.api("POST", "/transport", { action: "cue", song_id: it.id }));
+      command({ action: "cue", song_id: it.id }));
     return wrap;
   }
 
@@ -219,6 +378,37 @@
     live.startSection = first && first.id === sectionId ? null : sectionId;
     renderChart();
     renderIdle();
+  }
+
+  // -- drummer ("big") view ------------------------------------------------------
+  // Tempo, where you are in the section and what's coming, readable from
+  // the drum stool. On by default when this device belongs to a drummer.
+
+  function bigOn() {
+    if (live.big !== null) return live.big;
+    const p = S.playerById(S.state.me);
+    return !!(p && p.role === "Drums");
+  }
+
+  function renderBig() {
+    const on = bigOn();
+    $("live-view").classList.toggle("big", on);
+    $("live-big").classList.toggle("active", on);
+  }
+
+  $("live-big").addEventListener("click", () => {
+    live.big = !bigOn();
+    S.prefs.set("bigView", live.big);
+    renderBig();
+  });
+
+  function setStats(bpm, bar, barKey, next, nextKey, soon) {
+    $("st-bpm").textContent = bpm;
+    $("st-bar").textContent = bar;
+    $("st-bar-k").textContent = barKey;
+    $("st-next").textContent = next;
+    $("st-next-k").textContent = nextKey;
+    $("now-stats").classList.toggle("soon", !!soon);
   }
 
   // -- the "now" panel ----------------------------------------------------------
@@ -375,6 +565,7 @@
       $("now-kicker").textContent = "Live view";
       $("now-label").textContent = "Nothing cued";
       $("now-sub").textContent = "";
+      setStats("–", "–", "bar", "–", "next");
       $("now-next").textContent = "";
       setBeats(-1);
       renderNowBars(null);
@@ -389,6 +580,11 @@
       ? `${live.startSection ? "starting from bar " + Timing.sectionStartBar(song, start.id) : "from the top"} · ${start.bpm || song.default_bpm} BPM`
       : "Add sections in the editor first.";
     $("now-next").textContent = "Press Start, or tap a section to start there.";
+    if (start) {
+      const left = Timing.build(song, start.id).total_ms;
+      setStats(String(start.bpm || song.default_bpm), String(start.bars), `bars of ${start.label}`,
+        Timing.fmtDuration(left), live.startSection ? "to the end" : "song length");
+    } else setStats("–", "–", "bar", "–", "next");
     setBeats(-1);
     renderNowBars(start, start ? secs.indexOf(start) : 0, 0, true);
     renderHintsPanel(true);
@@ -481,6 +677,14 @@
       $("now-next").textContent = `Last ${left === 1 ? "bar" : left + " bars"}`;
       $("now-next").classList.add("soon");
     }
+    {
+      const nb = j < tl.bars.length ? tl.bars[j] : null;
+      const away = nb ? j - idx : tl.bars.length - idx;
+      const tempo = nb && nb.bpm !== bar.bpm ? ` · ${Math.round(nb.bpm)} BPM` : "";
+      setStats(String(Math.round(bar.bpm)), `${bar.bar_in_section}/${bar.section_bars}`, bar.count_in ? "count-in" : `bar of ${bar.label}`,
+        String(away), nb ? `bar${away === 1 ? "" : "s"} to ${nb.label}${nb.count_in ? " (count-in)" : ""}${tempo}` : `bar${away === 1 ? "" : "s"} left`,
+        away <= 2);
+    }
     renderNowBars(section, sIndex, bar.bar_in_section, bar.count_in);
     if (live.lastSection !== bar.section_id) {
       live.lastSection = bar.section_id;
@@ -515,12 +719,19 @@
   // couple of bars (Wi-Fi gone, phone asleep), silence the click and say
   // so, rather than click on after the band has stopped.
   function watchdog() {
+    if (live.solo) return;
     const t = live.transport;
     if (t.state !== "running" || !t.timeline) return;
     const bar = t.timeline.bars[0];
     const limit = Math.max(5000, bar ? bar.beat_ms * bar.beats * 2.5 : 5000);
     const quiet = performance.now() - (live.lastHeard || 0);
-    if (quiet > limit && !live.lostClock) {
+    if (quiet > limit && !live.lostClock && !live.solo) {
+      if (S.prefs.get("keepPlaying", true) && !document.hidden) {
+        // the drummer keeps going: this device carries on alone to the
+        // end of the song (and on through the setlist) until the server is back
+        setSolo(true, "lost");
+        return;
+      }
       live.lostClock = true;
       metronome.stop();
       $("live-driver").textContent = "Lost touch with the server: click paused";
@@ -558,6 +769,8 @@
     $("live-start").disabled = !live.song;
     const d = live.transport.driver;
     $("live-driver").textContent = running && d ? `Started by ${d.client_id === Sync.clientId ? "you" : d.name}` : "";
+    $("live-prev").title = live.solo ? "Previous song (this device only)" : "Previous song";
+    renderSolo();
     renderClick();
   }
 
@@ -566,7 +779,6 @@
     if (!metronome.unlocked) b.textContent = "🔈 Click: tap to enable";
     else b.textContent = metronome.enabled ? "🔊 Click on" : "🔇 Click off";
     b.classList.toggle("active", metronome.unlocked && metronome.enabled);
-    $("live-sound").value = metronome.sound;
     $("live-volume").value = metronome.volume;
   }
 
@@ -584,23 +796,17 @@
     setTimeout(renderClick, 50);
   });
 
-  $("live-sound").addEventListener("change", (ev) => {
-    metronome.sound = ev.target.value;
-    S.prefs.set("sound", metronome.sound);
-    const t = live.transport;
-    if (t.state === "running" && metronome.enabled) clickOn();
+  $("live-volume").addEventListener("input", (ev) => {
+    S.saveClick({ volume: parseFloat(ev.target.value) });
   });
 
-  $("live-volume").addEventListener("input", (ev) => {
-    metronome.setVolume(parseFloat(ev.target.value));
-    S.prefs.set("volume", metronome.volume);
-  });
+  $("live-click-settings").addEventListener("click", () => S.openClickSettings());
 
   async function start() {
     if (!live.song) return;
     if (!metronome.unlocked && metronome.enabled) metronome.unlock(); // this tap is our one chance on iOS
     try {
-      await S.api("POST", "/transport", {
+      await command({
         action: "start", song_id: live.song.id, setlist_id: live.setlist ? live.setlist.id : null,
         start_section_id: live.startSection,
       });
@@ -611,7 +817,7 @@
 
   async function stop() {
     try {
-      await S.api("POST", "/transport", { action: "stop" });
+      await command({ action: "stop" });
     } catch (err) {
       S.toast("Couldn't stop: " + err.message, "error");
     }
@@ -619,8 +825,9 @@
 
   $("live-start").addEventListener("click", start);
   $("live-stop").addEventListener("click", stop);
-  $("live-prev").addEventListener("click", () => S.api("POST", "/transport", { action: "prev" }));
-  $("live-next").addEventListener("click", () => S.api("POST", "/transport", { action: "next" }));
+  $("live-prev").addEventListener("click", () => command({ action: "prev" }));
+  $("live-next").addEventListener("click", () => command({ action: "next" }));
+  $("live-solo").addEventListener("click", () => setSolo(!live.solo, "chosen"));
   $("live-exit").addEventListener("click", () => {
     S.go(live.song ? `#/song/${live.song.id}` : "#/");
   });
@@ -634,27 +841,72 @@
       if (live.transport.state === "running") stop();
       else start();
     } else if ((ev.key === "ArrowRight" || ev.key === "PageDown") && live.setlist && live.transport.state !== "running") {
-      S.api("POST", "/transport", { action: "next" });
+      command({ action: "next" });
     } else if ((ev.key === "ArrowLeft" || ev.key === "PageUp") && live.setlist && live.transport.state !== "running") {
-      S.api("POST", "/transport", { action: "prev" });
+      command({ action: "prev" });
     }
   });
 
+  // Keep the screen on in the live view. The proper way (Wake Lock) only
+  // works on https/localhost; on the band's plain-http Wi-Fi an iPad or
+  // Android tablet would dim and lock. The fallback is the long-standing
+  // trick of a tiny, muted, looping video, which browsers treat as "someone
+  // is watching". It needs a tap to start, so every Start/click tap retries.
   async function keepAwake(on) {
+    if (on && !S.prefs.get("keepAwake", true)) on = false;
     try {
-      if (on && !live.wakeLock && navigator.wakeLock) live.wakeLock = await navigator.wakeLock.request("screen");
+      if (on && !live.wakeLock && navigator.wakeLock && window.isSecureContext) {
+        live.wakeLock = await navigator.wakeLock.request("screen");
+        live.wakeLock.addEventListener("release", () => (live.wakeLock = null));
+      }
       if (!on && live.wakeLock) {
         await live.wakeLock.release();
         live.wakeLock = null;
       }
     } catch (err) {
-      live.wakeLock = null; // only on https/localhost; on plain LAN http the device's own setting rules
+      live.wakeLock = null;
     }
+    const v = awakeVideo();
+    if (on && !live.wakeLock) v.play().catch(() => {}); // refused until a tap: tried again on the next one
+    else v.pause();
   }
+
+  function awakeVideo() {
+    if (!live.awakeVideo) {
+      const v = document.createElement("video");
+      v.src = "/keepawake.mp4";
+      v.muted = true;
+      v.loop = true;
+      v.playsInline = true;
+      v.setAttribute("playsinline", "");
+      v.setAttribute("muted", "");
+      v.setAttribute("aria-hidden", "true");
+      v.className = "keep-awake";
+      document.body.appendChild(v);
+      live.awakeVideo = v;
+    }
+    return live.awakeVideo;
+  }
+
+  // any tap in the live view is a chance to (re)start the keep-awake video
+  $("live-view").addEventListener("pointerup", () => {
+    if (live.visibleNow) keepAwake(true);
+  });
 
   // -- the outside world ----------------------------------------------------------
 
   async function applyTransport(t) {
+    // went solo because the server dropped: rejoin when the song is over
+    if (live.solo && live.soloWhy === "lost" && Sync.connected && t && t.state !== "running") {
+      live.solo = false;
+      document.body.classList.remove("is-solo");
+      try {
+        t = await S.api("GET", "/transport");
+      } catch (err) {
+        live.solo = true;
+        document.body.classList.add("is-solo");
+      }
+    }
     const prevSong = live.transport.song_id;
     const prevRun = live.transport.run;
     const wasRunning = live.transport.state === "running";
@@ -686,7 +938,15 @@
     renderControls();
   }
 
-  Sync.on("transport", (t) => applyTransport(t));
+  Sync.on("transport", (t) => {
+    if (!live.solo) applyTransport(t);
+  });
+  // the server came back after we went solo on our own: rejoin once idle
+  Sync.on("status", (ok) => {
+    if (!live.solo || live.soloWhy !== "lost") return;
+    renderSolo();
+    if (ok && live.transport.state !== "running") setSolo(false);
+  });
   // Positions are worked out locally from the shared clock; the server's
   // per-bar message is the heartbeat that says "the run is still on".
   Sync.on("position", () => heard());
@@ -702,6 +962,10 @@
       return;
     }
     if (!live.visibleNow) return;
+    if (live.solo) {
+      clickOn();
+      return;
+    }
     await Sync.syncClock(4);
     try {
       const t = await S.api("GET", "/transport");
@@ -721,6 +985,7 @@
   window.SSPLive = {
     async visible(v) {
       live.visibleNow = v;
+      renderBig();
       keepAwake(v);
       if (!v) {
         stopRunning();
@@ -735,8 +1000,17 @@
       renderControls();
     },
     transport: applyTransport,
+    song: () => live.song,
+    keepAwake: (on) => keepAwake(on && live.visibleNow),
+    awake: () => !!live.wakeLock || !!(live.awakeVideo && !live.awakeVideo.paused),
+    // click settings changed on this device: a running click picks them up
+    clickChanged() {
+      renderClick();
+      if (live.transport.state === "running" && metronome.enabled) clickOn();
+    },
     async refresh() {
       if (!live.visibleNow) return;
+      renderBig();
       if (live.setlist) {
         try {
           live.setlist = await S.api("GET", `/setlists/${live.setlist.id}`);

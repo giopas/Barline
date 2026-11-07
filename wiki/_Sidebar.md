@@ -5,5 +5,6 @@
 - [[Planning a Song]]
 - [[Tablet on Stage]]
 - [[Metronome and Click Tracks]]
+- [[For Drummers]]
 - [[Printing and Moving Songs]]
 - [[Running on a Raspberry Pi]]

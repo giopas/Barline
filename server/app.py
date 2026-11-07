@@ -353,6 +353,8 @@ class Handler(BaseHTTPRequestHandler):
     static_root: str = None
     port: int = DEFAULT_PORT
     log_hook = None  # optional callable(str); set by the launcher GUI
+    wifi_ssid = None  # the band's own Wi-Fi (e.g. the Pi's hotspot), shown as a "join" QR code
+    wifi_password = None
 
     # -- helpers ------------------------------------------------------------
     def _origin(self):
@@ -471,14 +473,18 @@ class Handler(BaseHTTPRequestHandler):
                 self.hub.set_player(str(body.get("client", ""))[:40], body.get("player_id"))
                 return self._send_json(200, {"ok": True})
             if route == ["connect"] and method == "GET":
-                return self._send_json(200, {
-                    "port": self.port,
-                    "addresses": [f"http://{ip}:{self.port}/" for ip in local_addresses()],
-                })
+                addresses = [_base_url(ip, self.port) for ip in local_addresses()]
+                if mdns_name():
+                    addresses.append(_base_url(mdns_name(), self.port))
+                wifi = None
+                if self.wifi_ssid:
+                    wifi = {"ssid": self.wifi_ssid, "password": self.wifi_password or "",
+                            "qr": qr.wifi_text(self.wifi_ssid, self.wifi_password)}
+                return self._send_json(200, {"port": self.port, "addresses": addresses, "wifi": wifi})
             if route == ["qr.svg"] and method == "GET":
                 text = q("text", "")
-                if not text.startswith("http://") or len(text.encode("utf-8")) > qr.MAX_BYTES:
-                    raise ValidationError("a QR code here is for an http:// address of up to 106 characters")
+                if not text.startswith(("http://", "WIFI:")) or len(text.encode("utf-8")) > qr.MAX_BYTES:
+                    raise ValidationError("a QR code here is for an http:// address or a Wi-Fi network, up to 106 characters")
                 return self._send(200, qr.svg(text).encode("utf-8"), "image/svg+xml")
 
             # -- transport ---------------------------------------------------
@@ -527,7 +533,8 @@ class Handler(BaseHTTPRequestHandler):
                 song = store.get_song(route[1])
                 if route[2] == "click.wav":
                     try:
-                        wav = click_track.song_wav(song, q("sound"), q("count_in", "1") != "0")
+                        wav = click_track.song_wav(song, q("sound"), q("count_in", "1") != "0",
+                                                   self._click_options(q), self._voice_dir())
                     except ValueError as exc:
                         raise ValidationError(str(exc)) from exc
                     sound = click_track.check_sound(q("sound"))
@@ -568,6 +575,21 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(200, store.list_setlists())
             if route == ["setlists"] and method == "POST":
                 return self._send_json(201, store.create_setlist(self._read_json_body(), origin))
+            if len(route) == 3 and route[0] == "setlists" and route[2] == "clicks.zip" and method == "GET":
+                setlist = store.get_setlist(route[1])
+                try:
+                    body = click_track.setlist_zip(setlist, store.songs, q("sound"), self._click_options(q),
+                                                   self._voice_dir())
+                except ValueError as exc:
+                    raise ValidationError(str(exc)) from exc
+                return self._download(body, "application/zip", _filename(f"{setlist['name']} click tracks", ".zip"))
+            if route == ["bundle"] and method == "GET":
+                # everything a device needs to keep playing on its own (solo mode)
+                return self._send_json(200, {
+                    "version": VERSION, "band": store.get_band(),
+                    "songs": [store.get_song(s["id"]) for s in store.list_songs()],
+                    "setlists": [store.get_setlist(s["id"]) for s in store.list_setlists()],
+                })
             if len(route) == 2 and route[0] == "setlists":
                 if method == "GET":
                     return self._send_json(200, store.get_setlist(route[1]))
@@ -586,6 +608,15 @@ class Handler(BaseHTTPRequestHandler):
             pass
         except Exception as exc:  # noqa: BLE001 - last-resort JSON error, never a stack trace to the client
             self._send_json(500, {"error": f"internal error: {exc}"})
+
+    @staticmethod
+    def _click_options(q) -> dict:
+        """Click choices from a download link's query string (same names as
+        the live click's settings)."""
+        return {k: q(k) for k in ("subdivision", "voice", "mode", "accent", "beat", "sub", "channel") if q(k) is not None}
+
+    def _voice_dir(self) -> str:
+        return os.path.join(self.static_root, "voice")
 
     # -- live event stream ------------------------------------------------
     def _stream_events(self, client_id: str, player_id, device: str) -> None:
@@ -639,18 +670,45 @@ class Handler(BaseHTTPRequestHandler):
             return
         with open(full_path, "rb") as f:
             body = f.read()
-        self._send(200, body, self._guess_content_type(full_path))
+        ctype = self._guess_content_type(full_path)
+        # Safari only plays a video (the keep-awake loop) from a server that
+        # answers byte ranges; one simple range is all it asks for.
+        rng = re.match(r"bytes=(\d*)-(\d*)$", self.headers.get("Range", "") or "")
+        if rng and (rng.group(1) or rng.group(2)):
+            size = len(body)
+            if rng.group(1):
+                start = int(rng.group(1))
+                end = min(int(rng.group(2)), size - 1) if rng.group(2) else size - 1
+            else:
+                start, end = max(0, size - int(rng.group(2))), size - 1
+            if start >= size or start > end:
+                return self._send(416, b"", ctype, {"Content-Range": f"bytes */{size}"})
+            return self._send(206, body[start:end + 1], ctype,
+                              {"Content-Range": f"bytes {start}-{end}/{size}", "Accept-Ranges": "bytes"})
+        self._send(200, body, ctype, {"Accept-Ranges": "bytes"})
 
     @staticmethod
     def _guess_content_type(path: str) -> str:
         for ext, ctype in ((".html", "text/html; charset=utf-8"), (".css", "text/css; charset=utf-8"),
                            (".js", "application/javascript; charset=utf-8"),
                            (".json", "application/json; charset=utf-8"), (".svg", "image/svg+xml"),
-                           (".png", "image/png"), (".ico", "image/x-icon"),
+                           (".png", "image/png"), (".ico", "image/x-icon"), (".wav", "audio/wav"),
+                           (".mp4", "video/mp4"),
                            (".webmanifest", "application/manifest+json")):
             if path.endswith(ext):
                 return ctype
         return "application/octet-stream"
+
+
+def _base_url(host: str, port: int) -> str:
+    return f"http://{host}/" if port == 80 else f"http://{host}:{port}/"
+
+
+def mdns_name():
+    """This computer's name on the local network ("ssp.local"), if it has a
+    plain one; phones and tablets can usually open it instead of a number."""
+    name = socket.gethostname().split(".")[0].strip().lower()
+    return f"{name}.local" if re.fullmatch(r"[a-z0-9-]{1,40}", name or "") else None
 
 
 class SSPServer(ThreadingHTTPServer):
@@ -729,8 +787,10 @@ def startup_banner(httpd, store: Store, data_dir: str, static_root: str) -> str:
         "  open on each phone/tablet (same Wi-Fi):",
     ]
     for ip in local_addresses():
-        lines.append(f"    http://{ip}:{port}/")
-    lines.append(f"    http://localhost:{port}/   (this computer)")
+        lines.append(f"    {_base_url(ip, port)}")
+    if mdns_name():
+        lines.append(f"    {_base_url(mdns_name(), port)}   (by name, on most devices)")
+    lines.append(f"    {_base_url('localhost', port)}   (this computer)")
     lines.append("  (local network only -- this server is never meant to be reachable over the internet)")
     return "\n".join(lines)
 
@@ -742,7 +802,13 @@ def main() -> None:
     parser.add_argument("--static", default=paths.default_static_dir())
     parser.add_argument("--demo", action="store_true",
                         help="serve a fresh, throwaway copy of the fictional demo band")
+    parser.add_argument("--wifi-name", default=os.environ.get("SSP_WIFI_NAME"),
+                        help="the band's Wi-Fi (e.g. a Pi hotspot): shown as a 'join the Wi-Fi' QR code")
+    parser.add_argument("--wifi-password", default=os.environ.get("SSP_WIFI_PASSWORD"))
+    parser.add_argument("--qr", action="store_true", help="print a QR code for the address in the terminal")
     args = parser.parse_args()
+    Handler.wifi_ssid = args.wifi_name or None
+    Handler.wifi_password = args.wifi_password or None
 
     data = prepare_demo() if args.demo else (args.data or paths.default_data_dir())
     if args.demo:
@@ -753,6 +819,10 @@ def main() -> None:
     # with --demo, --data (if given) is where "Back to my band" goes
     httpd, store = build_server(data, args.static, args.port, demo=args.demo, home_dir=args.data)
     print(startup_banner(httpd, store, data, args.static))
+    if args.qr:
+        addrs = local_addresses()
+        if addrs:
+            print(qr.terminal(_base_url(addrs[0], httpd.server_address[1])))
     if args.demo:
         print("  DEMO MODE: changes go to a temporary copy and are thrown away.")
     print("  Ctrl+C to stop.")

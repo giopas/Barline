@@ -61,3 +61,51 @@ class TimingParity(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+CLICK_JS = r"""
+const T = require(process.argv[1]);
+const cases = JSON.parse(require("fs").readFileSync(0, "utf8"));
+process.stdout.write(JSON.stringify(cases.map(([song, opts]) => T.clickEvents(T.build(song), opts))));
+"""
+
+CLICK_OPTIONS = [
+    {},
+    {"subdivision": "8"},
+    {"subdivision": "16", "voice": True},
+    {"subdivision": "triplet", "mode": "countin"},
+    {"voice": True, "mode": "countin"},
+    {"subdivision": "bogus", "voice": "nope", "mode": "?"},
+]
+
+
+@unittest.skipIf(shutil.which("node") is None, "node not installed")
+class ClickEventParity(unittest.TestCase):
+    def test_click_events_match(self):
+        cases = []
+        for path in sorted(glob.glob(os.path.join(ROOT, "demo", "songs", "*.json"))):
+            with open(path, encoding="utf-8") as f:
+                song = json.load(f)
+            for opts in CLICK_OPTIONS:
+                cases.append([song, opts])
+        res = subprocess.run(["node", "-e", CLICK_JS, os.path.join(ROOT, "web", "static", "timing.js")],
+                             input=json.dumps(cases), capture_output=True, text=True, check=True)
+        js = json.loads(res.stdout)
+        for (song, opts), got in zip(cases, js):
+            want = timeline.click_events(timeline.build(song), opts)
+            self.assertEqual(len(got), len(want), (song["title"], opts))
+            for a, b in zip(got, want):
+                self.assertAlmostEqual(a["t"], b["t"], places=6)
+                self.assertEqual((a["kind"], a["n"], a["bar"]), (b["kind"], b["n"], b["bar"]))
+
+    def test_voice_count_in_shape(self):
+        song = {"default_bpm": 120, "sections": [
+            {"id": "a", "order": 0, "bars": 2, "count_in": {"bars": 2, "style": "click"}}]}
+        ev = timeline.click_events(timeline.build(song), {"voice": True, "subdivision": "8"})
+        voice = [(e["bar"], e["n"]) for e in ev if e["kind"] == "voice"]
+        # "one . two ." then "one two three four"
+        self.assertEqual(voice, [(0, 1), (0, 2), (1, 1), (1, 2), (1, 3), (1, 4)])
+        # the song's own bars click with eighth notes
+        self.assertEqual(sum(1 for e in ev if e["kind"] == "sub"), 8)
+        only = timeline.click_events(timeline.build(song), {"mode": "countin"})
+        self.assertTrue(all(e["bar"] < 2 for e in only))

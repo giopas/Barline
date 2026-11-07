@@ -117,9 +117,24 @@ const state = {
 };
 
 const metronome = new window.SSPAudio.Metronome();
-metronome.sound = prefs.get("sound", "wood");
-metronome.setVolume(prefs.get("volume", 0.8));
+// this device's click (0.10: one saved object; older versions saved sound/volume alone)
+metronome.configure(prefs.get("clickopts", { sound: prefs.get("sound", "wood"), volume: prefs.get("volume", 0.8) }));
 metronome.enabled = prefs.get("click", true);
+
+function saveClick(changes) {
+  const opts = metronome.configure(changes);
+  prefs.set("clickopts", opts);
+  return opts;
+}
+
+// The same choices as a query string, for the .wav / .zip downloads.
+function clickQuery() {
+  const o = metronome.opts;
+  return new URLSearchParams({
+    sound: o.sound, subdivision: o.subdivision, voice: o.voice ? "1" : "0", mode: o.mode,
+    accent: o.accent, beat: o.beat, sub: o.sub, channel: o.channel,
+  }).toString();
+}
 
 const els = {
   sidebar: document.getElementById("sidebar"),
@@ -142,7 +157,6 @@ const els = {
   setlistSummary: document.getElementById("setlist-summary"),
   bandName: document.getElementById("band-name"),
   playerList: document.getElementById("player-list"),
-  clickSound: document.getElementById("click-sound"),
 };
 
 function playerById(id) {
@@ -410,6 +424,16 @@ async function openConnect() {
   };
   select.onchange = draw;
   draw();
+  const wifi = info.wifi;
+  document.getElementById("connect-wifi").classList.toggle("hidden", !wifi);
+  if (wifi) {
+    const b = document.getElementById("connect-wifi-btn");
+    b.textContent = `Wi-Fi: ${wifi.ssid}${wifi.password ? ` · password ${wifi.password}` : ""}`;
+    b.onclick = () => {
+      document.getElementById("connect-qr").src = "/api/qr.svg?text=" + encodeURIComponent(wifi.qr);
+      document.getElementById("connect-url").textContent = `Scan to join "${wifi.ssid}", then scan the address code.`;
+    };
+  }
   openModal("connect-modal");
 }
 
@@ -433,7 +457,6 @@ function renderSongView() {
   const song = state.currentSong;
   if (document.activeElement !== els.songTitle) els.songTitle.value = song.title;
   if (document.activeElement !== els.songBpm) els.songBpm.value = song.default_bpm;
-  els.clickSound.value = metronome.sound;
   renderSongShape();
   renderSections();
 }
@@ -489,10 +512,143 @@ els.songBpm.addEventListener("input", () => {
   }
 });
 
-document.getElementById("new-song-btn").addEventListener("click", async () => {
-  const song = await api("POST", "/songs", { title: "Untitled Song", default_bpm: 120 });
-  await refreshLists();
-  go(`#/song/${song.id}`);
+document.getElementById("new-song-btn").addEventListener("click", () => openQuick());
+document.getElementById("empty-quick-btn").addEventListener("click", () => openQuick());
+
+// -- tap tempo in the editor ----------------------------------------------------
+
+const songTap = new window.SSPQuick.TapTempo();
+document.getElementById("song-tap").addEventListener("pointerdown", (ev) => {
+  ev.preventDefault();
+  const bpm = songTap.tap(performance.now());
+  ev.currentTarget.textContent = bpm ? `Tap · ${bpm}` : "Tap…";
+  if (bpm && state.currentSong) {
+    els.songBpm.value = bpm;
+    state.currentSong.default_bpm = bpm;
+    renderSongShape();
+    preserveFocus(renderSections);
+    edited();
+  }
+});
+
+// -- quick add: one song, or a pasted list -------------------------------------
+
+const Quick = window.SSPQuick;
+const quickTap = new Quick.TapTempo();
+
+function openQuick(tab) {
+  for (const id of ["q-title", "q-bpm", "q-length"]) document.getElementById(id).value = "";
+  document.getElementById("q-added").textContent = "";
+  document.getElementById("q-tap").textContent = "Tap";
+  document.getElementById("q-setlist-name").value = `Set ${new Date().toLocaleDateString()}`;
+  showQuickTab(tab || "quick-one");
+  openModal("quick-modal");
+  setTimeout(() => document.getElementById(tab === "quick-list" ? "q-paste" : "q-title").focus(), 50);
+}
+
+function showQuickTab(id) {
+  for (const t of document.querySelectorAll("#quick-modal .tab")) t.classList.toggle("active", t.dataset.tab === id);
+  for (const p of document.querySelectorAll("#quick-modal .quick-pane")) p.classList.toggle("hidden", p.id !== id);
+}
+
+for (const t of document.querySelectorAll("#quick-modal .tab")) t.addEventListener("click", () => showQuickTab(t.dataset.tab));
+
+document.getElementById("q-tap").addEventListener("pointerdown", (ev) => {
+  ev.preventDefault();
+  const bpm = quickTap.tap(performance.now());
+  ev.currentTarget.textContent = bpm ? `Tap · ${bpm}` : "Tap…";
+  if (bpm) document.getElementById("q-bpm").value = bpm;
+});
+
+async function addQuickSong(plan) {
+  const title = document.getElementById("q-title").value.trim();
+  if (!title) return document.getElementById("q-title").focus();
+  const bpm = parseInt(document.getElementById("q-bpm").value, 10);
+  const lengthText = document.getElementById("q-length").value.trim();
+  const seconds = Quick.parseLength(lengthText);
+  if (lengthText && seconds === null) return toast("Length is minutes:seconds, like 3:45.", "warn");
+  if (document.getElementById("q-bpm").value && !(bpm >= 20 && bpm <= 400)) return toast("BPM is 20 to 400.", "warn");
+  try {
+    const song = await api("POST", "/songs", Quick.quickSong({ title, bpm: bpm || null, seconds }, newId));
+    await refreshLists();
+    if (plan) {
+      closeModal("quick-modal");
+      go(`#/song/${song.id}`);
+      return;
+    }
+    document.getElementById("q-added").textContent = `Added "${song.title}" (${song.default_bpm} BPM). Next one?`;
+    for (const id of ["q-title", "q-bpm", "q-length"]) document.getElementById(id).value = "";
+    document.getElementById("q-tap").textContent = "Tap";
+    document.getElementById("q-title").focus();
+  } catch (err) {
+    toast("Couldn't add it: " + err.message, "error");
+  }
+}
+
+document.getElementById("quick-one").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  addQuickSong(false);
+});
+document.getElementById("q-add-plan").addEventListener("click", () => addQuickSong(true));
+
+function quickEntries() {
+  const byTitle = new Map(state.songs.map((s) => [s.title.trim().toLowerCase(), s]));
+  return Quick.parseList(document.getElementById("q-paste").value).map((e) => ({ ...e, existing: byTitle.get(e.title.toLowerCase()) || null }));
+}
+
+function renderQuickPreview() {
+  const rows = quickEntries();
+  const table = document.getElementById("q-preview");
+  table.innerHTML = "";
+  if (rows.length) {
+    const head = el("tr");
+    for (const h of ["", "Title", "BPM", "Length", ""]) head.appendChild(el("th", "", h));
+    table.appendChild(head);
+  }
+  rows.forEach((r, i) => {
+    const tr = el("tr", r.existing ? "existing" : r.bpm ? "" : "warn");
+    tr.appendChild(el("td", "", String(i + 1)));
+    tr.appendChild(el("td", "", r.title));
+    tr.appendChild(el("td", "", r.existing ? String(r.existing.default_bpm) : r.bpm ? String(r.bpm) : "120?"));
+    tr.appendChild(el("td", "", r.existing ? "" : r.seconds ? Timing.fmtDuration(r.seconds * 1000) : "4:00"));
+    tr.appendChild(el("td", "", r.existing ? "already here" : r.bpm ? "new" : "new, no tempo found"));
+    table.appendChild(tr);
+  });
+  const fresh = rows.filter((r) => !r.existing).length;
+  const btn = document.getElementById("q-list-add");
+  btn.disabled = !rows.length;
+  const mk = document.getElementById("q-make-setlist").checked;
+  btn.textContent = !rows.length ? "Add songs"
+    : fresh ? `Add ${fresh} song${fresh === 1 ? "" : "s"}${mk ? " and the setlist" : ""}` : mk ? "Make the setlist" : "Nothing new to add";
+  if (!fresh && !mk) btn.disabled = true;
+}
+
+document.getElementById("q-paste").addEventListener("input", renderQuickPreview);
+document.getElementById("q-make-setlist").addEventListener("change", renderQuickPreview);
+
+document.getElementById("q-list-add").addEventListener("click", async () => {
+  const rows = quickEntries();
+  const ids = [];
+  try {
+    for (const r of rows) {
+      if (r.existing) ids.push(r.existing.id);
+      else ids.push((await api("POST", "/songs", Quick.quickSong(r, newId))).id);
+    }
+    let setlist = null;
+    if (document.getElementById("q-make-setlist").checked) {
+      const name = document.getElementById("q-setlist-name").value.trim() || "New Setlist";
+      setlist = await api("POST", "/setlists", { name, songs: ids });
+    }
+    await refreshLists();
+    document.getElementById("q-paste").value = "";
+    renderQuickPreview();
+    closeModal("quick-modal");
+    toast(`Added ${rows.filter((r) => !r.existing).length} songs${setlist ? ` and "${setlist.name}"` : ""}`);
+    if (setlist) go(`#/setlist/${setlist.id}`);
+  } catch (err) {
+    toast("Stopped part-way: " + err.message, "error");
+    refreshLists().catch(() => {});
+  }
 });
 
 document.getElementById("delete-song-btn").addEventListener("click", async () => {
@@ -512,12 +668,93 @@ document.getElementById("song-live-btn").addEventListener("click", async () => {
 
 document.getElementById("song-wav-btn").addEventListener("click", () => {
   if (!state.currentSong) return;
-  location.href = `/api/songs/${state.currentSong.id}/click.wav?sound=${els.clickSound.value}`;
+  location.href = `/api/songs/${state.currentSong.id}/click.wav?${clickQuery()}`;
 });
 
-els.clickSound.addEventListener("change", () => {
-  metronome.sound = els.clickSound.value;
-  prefs.set("sound", metronome.sound);
+document.getElementById("song-click-settings").addEventListener("click", () => openClickSettings());
+
+// -- click settings + click check (per device) -------------------------------
+
+const CK_FIELDS = ["sound", "subdivision", "channel", "mode", "voice", "volume", "accent", "beat", "sub", "latency"];
+
+function renderClickSettings() {
+  const o = metronome.opts;
+  for (const f of CK_FIELDS) {
+    const input = document.getElementById("ck-" + f);
+    const key = f === "latency" ? "latencyMs" : f;
+    if (input.type === "checkbox") input.checked = !!o[key];
+    else input.value = o[key];
+  }
+  document.getElementById("ck-keep").checked = prefs.get("keepPlaying", true);
+  document.getElementById("ck-awake").checked = prefs.get("keepAwake", true);
+  document.getElementById("ck-latency-val").textContent = `${o.latencyMs > 0 ? "+" : ""}${o.latencyMs} ms`;
+  renderDiagnostics();
+}
+
+function renderDiagnostics() {
+  const d = metronome.diagnostics();
+  const box = document.getElementById("ck-diag");
+  box.innerHTML = "";
+  const row = (k, v, bad) => {
+    box.appendChild(el("dt", "", k));
+    box.appendChild(el("dd", bad ? "bad" : "", v));
+  };
+  row("Sound engine", d.engine, d.engine !== "running");
+  if (d.sampleRate) row("Sample rate", `${d.sampleRate} Hz`);
+  if (d.outputLatencyMs !== null) row("Output delay", `${d.outputLatencyMs} ms (already allowed for)`);
+  if (d.channels) row("Output", d.channels >= 2 ? "stereo" : "mono: left/right ear not possible here", d.channels < 2);
+  if (metronome.opts.voice) row("Spoken count-in", d.voiceLoaded ? "ready" : "loading…", !d.voiceLoaded);
+  const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  if ("ontouchend" in document) {
+    row("Home-screen app", standalone ? "yes" : "no: Share → Add to Home Screen for full screen", !standalone);
+  }
+  if (window.SSPLive && state.view === "live") row("Screen stays on", window.SSPLive.awake() ? "yes" : "not yet: tap Start (or set Auto-Lock to Never)");
+  if (/iPhone|iPad|Macintosh/.test(navigator.userAgent) && "ontouchend" in document) {
+    row("Silent switch", d.silentModeSafe ? "ignored (click plays anyway)" : "may mute the click: check the switch", !d.silentModeSafe);
+  }
+}
+
+function openClickSettings() {
+  const song = state.currentSong || (window.SSPLive && window.SSPLive.song());
+  document.getElementById("ck-test-bpm").textContent = song ? song.default_bpm : 120;
+  renderClickSettings();
+  openModal("click-modal");
+}
+
+for (const f of CK_FIELDS) {
+  const input = document.getElementById("ck-" + f);
+  input.addEventListener(input.tagName === "SELECT" || input.type === "checkbox" ? "change" : "input", () => {
+    const key = f === "latency" ? "latencyMs" : f;
+    const v = input.type === "checkbox" ? input.checked : input.type === "range" ? parseFloat(input.value) : input.value;
+    saveClick({ [key]: v });
+    if (key === "voice" && v && metronome.unlocked) metronome.loadVoice();
+    renderClickSettings();
+    if (window.SSPLive) window.SSPLive.clickChanged();
+  });
+}
+
+document.getElementById("ck-keep").addEventListener("change", (ev) => prefs.set("keepPlaying", ev.target.checked));
+document.getElementById("ck-awake").addEventListener("change", (ev) => {
+  prefs.set("keepAwake", ev.target.checked);
+  if (window.SSPLive) window.SSPLive.keepAwake(ev.target.checked);
+});
+
+document.getElementById("ck-reset").addEventListener("click", () => {
+  saveClick({ ...window.SSPAudio.DEFAULTS });
+  renderClickSettings();
+  if (window.SSPLive) window.SSPLive.clickChanged();
+});
+
+// A count-in and two bars, right here: the check for "do I hear it, in
+// the right ear, through my splitter?" -- no server run needed.
+document.getElementById("ck-test").addEventListener("click", () => {
+  const song = state.currentSong || (window.SSPLive && window.SSPLive.song());
+  const bpm = song ? song.default_bpm : 120;
+  const tl = Timing.build({ default_bpm: bpm, sections: [{ id: "test", label: "Test", order: 0, bars: 2, count_in: { bars: 1, style: "click" } }] });
+  startPreview(tl);
+  renderDiagnostics();
+  setTimeout(renderDiagnostics, 300);
+  setTimeout(renderDiagnostics, tl.total_ms + 700);
 });
 
 document.getElementById("song-export-btn").addEventListener("click", () => {
@@ -1079,6 +1316,10 @@ document.getElementById("setlist-live-btn").addEventListener("click", async () =
   go("#/live");
 });
 
+document.getElementById("setlist-zip-btn").addEventListener("click", () => {
+  if (state.currentSetlist) location.href = `/api/setlists/${state.currentSetlist.id}/clicks.zip?${clickQuery()}`;
+});
+
 document.getElementById("setlist-print-btn").addEventListener("click", () => {
   if (state.currentSetlist) openPrint("setlist", state.currentSetlist.id);
 });
@@ -1277,7 +1518,31 @@ Sync.on("reload", () => {
 });
 
 // after a Wi-Fi blip, catch up on anything missed while away
-Sync.on("reconnect", () => loadState(true));
+Sync.on("reconnect", () => {
+  loadState(true);
+  refreshBundleSoon();
+});
+
+// ---------------------------------------------------------------------
+// This device's own copy of every song and setlist, refreshed whenever
+// something changes while the server is reachable -- what solo mode (and
+// a server dropping off mid-gig) plays from.
+// ---------------------------------------------------------------------
+
+const bundle = { songs: {}, setlists: {}, at: null };
+
+async function refreshBundle() {
+  try {
+    const b = await api("GET", "/bundle");
+    bundle.songs = Object.fromEntries(b.songs.map((x) => [x.id, x]));
+    bundle.setlists = Object.fromEntries(b.setlists.map((x) => [x.id, x]));
+    bundle.at = Date.now();
+  } catch (err) {
+    /* keep the last good copy */
+  }
+}
+const refreshBundleSoon = debounce(refreshBundle, 800);
+for (const type of ["song", "song_deleted", "setlist", "setlist_deleted"]) Sync.on(type, () => refreshBundleSoon());
 
 // ---------------------------------------------------------------------
 // Boot
@@ -1323,6 +1588,7 @@ async function boot() {
   Sync.connect();
   if (window.SSPLive) window.SSPLive.transport(state.transport);
   await route();
+  refreshBundle();
   const linkedPlayer = parseHash().params.get("player") !== null;
   if (!linkedPlayer && !prefs.get("asked", false) && state.band.players.length) openWho();
 }
@@ -1331,7 +1597,10 @@ window.addEventListener("hashchange", route);
 
 window.SSP = {
   state, els, api, prefs, toast, el, go, metronome, sectionColor, hexToRgba, playerById, playerName,
-  nameForClient, soundForBar, openWho, renderPresence,
+  nameForClient, soundForBar, openWho, renderPresence, openClickSettings, saveClick, openModal, closeModal,
+  bundleSong: (id) => bundle.songs[id] || null,
+  bundleSetlist: (id) => bundle.setlists[id] || null,
+  refreshBundle,
 };
 
 window.addEventListener("load", boot);

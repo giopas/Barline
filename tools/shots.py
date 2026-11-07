@@ -213,6 +213,23 @@ class Shooter:
         p2.locator(".section-card").nth(5).scroll_into_view_if_needed()
         p2.wait_for_timeout(300)
         self.save(p2, "12-phone-editor.png")
+        # 0.10: the drummer's click settings + click check, and quick add
+        tab.goto(f"{self.srv.base}/#/live")
+        tab.wait_for_selector("#live-view:not(.hidden)")
+        tab.evaluate("window.SSP.saveClick({subdivision: '8', voice: true, channel: 'left'})")
+        tab.click("#live-click-settings")
+        tab.wait_for_timeout(300)
+        self.save(tab, "14-click-settings.png")
+        tab.keyboard.press("Escape")
+
+        lap.goto(f"{self.srv.base}/#/")
+        lap.click("#new-song-btn")
+        lap.click(".tab[data-tab=quick-list]")
+        lap.fill("#q-paste", "Seven Seas - 124 - 3:52\nRoxanna, 134\nHarbour Lights\nTake Ten 174 5:24")
+        lap.fill("#q-setlist-name", "Saturday in the park")
+        lap.wait_for_timeout(300)
+        self.save(lap, "15-quick-add.png")
+        lap.keyboard.press("Escape")
         for pg in (lap, tab, phone, ch, p2):
             pg.context.close()
 
@@ -377,7 +394,8 @@ class Shooter:
         for pg in (tab, phone):
             pg.goto(f"{self.srv.base}/#/live")
             pg.wait_for_selector("#live-chart .chart-row", state="attached")
-        tab.locator(".chart-row").filter(has_text="Chorus").first.click()
+        # Ruby's a drummer, so her tablet is in big view: pick the start in the strip
+        tab.locator("#live-shape .song-shape-block").filter(has_text="Chorus").first.click()
         tab.wait_for_timeout(400)
         frames, times = [], []
 

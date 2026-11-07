@@ -3,6 +3,72 @@
 All notable changes to this project are documented here. Versioning
 follows semver (MAJOR.MINOR.PATCH).
 
+## [0.10.0] -- 2026-11-07
+
+Making SSP easy for a drummer to switch to from a metronome app.
+
+### Added
+
+- **Click settings per device** (⚙ Click, in the live view and the
+  editor): 8ths, 16ths or triplets; a spoken count-in ("one, two, three,
+  four"; a two-bar count-in goes "one . two ., one two three four");
+  left or right ear only (for a Y-splitter into in-ears); click for
+  count-ins only; separate levels for beat 1, other beats and
+  subdivisions; a timing nudge for Bluetooth. The rules live in
+  `timeline.click_events()` / `timing.js clickEvents()` (parity-tested), so
+  the live click and the downloads always match.
+- **Click check**: "Test the click" plays a count-in and two bars with your
+  settings on the spot, and shows what the device reports (engine running,
+  stereo or mono, silent switch on iPhone/iPad). For checking a real
+  splitter and in-ears before a gig.
+- **Practice tracks**: click tracks follow the device's click settings;
+  `⬇ Practice tracks` on a setlist downloads a `.zip` with one per song.
+  New route `GET /api/setlists/<id>/clicks.zip`.
+- **Solo mode**: "With the band" / "Solo: this device only" in the live
+  view. In solo, Start/Stop/next/prev run on this device only, from its own
+  copy of the songs (`GET /api/bundle`, refreshed on every change).
+- **Keep playing if the server drops**: a device that loses the server
+  mid-song switches to solo by itself and plays on (to the end of the song
+  and through the setlist), then rejoins the band when stopped. Can be
+  switched off (then the 0.9.1 behaviour: silence and a warning).
+- **Big view** for drummers: huge tempo, bar in the section ("3/8") and
+  bars to the next part. On by default when the device's player is a
+  drummer.
+- **Fast entry**: "Add songs" (the + by Songs) takes a title and BPM (and
+  an optional length; four minutes otherwise) and makes a one-section
+  song. "Paste a list" turns lines like "Song A - 124 - 3:45" (or columns
+  from a spreadsheet) into songs and, optionally, a setlist in that order,
+  reusing songs already there. Tap tempo there and in the editor.
+  (`web/static/quick.js`, tested under Node.)
+- **Feels like an app**: home-screen icon and web manifest (opens
+  straight into the live view), and the screen stays on in the live view:
+  Wake Lock where the browser allows it, otherwise a tiny muted looping
+  video (the server now answers byte ranges, which Safari needs for that).
+- **Raspberry Pi in one command**: `launchers/pi/install.sh` sets up the
+  service on port 80 (`http://ssp.local/`), the host name, and optionally
+  the Pi's own Wi-Fi (`--hotspot NAME PASSWORD`). With `--wifi-name` /
+  `--wifi-password` (or `SSP_WIFI_*`), "Connect a device" shows a QR code
+  that joins the Wi-Fi. `--qr` prints the address as a QR code in the
+  terminal.
+- Demo band: "Encore Jam", a song added the quick way, closes the Friday
+  set.
+- Wiki: new page "For Drummers"; Metronome, Tablet on Stage, Planning a
+  Song and Raspberry Pi pages updated.
+
+### Changed
+
+- The click sound menu moved from the editor toolbar and the live footer
+  into ⚙ Click; old saved sound/volume choices carry over.
+- Addresses on port 80 are shown without ":80"; "Connect a device" also
+  offers this computer's `.local` name.
+
+### Not verifiable here
+
+- iPad/iPhone (WebKit) click, keep-awake video and left/right routing:
+  tested in Chromium only. Needs the real iPad with the splitter.
+- `launchers/pi/install.sh`: checked with shellcheck and a dry run, not on
+  a real Pi.
+
 ## [0.9.1] -- 2026-11-06
 
 From the first real-device test (a Mac, an Android phone and an iPad).

@@ -17,6 +17,7 @@ It builds on two things:
 - **[[Planning a Song]]**: sections, bars, tempo, count-ins, hints and voice memos, and building a setlist.
 - **[[Tablet on Stage]]**: what it looks like when you're playing. Starting a song, following along, your own hints, setlists.
 - **[[Metronome and Click Tracks]]**: the click on each device, and practice click tracks to download.
+- **[[For Drummers]]**: coming from a metronome app? Your set and click in five minutes, the big drummer view, and what happens if the Wi-Fi drops.
 - **[[Printing and Moving Songs]]**: paper charts for the whole band or one player, and taking a song to another setup.
 - **[[Running on a Raspberry Pi]]**: a small always-on box that runs SSP on its own, even with no Wi-Fi at the venue.
 

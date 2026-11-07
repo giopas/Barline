@@ -18,7 +18,7 @@ A small window opens. That's the control panel, the only screen that looks like 
 
 The control panel asks for a folder. Pick (or make) one folder for your band, maybe `MyBand Songs`. Every song and setlist goes in there as small text files, one per song, which you can back up or copy onto a USB stick. Next time, SSP remembers this folder (and a few recent ones).
 
-**Just curious?** Press **Try the demo band** instead. It opens a made-up band, The Paper Lanterns, with six songs and two setlists, so you can click around a finished example. It's a throwaway copy: press the button again and it's back to how it started.
+**Just curious?** Press **Try the demo band** instead. It opens a made-up band, The Paper Lanterns, with seven songs and two setlists, so you can click around a finished example. It's a throwaway copy: press the button again and it's back to how it started.
 
 You can do the same from inside SSP, on any device: **Try the demo band** at the bottom of the sidebar. Everyone connected switches to the demo together (a yellow banner says so), so the whole band can try the live view on the demo songs. **Back to my band** in the banner brings your own songs back, untouched. Anything changed in the demo is thrown away.
 

@@ -121,6 +121,64 @@ def bar_at(timeline: dict, elapsed_ms: float) -> int:
     return lo
 
 
+# -- click options (0.10) ------------------------------------------------------
+# Every device picks its own click; these are the choices. The same rules
+# turn a timeline into a list of click events here (for the .wav practice
+# tracks) and in timing.js (for the live click) -- tests check they agree.
+
+SUBDIVISIONS = {"none": (), "8": (1 / 2,), "16": (1 / 4, 1 / 2, 3 / 4), "triplet": (1 / 3, 2 / 3)}
+CLICK_DEFAULTS = {"subdivision": "none", "voice": False, "mode": "always"}
+
+
+def click_options(raw: dict = None) -> dict:
+    """Clean click options: unknown values fall back to the defaults."""
+    raw = raw or {}
+    out = dict(CLICK_DEFAULTS)
+    if raw.get("subdivision") in SUBDIVISIONS:
+        out["subdivision"] = raw["subdivision"]
+    out["voice"] = raw.get("voice") in (True, 1, "1", "true", "on")
+    if raw.get("mode") in ("always", "countin"):
+        out["mode"] = raw["mode"]
+    return out
+
+
+def click_events(timeline: dict, options: dict = None) -> list:
+    """Every sound of the click, in order: {t (ms), kind, n, bar (index)}.
+
+    kind is "accent" (beat 1 of a bar), "beat", "sub" (a subdivision
+    between beats) or "voice" (a spoken count, n = 1..4).
+
+      * count-in bars carry no subdivisions;
+      * with the voice on, count-in bars are spoken instead of clicked:
+        the last count-in bar is "one two three four", any earlier one is
+        "one . two ." (beats 1 and 3) -- the way a drummer counts a band in;
+      * mode "countin": only the count-in sounds, the song itself is silent.
+    """
+    o = click_options(options)
+    subs = SUBDIVISIONS[o["subdivision"]]
+    bars = timeline["bars"]
+    out = []
+    for i, bar in enumerate(bars):
+        ci = bool(bar["count_in"])
+        if not ci and o["mode"] == "countin":
+            continue
+        last_ci = ci and not (i + 1 < len(bars) and bars[i + 1]["count_in"] and
+                              bars[i + 1]["section_id"] == bar["section_id"])
+        for b in range(bar["beats"]):
+            t = bar["start_ms"] + b * bar["beat_ms"]
+            if ci and o["voice"]:
+                if last_ci:
+                    out.append({"t": t, "kind": "voice", "n": b + 1, "bar": i})
+                elif b % 2 == 0:
+                    out.append({"t": t, "kind": "voice", "n": b // 2 + 1, "bar": i})
+                continue
+            out.append({"t": t, "kind": "accent" if b == 0 else "beat", "n": b + 1, "bar": i})
+            if not ci:
+                for f in subs:
+                    out.append({"t": t + f * bar["beat_ms"], "kind": "sub", "n": b + 1, "bar": i})
+    return out
+
+
 def duration_ms(song: dict) -> float:
     """How long the song plays from the top, count-ins included."""
     return build(song)["total_ms"]

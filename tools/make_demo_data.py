@@ -106,11 +106,16 @@ SONGS = [
         ("Verse 1", 8, None, None, [("Try the walking line", "Sam", None)]),
         ("Chorus", 8, None, None, [("Bridge idea: next rehearsal", "all", None)]),
     ]),
+    # added the quick way (0.10): just a title and a tempo, one section long
+    # enough for about four minutes -- enough for the click, structure later
+    ("Encore Jam", 140, [
+        ("Song", 140, None, None, []),
+    ]),
 ]
 
 SETLISTS = [
     ("Friday at the Harbour Bar", ["Harbour Lights", "Night Bus to Nowhere", "Paper Boats",
-                                   "Lantern Parade", "Slow Tide"]),
+                                   "Lantern Parade", "Slow Tide", "Encore Jam"]),
     ("Rehearsal: new songs", ["Coffee at Midnight", "Slow Tide"]),
 ]
 

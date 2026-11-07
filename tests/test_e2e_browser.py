@@ -125,6 +125,129 @@ class BrowserSync(unittest.TestCase):
             return m.unlocked; }""")
         self.assertTrue(ok)
 
+    # -- 0.10: drummer adoption ------------------------------------------------
+
+    def test_paste_a_list_makes_songs_and_a_setlist(self):
+        pg = self.page(viewport={"width": 1100, "height": 800})
+        pg.goto(f"{self.s.base}/#/")
+        pg.click("#empty-quick-btn")
+        pg.click(".tab[data-tab=quick-list]")
+        pg.fill("#q-paste", "Quick One - 128 - 3:00\n2. Quick Two, 96\nHarbour Lights")
+        pg.wait_for_selector("#q-preview tr >> nth=3")
+        pg.fill("#q-setlist-name", "Pasted set")
+        pg.click("#q-list-add")
+        pg.wait_for_function("location.hash.startsWith('#/setlist/')")
+        sl = next(x for x in self.s.store.setlists.values() if x["name"] == "Pasted set")
+        titles = [self.s.store.songs[i]["title"] for i in sl["songs"]]
+        self.assertEqual(titles, ["Quick One", "Quick Two", "Harbour Lights"])
+        one = self.s.store.songs[sl["songs"][0]]
+        self.assertEqual(one["default_bpm"], 128)
+        self.assertEqual(one["sections"][0]["bars"], 96)  # 3:00 at 128 BPM
+        # pasting an existing title reuses it, no duplicate
+        self.assertEqual(sum(1 for x in self.s.store.songs.values() if x["title"] == "Harbour Lights"), 1)
+
+    def test_quick_song_with_tap_tempo(self):
+        pg = self.page()
+        pg.goto(f"{self.s.base}/#/")
+        pg.click("#new-song-btn")
+        pg.fill("#q-title", "Tapped Tune")
+        for _ in range(5):
+            pg.dispatch_event("#q-tap", "pointerdown")
+            pg.wait_for_timeout(500)
+        bpm = int(pg.input_value("#q-bpm"))
+        self.assertTrue(100 <= bpm <= 135, bpm)  # ~120, give the test machine some slack
+        pg.click("#q-add")
+        pg.wait_for_function("document.getElementById('q-added').textContent.includes('Tapped Tune')")
+        self.assertTrue(any(x["title"] == "Tapped Tune" for x in self.s.store.songs.values()))
+
+    def test_click_settings_shape_the_live_click(self):
+        song = demo_song(self.s, "Paper Boats")
+        pg = self.page()
+        pg.goto(f"{self.s.base}/#/song/{song['id']}")
+        pg.wait_for_selector(".section-card")
+        pg.click("#song-click-settings")
+        pg.select_option("#ck-subdivision", "16")
+        pg.check("#ck-voice")
+        pg.select_option("#ck-channel", "right")
+        opts = pg.evaluate("JSON.parse(localStorage.getItem('ssp.clickopts'))")
+        self.assertEqual((opts["subdivision"], opts["voice"], opts["channel"]), ("16", True, "right"))
+        pg.click("#ck-test")
+        pg.wait_for_function("window.SSP.metronome.job !== null")
+        kinds = pg.evaluate("window.SSP.metronome.job.events.map(e => e.kind)")
+        self.assertEqual(kinds[:4], ["voice"] * 4)           # spoken count-in
+        self.assertEqual(kinds.count("sub"), 2 * 4 * 3)        # 2 bars of 16ths
+        pg.wait_for_function("document.getElementById('ck-diag').textContent.includes('running')")
+        pg.keyboard.press("Escape")
+        pg.reload()
+        pg.wait_for_selector(".section-card")
+        self.assertEqual(pg.evaluate("window.SSP.metronome.opts.subdivision"), "16")
+
+    def test_drummer_gets_the_big_view(self):
+        band = self.s.store.get_band()
+        ruby = next(p for p in band["players"] if p["role"] == "Drums")["id"]
+        mia = next(p for p in band["players"] if p["role"] == "Vocals")["id"]
+        song = demo_song(self.s, "Harbour Lights")
+        self.s.httpd.ssp_transport.cue(song["id"])
+        drum = self.page(**self.pw.devices["iPad (gen 7) landscape"])
+        drum.goto(f"{self.s.base}/#/live?player={ruby}")
+        drum.wait_for_selector("#live-view.big")
+        self.assertEqual(drum.inner_text("#st-bpm"), "124")
+        voc = self.page()
+        voc.goto(f"{self.s.base}/#/live?player={mia}")
+        voc.wait_for_selector("#live-view:not(.hidden)")
+        self.assertFalse(voc.evaluate("document.getElementById('live-view').classList.contains('big')"))
+        drum.click("#live-start")
+        drum.wait_for_function("document.getElementById('st-bar-k').textContent.startsWith('bar of')", timeout=6000)
+        self.assertRegex(drum.inner_text("#st-bar"), r"^\d+/\d+$")
+        self.s.httpd.ssp_transport.stop()
+
+    def test_solo_mode_plays_on_its_own(self):
+        song = demo_song(self.s, "Coffee at Midnight")
+        self.s.httpd.ssp_transport.cue(song["id"])
+        pg = self.page()
+        pg.goto(f"{self.s.base}/#/live")
+        pg.wait_for_function(f"document.getElementById('live-song-title').textContent === {song['title']!r}")
+        pg.click("#live-solo")
+        pg.click("#click-toggle")
+        pg.click("#live-start")
+        pg.wait_for_selector("#live-stop:not(.hidden)")
+        pg.wait_for_function("window.SSP.metronome.job !== null")
+        self.assertEqual(self.s.httpd.ssp_transport.snapshot()["state"], "stopped")  # the band isn't playing
+        pg.click("#live-stop")
+        pg.wait_for_selector("#live-start:not(.hidden)")
+        pg.click("#live-solo")  # back with the band
+        self.assertFalse(pg.evaluate("document.body.classList.contains('is-solo')"))
+
+    def test_server_drop_mid_song_keeps_the_click_going(self):
+        song = demo_song(self.s, "Slow Tide")
+        pg = self.page()
+        pg.goto(f"{self.s.base}/#/live")
+        self.s.httpd.ssp_transport.cue(song["id"])
+        pg.wait_for_function(f"document.getElementById('live-song-title').textContent === {song['title']!r}")
+        pg.wait_for_timeout(1200)  # the device's own copy of the songs (solo needs it)
+        pg.click("#click-toggle")
+        pg.click("#live-start")
+        pg.wait_for_function("window.SSP.metronome.job !== null")
+        # the Wi-Fi drops: the event stream goes quiet
+        pg.evaluate("() => { const S = window.SSPSync; S.source.close(); S.connected = false; S.emit('status', {data: false}); }")
+        pg.wait_for_function("document.body.classList.contains('is-solo')", timeout=15000)
+        self.assertTrue(pg.evaluate("window.SSP.metronome.job !== null"))
+        self.assertIn("out of reach", pg.inner_text("#live-solo-note"))
+        pg.evaluate("window.SSPSync.connect()")  # ...and comes back mid-song: stays solo until stopped
+        pg.wait_for_function("window.SSPSync.connected")
+        self.assertTrue(pg.evaluate("document.body.classList.contains('is-solo')"))
+        pg.click("#live-stop")  # local stop; then it rejoins the band
+        pg.wait_for_function("!document.body.classList.contains('is-solo')", timeout=10000)
+        self.s.httpd.ssp_transport.stop()
+
+    def test_live_view_tries_to_keep_the_screen_on(self):
+        pg = self.page()
+        pg.goto(f"{self.s.base}/#/live")
+        pg.wait_for_selector("#live-view:not(.hidden)")
+        pg.click("#live-start", trial=True)
+        pg.mouse.click(5, 5)
+        pg.wait_for_selector("video.keep-awake", state="attached")
+
 
 if __name__ == "__main__":
     unittest.main()
