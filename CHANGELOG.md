@@ -3,7 +3,7 @@
 All notable changes to this project are documented here. Versioning
 follows semver (MAJOR.MINOR.PATCH).
 
-## [Unreleased]
+## [0.11.0] -- 2026-11-08
 
 A real app icon, and a control panel that looks like the rest of SSP.
 
