@@ -401,6 +401,9 @@ class Handler(BaseHTTPRequestHandler):
     port: int = DEFAULT_PORT
     log_hook = None  # optional callable(str); set by the launcher GUI
     wifi_ssid = None  # the band's own Wi-Fi (e.g. the Pi's hotspot), shown as a "join" QR code
+    # set by --wifi-name (the Pi): show that code only while this computer
+    # actually is the hotspot -- a Pi that found a known Wi-Fi isn't
+    wifi_only_on_hotspot = False
     wifi_password = None
 
     # -- helpers ------------------------------------------------------------
@@ -520,11 +523,13 @@ class Handler(BaseHTTPRequestHandler):
                 self.hub.set_player(str(body.get("client", ""))[:40], body.get("player_id"))
                 return self._send_json(200, {"ok": True})
             if route == ["connect"] and method == "GET":
-                addresses = [_base_url(ip, self.port) for ip in local_addresses()]
+                ips = local_addresses()
+                addresses = [_base_url(ip, self.port) for ip in ips]
                 if mdns_name():
                     addresses.append(_base_url(mdns_name(), self.port))
                 wifi = None
-                if self.wifi_ssid:
+                on_hotspot = any(ip.startswith(_HOTSPOT) for ip in ips)
+                if self.wifi_ssid and (on_hotspot or not self.wifi_only_on_hotspot):
                     wifi = {"ssid": self.wifi_ssid, "password": self.wifi_password or "",
                             "qr": qr.wifi_text(self.wifi_ssid, self.wifi_password)}
                 return self._send_json(200, {"port": self.port, "addresses": addresses, "wifi": wifi})
@@ -878,6 +883,7 @@ def main() -> None:
     parser.add_argument("--qr", action="store_true", help="print a QR code for the address in the terminal")
     args = parser.parse_args()
     Handler.wifi_ssid = args.wifi_name or None
+    Handler.wifi_only_on_hotspot = bool(Handler.wifi_ssid)
     Handler.wifi_password = args.wifi_password or None
 
     data = prepare_demo() if args.demo else (args.data or paths.default_data_dir())

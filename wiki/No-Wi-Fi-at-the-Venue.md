@@ -58,7 +58,7 @@ A pocket Wi-Fi router (the kind sold for hotel rooms) is the sturdiest choice fo
 
 ## A Raspberry Pi
 
-A Pi running SSP can make its own Wi-Fi every time it boots, so the box in your gig bag *is* the setup. See [[Running on a Raspberry Pi]].
+A Pi set up with `install.sh --hotspot` does the same by itself: at every boot it joins a network it knows, and when there's none (a venue with no Wi-Fi), it makes `SSP-Band`. Nothing to click, no screen needed: the box in your gig bag *is* the setup. See [[Running on a Raspberry Pi]].
 
 ## Safety
 

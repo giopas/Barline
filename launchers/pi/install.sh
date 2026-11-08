@@ -6,18 +6,23 @@
 # Run it once, on the Pi, from the folder SSP was cloned into:
 #
 #   sudo ./launchers/pi/install.sh                       # SSP on the Pi's current network
-#   sudo ./launchers/pi/install.sh --hotspot SSP-Band "a-password"   # ...and its own Wi-Fi
+#   sudo ./launchers/pi/install.sh --hotspot SSP-Band "a-password"   # ...and its own Wi-Fi when needed
 #
 # Options:
-#   --hotspot NAME PASSWORD  make the Pi its own Wi-Fi network (8+ character password)
+#   --hotspot NAME PASSWORD  the Pi's own Wi-Fi network (8+ character password),
+#                            started at boot only when the Pi finds no network
+#                            it knows (home, rehearsal room, a cable)
+#   --hotspot-always         with --hotspot: start it on every boot instead
 #   --user NAME              who SSP runs as (default: whoever ran sudo)
 #   --data DIR               where the band's songs live (default: ~NAME/ssp-data)
 #   --port N                 web port (default 80, so the address needs no number)
 #   --hostname NAME          the Pi's network name (default: ssp -> http://ssp.local/)
 #   --dry-run                print what would be done, change nothing
 #
-# Safe to run again (e.g. to switch the hotspot on, or after moving SSP).
-# Undo: sudo systemctl disable --now ssp; sudo rm /etc/systemd/system/ssp.service
+# Safe to run again (e.g. to switch the hotspot on or off, or after moving
+# SSP): running it without --hotspot removes the Pi's own Wi-Fi.
+# Undo: sudo systemctl disable --now ssp ssp-wifi
+#       sudo rm /etc/systemd/system/ssp.service /etc/systemd/system/ssp-wifi.service
 #       sudo nmcli connection delete SSP-Hotspot
 #
 # See the wiki page "Running on a Raspberry Pi" for what each step does.
@@ -31,6 +36,8 @@ PORT=80
 HOST_NAME="ssp"
 HOTSPOT_NAME=""
 HOTSPOT_PASS=""
+HOTSPOT_ALWAYS=0
+WIFI_WAIT=40
 DRY=0
 
 die() { echo "ssp install: $*" >&2; exit 1; }
@@ -43,12 +50,13 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --hotspot) [ $# -ge 3 ] || die "--hotspot needs a name and a password"
                HOTSPOT_NAME="$2"; HOTSPOT_PASS="$3"; shift 3 ;;
+    --hotspot-always) HOTSPOT_ALWAYS=1; shift ;;
     --user) RUN_USER="${2:?--user needs a name}"; shift 2 ;;
     --data) DATA="${2:?--data needs a folder}"; shift 2 ;;
     --port) PORT="${2:?--port needs a number}"; shift 2 ;;
     --hostname) HOST_NAME="${2:?--hostname needs a name}"; shift 2 ;;
     --dry-run) DRY=1; shift ;;
-    -h|--help) sed -n '2,24p' "$0"; exit 0 ;;
+    -h|--help) sed -n '2,29p' "$0"; exit 0 ;;
     *) die "unknown option: $1 (try --help)" ;;
   esac
 done
@@ -61,6 +69,8 @@ case "$PORT" in ''|*[!0-9]*) die "--port must be a number" ;; esac
 if [ -n "$HOTSPOT_NAME" ]; then
   [ "${#HOTSPOT_PASS}" -ge 8 ] || die "the hotspot password needs at least 8 characters"
   [ "${#HOTSPOT_NAME}" -le 32 ] || die "the hotspot name is at most 32 characters"
+elif [ "$HOTSPOT_ALWAYS" = 1 ]; then
+  die "--hotspot-always goes with --hotspot NAME PASSWORD"
 fi
 HOME_DIR="$(getent passwd "$RUN_USER" | cut -d: -f6)"
 DATA="${DATA:-$HOME_DIR/ssp-data}"
@@ -85,15 +95,64 @@ if [ "$(hostname)" != "$HOST_NAME" ]; then
   fi
 fi
 
+WIFI_UNIT=/etc/systemd/system/ssp-wifi.service
 if [ -n "$HOTSPOT_NAME" ]; then
-  command -v nmcli >/dev/null 2>&1 || die "the hotspot needs NetworkManager (current Raspberry Pi OS has it)"
-  say "Setting up the Wi-Fi '$HOTSPOT_NAME' (starts on every boot)"
+  [ "$DRY" = 1 ] || command -v nmcli >/dev/null 2>&1 || die "the hotspot needs NetworkManager (current Raspberry Pi OS has it)"
+  if [ "$HOTSPOT_ALWAYS" = 1 ]; then
+    say "Setting up the Wi-Fi '$HOTSPOT_NAME' (starts on every boot)"
+    AUTO=yes
+  else
+    say "Setting up the Wi-Fi '$HOTSPOT_NAME' (starts at boot when the Pi finds no network it knows)"
+    AUTO=no
+  fi
   if nmcli -t -f NAME connection show 2>/dev/null | grep -qx SSP-Hotspot; then
     run nmcli connection delete SSP-Hotspot
   fi
-  run nmcli connection add type wifi ifname wlan0 con-name SSP-Hotspot autoconnect yes ssid "$HOTSPOT_NAME" \
+  run nmcli connection add type wifi ifname wlan0 con-name SSP-Hotspot autoconnect "$AUTO" ssid "$HOTSPOT_NAME" \
     802-11-wireless.mode ap 802-11-wireless.band bg ipv4.method shared ipv6.method ignore \
     wifi-sec.key-mgmt wpa-psk wifi-sec.psk "$HOTSPOT_PASS" connection.autoconnect-priority 100
+
+  if [ "$HOTSPOT_ALWAYS" = 1 ]; then
+    if [ -f "$WIFI_UNIT" ]; then
+      run systemctl disable ssp-wifi >/dev/null 2>&1 || true
+      run rm -f "$WIFI_UNIT"
+    fi
+  else
+    # a one-shot at boot: wait for a known network, else start SSP-Hotspot
+    # (launchers/pi/wifi-fallback.sh)
+    WIFI_CONTENT="[Unit]
+Description=SSP - the Pi's own Wi-Fi when there's no known network
+After=NetworkManager.service
+Wants=NetworkManager.service
+
+[Service]
+# simple, not oneshot: the wait never holds up the rest of the boot (SSP
+# itself listens on every address, so it doesn't need to wait either)
+Type=simple
+Environment=SSP_WIFI_WAIT=$WIFI_WAIT
+ExecStart=/bin/bash \"$REPO/launchers/pi/wifi-fallback.sh\"
+
+[Install]
+WantedBy=multi-user.target
+"
+    if [ "$DRY" = 1 ]; then
+      echo "    (dry run) would write $WIFI_UNIT:"; printf '%s\n' "$WIFI_CONTENT"
+    else
+      printf '%s' "$WIFI_CONTENT" > "$WIFI_UNIT"
+    fi
+    run systemctl daemon-reload
+    run systemctl enable ssp-wifi >/dev/null 2>&1
+  fi
+else
+  # no --hotspot: no own Wi-Fi (removes one an earlier run set up)
+  if nmcli -t -f NAME connection show 2>/dev/null | grep -qx SSP-Hotspot; then
+    say "Removing the Pi's own Wi-Fi (run again with --hotspot to bring it back)"
+    run nmcli connection delete SSP-Hotspot
+  fi
+  if [ -f "$WIFI_UNIT" ]; then
+    run systemctl disable ssp-wifi >/dev/null 2>&1 || true
+    run rm -f "$WIFI_UNIT"
+  fi
 fi
 
 # the Wi-Fi name/password go in a root-only file, read by the service
@@ -146,9 +205,15 @@ URL="http://$HOST_NAME.local/"
 echo
 echo "SSP is installed."
 if [ -n "$HOTSPOT_NAME" ]; then
-  echo "  The Pi's own Wi-Fi '$HOTSPOT_NAME' starts on boot (reboot now, or: sudo nmcli connection up SSP-Hotspot)."
-  echo "  Careful: while it's up, the Pi is off your home Wi-Fi; switch back with"
-  echo "  sudo nmcli connection down SSP-Hotspot"
+  if [ "$HOTSPOT_ALWAYS" = 1 ]; then
+    echo "  The Pi's own Wi-Fi '$HOTSPOT_NAME' starts on every boot (reboot now, or: sudo nmcli connection up SSP-Hotspot)."
+    echo "  Careful: while it's up, the Pi is off your home Wi-Fi; switch back with"
+    echo "  sudo nmcli connection down SSP-Hotspot"
+  else
+    echo "  At boot the Pi joins a network it knows; with none around (after ${WIFI_WAIT}s) it makes"
+    echo "  its own Wi-Fi '$HOTSPOT_NAME'. Try it now: sudo nmcli connection up SSP-Hotspot"
+    echo "  (and back: sudo nmcli connection down SSP-Hotspot). Log: journalctl -u ssp-wifi"
+  fi
   HOT_URL="http://10.42.0.1/"
   [ "$PORT" = 80 ] || HOT_URL="http://10.42.0.1:$PORT/"
   echo "  On that Wi-Fi, open $URL (or $HOT_URL)"

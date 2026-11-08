@@ -41,7 +41,7 @@ jobs:
         # browser tests need Playwright and run in tests.yml; these need nothing.
         # The suite assumes POSIX paths in places, like Swiss Knife's: not on Windows.
         if: runner.os != 'Windows'
-        run: python -m unittest tests.test_server tests.test_timing_parity tests.test_quick tests.test_update tests.test_hotspot
+        run: python -m unittest tests.test_server tests.test_timing_parity tests.test_quick tests.test_update tests.test_hotspot tests.test_pi_wifi
         shell: bash
       - name: Build
         run: pyinstaller --noconfirm packaging/ssp.spec

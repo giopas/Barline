@@ -43,7 +43,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Server tests on macOS
-        run: python -m unittest tests.test_server tests.test_timing_parity tests.test_quick tests.test_update tests.test_hotspot -v
+        run: python -m unittest tests.test_server tests.test_timing_parity tests.test_quick tests.test_update tests.test_hotspot tests.test_pi_wifi -v
 
   # The Windows half of the band Wi-Fi (server/hotspot.py): its PowerShell
   # parses, and the WinRT types it needs load (no Wi-Fi to start on CI).

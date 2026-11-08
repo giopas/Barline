@@ -207,7 +207,8 @@ with no network at all it needs a one-time Loopback Adapter setup); on a
 Mac it opens System Settings › Sharing and shows the steps, since macOS
 doesn't let apps turn Internet Sharing on. The wiki page *No Wi-Fi at the
 Venue* has the details and the other ways (a phone's hotspot, a travel
-router, a Raspberry Pi).
+router, a Raspberry Pi, which makes its own Wi-Fi by itself at boot when it
+finds no network it knows).
 
 ![The band Wi-Fi on: code 1 joins it, code 2 opens SSP](screenshots/18-launcher-wifi.png)
 

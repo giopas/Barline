@@ -28,13 +28,27 @@ The band's own Wi-Fi, for a room with no network.
   - **Mac:** macOS has no way for an app to turn on Internet Sharing, so SSP
     opens System Settings › Sharing, shows the four steps, and shows the join
     code once you click **It's on**.
+- **The Raspberry Pi makes its Wi-Fi only when it's needed.**
+  `install.sh --hotspot NAME PASSWORD` now sets up `SSP-Hotspot` without
+  autoconnect plus an `ssp-wifi` boot service
+  (`launchers/pi/wifi-fallback.sh`): the Pi first joins a network it knows
+  (Wi-Fi or a cable), and starts its own Wi-Fi only when none is there
+  after 40 seconds. At home it stays on your Wi-Fi for updates; at a venue
+  with no network the band joins `SSP-Band` as before. `--hotspot-always`
+  keeps the old always-on behaviour; running the installer without
+  `--hotspot` now removes the Pi's own Wi-Fi.
+- The server's "join the Wi-Fi" code (`--wifi-name`, the Pi) shows only
+  while the computer actually is the hotspot, so a Pi that joined your home
+  Wi-Fi doesn't offer a network that isn't there.
 - The control panel looks for this computer's addresses again every few
   seconds while the server runs, so a hotspot coming up (or any network
   change) shows in the address and code without a restart.
 - Wiki page **No Wi-Fi at the Venue** (the button per system, a phone's
   hotspot, a travel router, a Pi); screenshot `18-launcher-wifi.png`.
 - Tests: `tests/test_hotspot.py` (16, no radio touched); a Windows CI job
-  checks the PowerShell parses and its WinRT types load.
+  checks the PowerShell parses and its WinRT types load;
+  `tests/test_pi_wifi.py` (the boot script against a fake `nmcli`: known
+  Wi-Fi, a cable, nothing, already up; the installer's dry run).
 
 ## [0.13.0] -- 2026-11-08
 

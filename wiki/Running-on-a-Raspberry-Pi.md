@@ -13,9 +13,14 @@ cd ~/ssp
 sudo ./launchers/pi/install.sh --hotspot SSP-Band "choose-a-password"
 ```
 
-It starts SSP on every boot, on the plain address **`http://ssp.local/`** (no `:8420` to remember), and makes the Pi its own Wi-Fi called `SSP-Band`. Reboot, and from then on the Pi in your gig bag *is* the setup: plug it in, join `SSP-Band`, open `http://ssp.local/`. **Connect a device** inside SSP shows a QR code that joins the Wi-Fi, and another that opens SSP. Leave out `--hotspot …` to keep the Pi on your normal Wi-Fi. `--help` lists the other options (user, songs folder, port, name); running it again is safe.
+It starts SSP on every boot, on the plain address **`http://ssp.local/`** (no `:8420` to remember), and gives the Pi its own Wi-Fi called `SSP-Band` **for when it's needed**. At every boot the Pi first looks for a network it knows (your home Wi-Fi, the rehearsal room's, a network cable). If it finds one, it joins it as usual, and the band opens SSP there. If it finds none within about 40 seconds (a venue with no network, or one the Pi has never seen), it makes `SSP-Band` instead. So the Pi in your gig bag *is* the setup: plug it in, wait a minute, join `SSP-Band`, open `http://ssp.local/`. At home it stays on your Wi-Fi, ready for updates.
 
-Turning the hotspot on takes the Pi off your home Wi-Fi. To get back on it for an update: `sudo nmcli connection down SSP-Hotspot` (and `up` to bring the hotspot back).
+**Connect a device** inside SSP shows a QR code that joins `SSP-Band` (only while the Pi is actually running it), and another that opens SSP. `--help` lists the other options (user, songs folder, port, name); running it again is safe.
+
+- **Always its own Wi-Fi**, never your home one: add `--hotspot-always` (the behaviour before 0.14).
+- **Never its own Wi-Fi:** run the installer again without `--hotspot`; that removes it.
+- **Want `SSP-Band` right now** (say, the venue's Wi-Fi is known but keeps devices apart): `sudo nmcli connection up SSP-Hotspot`. Back to a known network: `sudo nmcli connection down SSP-Hotspot`.
+- **What did it decide at boot?** `journalctl -u ssp-wifi`.
 
 The rest of this page is the same thing, step by step, for anyone who'd rather know what each piece does.
 
@@ -71,14 +76,14 @@ If a device doesn't find that name, use the number address: `hostname -I` on the
 
 ## 5. No Wi-Fi at the venue? Let the Pi make its own
 
-The Pi can be its own Wi-Fi network: everyone joins it, and SSP works exactly the same with no router in sight. On current Raspberry Pi OS (which uses NetworkManager):
+The Pi can be its own Wi-Fi network: everyone joins it, and SSP works exactly the same with no router in sight. The installer above does this for you (`--hotspot`), and only when there's no known network around: that's the easy way. By hand, on current Raspberry Pi OS (which uses NetworkManager), an always-on hotspot is:
 
 ```
 sudo nmcli device wifi hotspot ifname wlan0 ssid SSP-Band password "choose-a-password"
 sudo nmcli connection modify Hotspot connection.autoconnect yes
 ```
 
-Join `SSP-Band` from each device and open SSP as above. Note that while the Pi is a hotspot it isn't on your home Wi-Fi, and phones on it won't have internet (they may warn about that; tell them to stay connected anyway).
+The "only when needed" part is `launchers/pi/wifi-fallback.sh`, which the installer runs at boot as the `ssp-wifi` service: it waits for a known network and starts the hotspot if none comes. Join `SSP-Band` from each device and open SSP as above. Note that while the Pi is a hotspot it isn't on your home Wi-Fi, and phones on it won't have internet (they may warn about that; tell them to stay connected anyway).
 
 ## Updating
 
