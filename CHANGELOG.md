@@ -17,6 +17,9 @@ follows semver (MAJOR.MINOR.PATCH).
   with a "nobody can connect?" checklist, supported platforms, and privacy
   and security. The wiki's Getting Started and the release notes carry the
   same first-launch and firewall tips.
+- `tools/publish_wiki.sh` publishes `wiki/` to the GitHub wiki in one
+  command (`--check` only compares), and the release checklist now always
+  ends with it.
 
 ## [0.12.1] -- 2026-11-08
 

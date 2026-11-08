@@ -244,6 +244,9 @@ moving songs between setups, and running SSP on a Raspberry Pi.
 - `python3 tools/make_icons.py` redraws the app icon (the bar square with
   beat 1 lit) and writes every size: browser tab, home screen, macOS
   `.icns`, Windows `.ico` (needs Pillow).
+- `tools/publish_wiki.sh` publishes `wiki/` to the GitHub wiki (a separate
+  repo, not updated by pushing `main`); `--check` says whether it's behind.
+  Run it after every push that changed a wiki page.
 - `launchers/pi/install.sh` sets up a Raspberry Pi in one command (see the
   wiki's "Running on a Raspberry Pi").
 - No build step: the web app in `web/static/` is plain HTML, CSS and
