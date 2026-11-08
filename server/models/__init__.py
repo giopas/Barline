@@ -155,10 +155,35 @@ def new_song(title: str = "Untitled Song", default_bpm: int = 120) -> dict:
         "id": sid,
         "title": title,
         "default_bpm": default_bpm,
+        "tags": [],
         "sections": [],
         "created_at": now(),
         "updated_at": now(),
     }
+
+
+MAX_TAGS = 12
+MAX_TAG_LEN = 30
+
+
+def clean_tags(tags) -> list:
+    """A song's tags, tidied: trimmed strings, no blanks, no repeats
+    (ignoring case; the first spelling wins), at most MAX_TAGS. Anything
+    that isn't a list of strings becomes no tags rather than an error, so
+    an old or hand-edited song file still loads."""
+    if not isinstance(tags, list):
+        return []
+    out, seen = [], set()
+    for t in tags:
+        if not isinstance(t, str):
+            continue
+        t = " ".join(t.split())[:MAX_TAG_LEN].strip()
+        if t and t.lower() not in seen:
+            seen.add(t.lower())
+            out.append(t)
+        if len(out) >= MAX_TAGS:
+            break
+    return out
 
 
 def validate_song(song: dict) -> None:

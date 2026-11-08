@@ -47,6 +47,10 @@
             <button class="btn-icon" id="new-song-btn" title="New song">+</button>
           </span>
         </div>
+        <div class="song-list-tools">
+          <select id="song-order" title="Order of the song list: A to Z, or the running order of a setlist"></select>
+          <div id="tag-filter" class="tag-filter" title="Show only songs with these tags"></div>
+        </div>
         <ul id="song-list" class="item-list"></ul>
         <input type="file" id="import-file" accept=".json,application/json,.pdf,application/pdf" class="hidden" />
       </section>
@@ -91,6 +95,12 @@
             </label>
             <button class="btn tap-btn" id="song-tap" title="Tap along to set the tempo">Tap</button>
           </div>
+          <div class="song-tags" id="song-tags">
+            <span class="song-tags-label">Tags</span>
+            <span id="song-tag-chips" class="tag-chips"></span>
+            <input id="song-tag-input" type="text" list="tag-suggestions" maxlength="30" placeholder="Add a tag…" data-focus-key="song:tag" title="Own song, a cover's artist, acoustic, encore… Enter to add" />
+            <datalist id="tag-suggestions"></datalist>
+          </div>
         </header>
         <div class="toolbar">
           <button class="btn btn-go" id="song-live-btn" title="Put this song on every live screen">&#9654; Go live</button>
@@ -126,9 +136,13 @@
           <button id="delete-setlist-btn" class="btn-danger">Delete</button>
         </div>
         <p id="setlist-summary" class="song-summary"></p>
+        <div class="setlist-search-row">
+          <input id="setlist-search" type="search" placeholder="Search songs, artists, tags…" data-focus-key="setlist:search" />
+          <div id="setlist-tag-filter" class="tag-filter"></div>
+        </div>
         <div class="setlist-builder">
           <div class="setlist-column">
-            <h2>In this setlist</h2>
+            <h2>In this setlist <span class="dim-note" id="setlist-drag-note">drag &#8942;&#8942; to reorder</span></h2>
             <ol id="setlist-songs" class="setlist-songs"></ol>
           </div>
           <div class="setlist-column">

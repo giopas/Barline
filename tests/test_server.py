@@ -150,6 +150,32 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(self.s.json("GET", "/api/songs/nope")[0], 404)
         self.assertEqual(self.s.call("DELETE", f"/api/songs/{song['id']}")[0], 204)
 
+    def test_song_tags_are_tidied_kept_and_listed(self):
+        status, song = self.s.json("POST", "/api/songs", {"title": "Tagged", "default_bpm": 100,
+                                                          "tags": ["  Own   song ", "own song", "", 7, "Cover"]})
+        self.assertEqual(status, 201)
+        self.assertEqual(song["tags"], ["Own song", "Cover"])
+        song["tags"] = ["x" * 50] + [f"t{i}" for i in range(20)]
+        status, saved = self.s.json("PUT", f"/api/songs/{song['id']}", song)
+        self.assertEqual(status, 200)
+        self.assertEqual(len(saved["tags"]), models.MAX_TAGS)
+        self.assertEqual(saved["tags"][0], "x" * models.MAX_TAG_LEN)
+        # a PUT without tags (an older client) keeps them
+        body = {k: v for k, v in saved.items() if k != "tags"}
+        self.assertEqual(self.s.json("PUT", f"/api/songs/{song['id']}", body)[1]["tags"], saved["tags"])
+        # not a list: no tags rather than an error
+        self.assertEqual(self.s.json("PUT", f"/api/songs/{song['id']}", dict(saved, tags="Cover"))[1]["tags"], [])
+        listed = next(x for x in self.s.json("GET", "/api/songs")[1] if x["id"] == song["id"])
+        self.assertEqual(listed["tags"], [])
+        demo = next(x for x in self.s.json("GET", "/api/songs")[1] if x["title"] == "Paper Boats")
+        self.assertIn("Ballad", demo["tags"])
+        self.s.call("DELETE", f"/api/songs/{song['id']}")
+
+    def test_setlist_summaries_carry_the_running_order(self):
+        for summary in self.s.json("GET", "/api/setlists")[1]:
+            full = self.s.json("GET", f"/api/setlists/{summary['id']}")[1]
+            self.assertEqual(summary["songs"], full["songs"])
+
     def test_static_is_locked_down(self):
         status, body, headers = self.s.call("GET", "/")
         self.assertEqual(status, 200)

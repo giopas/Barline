@@ -234,6 +234,7 @@ class Store:
             "id": s["id"],
             "title": s["title"],
             "default_bpm": s["default_bpm"],
+            "tags": models.clean_tags(s.get("tags")),
             "section_count": len(s.get("sections", [])),
             "total_bars": models.song_total_bars(s),
             "duration_ms": timeline.duration_ms(s),
@@ -252,6 +253,7 @@ class Store:
 
     def _add_song(self, song: dict, origin=None) -> dict:
         with self.lock:
+            song["tags"] = models.clean_tags(song.get("tags"))
             models.validate_song(song)
             self.songs[song["id"]] = song
             self.storage.save_song(song)
@@ -265,6 +267,7 @@ class Store:
         )
         if isinstance(payload.get("sections"), list):
             song["sections"] = payload["sections"]
+        song["tags"] = payload.get("tags", [])
         return self._add_song(song, origin)
 
     def import_song(self, payload: dict, origin=None) -> dict:
@@ -281,6 +284,7 @@ class Store:
                 "id": song_id,
                 "title": str(payload.get("title", existing["title"]))[:120],
                 "default_bpm": payload.get("default_bpm", existing["default_bpm"]),
+                "tags": models.clean_tags(payload.get("tags", existing.get("tags", []))),
                 "sections": payload.get("sections", existing.get("sections", [])),
                 "created_at": existing.get("created_at", models.now()),
                 "updated_at": models.now(),
@@ -332,6 +336,7 @@ class Store:
                 present = [self.songs[s] for s in sl["songs"] if s in self.songs]
                 out.append({
                     "id": sl["id"], "name": sl["name"], "song_count": len(sl["songs"]),
+                    "songs": list(sl["songs"]),
                     "duration_ms": sum(timeline.duration_ms(s) for s in present),
                 })
             return out

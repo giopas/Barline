@@ -64,6 +64,59 @@ class BrowserSync(unittest.TestCase):
         # and the server has it
         self.assertEqual(self.s.store.songs[song["id"]]["sections"][1]["label"], "Verse 1 (quiet)")
 
+    def test_drag_a_setlist_song_and_the_song_list_follows(self):
+        setlist = next(sl for sl in self.s.store.setlists.values() if sl["name"].startswith("Friday"))
+        titles = lambda pg, sel: pg.eval_on_selector_all(sel, "ls => ls.map(l => l.textContent)")  # noqa: E731
+        a, b = self.page(), self.page()
+        for pg in (a, b):
+            pg.goto(f"{self.s.base}/#/setlist/{setlist['id']}")
+            pg.wait_for_selector("#setlist-songs li .drag-handle")
+        first = titles(a, "#setlist-songs .setlist-song-title")
+        # the song list on the left is in the setlist's order, the rest after
+        self.assertEqual(titles(a, "#song-list li .item-name")[:len(first)], first)
+        handle = a.locator("#setlist-songs li .drag-handle").nth(0).bounding_box()
+        target = a.locator("#setlist-songs li").nth(2).bounding_box()
+        a.mouse.move(handle["x"] + 4, handle["y"] + 4)
+        a.mouse.down()
+        for i in range(1, 11):
+            a.mouse.move(handle["x"] + 4, handle["y"] + (target["y"] + target["height"] - 4 - handle["y"]) * i / 10)
+        a.mouse.up()
+        moved = first[1:3] + [first[0]] + first[3:]
+        self.assertEqual(titles(a, "#setlist-songs .setlist-song-title"), moved)
+        self.assertEqual(titles(a, "#song-list li .item-name")[:len(moved)], moved)
+        # saved, and the other device's list follows
+        b.wait_for_function(f"[...document.querySelectorAll('#setlist-songs .setlist-song-title')].map(e => e.textContent).join('|') === {('|'.join(moved))!r}", timeout=5000)
+        self.assertEqual(titles(b, "#song-list li .item-name")[:len(moved)], moved)
+        # search and tag filter: matching rows only, and no dragging while filtered
+        a.fill("#setlist-search", "ballad")
+        self.assertEqual(titles(a, "#setlist-songs .setlist-song-title"), ["Paper Boats", "Slow Tide"])
+        self.assertTrue(a.evaluate("document.getElementById('setlist-songs').classList.contains('filtering')"))
+        a.fill("#setlist-search", "")
+        a.locator("#tag-filter .chip", has_text="Fast").click()
+        self.assertEqual(titles(a, "#song-list li .item-name"), ["Night Bus to Nowhere", "Lantern Parade"])
+        a.locator("#tag-filter .tag-clear").click()
+        # put it back for the other tests
+        self.s.store.put_setlist(setlist["id"], dict(setlist, songs=[s for s in setlist["songs"]]))
+
+    def test_tag_a_song(self):
+        song = demo_song(self.s, "Encore Jam")
+        a = self.page()
+        a.goto(f"{self.s.base}/#/song/{song['id']}")
+        a.wait_for_selector("#song-tag-input")
+        a.fill("#song-tag-input", "own SONG")  # takes the spelling already in use
+        a.press("#song-tag-input", "Enter")
+        a.fill("#song-tag-input", "Late night")
+        a.press("#song-tag-input", "Enter")
+        a.wait_for_function("document.querySelectorAll('#tag-filter .chip').length >= 9")
+        for _ in range(50):
+            if self.s.store.songs[song["id"]].get("tags") == ["Jam", "Encore", "Own song", "Late night"]:
+                break
+            a.wait_for_timeout(100)
+        self.assertEqual(self.s.store.songs[song["id"]]["tags"], ["Jam", "Encore", "Own song", "Late night"])
+        a.locator("#song-tag-chips .tag-remove").last.click()
+        a.wait_for_timeout(800)
+        self.assertEqual(self.s.store.songs[song["id"]]["tags"], ["Jam", "Encore", "Own song"])
+
     def test_three_devices_follow_one_run(self):
         song = demo_song(self.s, "Night Bus to Nowhere")
         band = self.s.store.get_band()

@@ -114,6 +114,13 @@ const state = {
   presence: [],
   me: prefs.get("player", null), // this device's player id, or null = whole band
   previewing: false,
+  // 0.15: the sidebar's song order ("az" or a setlist id), the tag filter
+  // (shared by the sidebar and the setlist page; a song shows when it has
+  // ANY of the chosen tags), and the setlist page's search text.
+  songOrder: prefs.get("songOrder", "az"),
+  tagFilter: prefs.get("tagFilter", []),
+  setlistQuery: "",
+  dragging: false,
 };
 
 const metronome = new window.SSPAudio.Metronome();
@@ -157,6 +164,14 @@ const els = {
   setlistSummary: document.getElementById("setlist-summary"),
   bandName: document.getElementById("band-name"),
   playerList: document.getElementById("player-list"),
+  songOrder: document.getElementById("song-order"),
+  tagFilter: document.getElementById("tag-filter"),
+  songTagChips: document.getElementById("song-tag-chips"),
+  songTagInput: document.getElementById("song-tag-input"),
+  tagSuggestions: document.getElementById("tag-suggestions"),
+  setlistSearch: document.getElementById("setlist-search"),
+  setlistTagFilter: document.getElementById("setlist-tag-filter"),
+  setlistDragNote: document.getElementById("setlist-drag-note"),
 };
 
 function playerById(id) {
@@ -267,21 +282,146 @@ async function refreshLists() {
   state.songs = songs;
   state.setlists = setlists;
   renderSidebar();
-  if (state.view === "setlist") preserveFocus(renderSetlistSongs);
+  if (state.view === "setlist" && !state.dragging) preserveFocus(renderSetlistSongs);
   if (window.SSPLive) window.SSPLive.refresh();
 }
 const refreshListsSoon = debounce(() => refreshLists().catch(() => {}), 150);
 
-function renderSidebar() {
-  els.songList.innerHTML = "";
+// -- tags ------------------------------------------------------------------
+
+function songTags(song) {
+  if (state.currentSong && song && state.currentSong.id === song.id) return state.currentSong.tags || [];
+  return (song && song.tags) || [];
+}
+
+// every tag in use, A-Z, with how many songs carry it
+function allTags() {
+  const counts = new Map();
   for (const song of state.songs) {
-    const li = el("li");
-    li.appendChild(el("span", "item-name", song.title || "(untitled)"));
-    li.appendChild(el("span", "item-count", `${song.default_bpm} · ${Timing.fmtDuration(song.duration_ms)}`));
-    if (state.currentSong && state.currentSong.id === song.id) li.classList.add("active");
-    li.addEventListener("click", () => go(`#/song/${song.id}`));
-    els.songList.appendChild(li);
+    for (const t of songTags(song)) {
+      const key = t.toLowerCase();
+      const cur = counts.get(key) || { tag: t, n: 0 };
+      cur.n++;
+      counts.set(key, cur);
+    }
   }
+  return [...counts.values()].sort((a, b) => a.tag.localeCompare(b.tag, undefined, { sensitivity: "base" }));
+}
+
+function activeTagFilter() {
+  const inUse = new Set(allTags().map((t) => t.tag.toLowerCase()));
+  return state.tagFilter.filter((t) => inUse.has(t.toLowerCase()));
+}
+
+function passesTagFilter(song) {
+  const want = activeTagFilter().map((t) => t.toLowerCase());
+  if (!want.length) return true;
+  return songTags(song).some((t) => want.includes(t.toLowerCase()));
+}
+
+function setTagFilter(tags) {
+  state.tagFilter = tags;
+  prefs.set("tagFilter", tags);
+  renderSidebar();
+  if (state.view === "setlist") renderSetlistSongs();
+}
+
+function renderTagFilter(container) {
+  container.innerHTML = "";
+  const tags = allTags();
+  container.classList.toggle("hidden", !tags.length);
+  const active = activeTagFilter().map((t) => t.toLowerCase());
+  for (const { tag, n } of tags) {
+    const on = active.includes(tag.toLowerCase());
+    const chip = el("button", "chip tag-chip" + (on ? " active" : ""), tag);
+    chip.title = `${n} song${n === 1 ? "" : "s"} tagged "${tag}"` + (on ? " (click to stop filtering)" : "");
+    chip.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      const rest = state.tagFilter.filter((t) => t.toLowerCase() !== tag.toLowerCase());
+      setTagFilter(on ? rest : [...rest, tag]);
+    });
+    container.appendChild(chip);
+  }
+  if (active.length) {
+    const clear = el("button", "chip tag-clear", "× all songs");
+    clear.title = "Stop filtering by tag";
+    clear.addEventListener("click", () => setTagFilter([]));
+    container.appendChild(clear);
+  }
+}
+
+// -- the song list: A-Z, or a setlist's running order -------------------------
+
+function orderSetlist() {
+  if (state.songOrder === "az") return null;
+  const entry = state.setlists.find((s) => s.id === state.songOrder);
+  if (!entry) return null;
+  // the open setlist's local copy is newer than the summary while a save is on its way
+  const songs = state.currentSetlist && state.currentSetlist.id === entry.id ? state.currentSetlist.songs : entry.songs || [];
+  return { id: entry.id, name: entry.name, songs };
+}
+
+function setSongOrder(value) {
+  state.songOrder = value;
+  prefs.set("songOrder", value);
+  renderSidebar();
+}
+
+function renderSongOrder() {
+  const sel = els.songOrder;
+  const ordered = orderSetlist();
+  sel.innerHTML = "";
+  const az = el("option", null, "A–Z");
+  az.value = "az";
+  sel.appendChild(az);
+  for (const setlist of state.setlists) {
+    const o = el("option", null, `In the order of "${setlist.name}"`);
+    o.value = setlist.id;
+    sel.appendChild(o);
+  }
+  sel.value = ordered ? ordered.id : "az";
+  sel.classList.toggle("hidden", !state.setlists.length);
+}
+els.songOrder.addEventListener("change", () => setSongOrder(els.songOrder.value));
+
+function songListItem(song, position) {
+  const li = el("li");
+  if (position) li.appendChild(el("span", "item-pos", String(position)));
+  li.appendChild(el("span", "item-name", song.title || "(untitled)"));
+  li.appendChild(el("span", "item-count", `${song.default_bpm} · ${Timing.fmtDuration(song.duration_ms)}`));
+  if (state.currentSong && state.currentSong.id === song.id) li.classList.add("active");
+  li.addEventListener("click", () => go(`#/song/${song.id}`));
+  return li;
+}
+
+function renderSidebar() {
+  renderSongOrder();
+  renderTagFilter(els.tagFilter);
+  els.songList.innerHTML = "";
+  const ordered = orderSetlist();
+  const byId = Object.fromEntries(state.songs.map((s) => [s.id, s]));
+  let shown = 0;
+  if (ordered) {
+    ordered.songs.forEach((id, index) => {
+      const song = byId[id];
+      if (!song || !passesTagFilter(song)) return;
+      els.songList.appendChild(songListItem(song, index + 1));
+      shown++;
+    });
+    const rest = state.songs.filter((s) => !ordered.songs.includes(s.id) && passesTagFilter(s));
+    if (rest.length) {
+      els.songList.appendChild(el("li", "item-divider", `Not in "${ordered.name}"`));
+      for (const song of rest) els.songList.appendChild(songListItem(song));
+      shown += rest.length;
+    }
+  } else {
+    for (const song of state.songs) {
+      if (!passesTagFilter(song)) continue;
+      els.songList.appendChild(songListItem(song));
+      shown++;
+    }
+  }
+  if (!shown && state.songs.length) els.songList.appendChild(el("li", "item-divider", "No song has those tags."));
   els.setlistList.innerHTML = "";
   for (const setlist of state.setlists) {
     const li = el("li");
@@ -457,6 +597,7 @@ function renderSongView() {
   const song = state.currentSong;
   if (document.activeElement !== els.songTitle) els.songTitle.value = song.title;
   if (document.activeElement !== els.songBpm) els.songBpm.value = song.default_bpm;
+  renderSongTags();
   renderSongShape();
   renderSections();
 }
@@ -510,6 +651,80 @@ els.songBpm.addEventListener("input", () => {
     preserveFocus(renderSections);
     edited();
   }
+});
+
+// -- tags on a song -------------------------------------------------------------
+
+function renderSongTags() {
+  const song = state.currentSong;
+  if (!song) return;
+  if (!Array.isArray(song.tags)) song.tags = [];
+  els.songTagChips.innerHTML = "";
+  for (const tag of song.tags) {
+    const chip = el("span", "chip tag-chip", tag);
+    const x = el("button", "tag-remove", "×");
+    x.title = `Remove the tag "${tag}"`;
+    x.addEventListener("click", () => {
+      song.tags = song.tags.filter((t) => t !== tag);
+      songTagsChanged();
+    });
+    chip.appendChild(x);
+    els.songTagChips.appendChild(chip);
+  }
+  els.tagSuggestions.innerHTML = "";
+  const have = song.tags.map((t) => t.toLowerCase());
+  for (const { tag } of allTags()) {
+    if (have.includes(tag.toLowerCase())) continue;
+    const o = el("option");
+    o.value = tag;
+    els.tagSuggestions.appendChild(o);
+  }
+}
+
+function songTagsChanged() {
+  const song = state.currentSong;
+  const entry = state.songs.find((s) => s.id === song.id);
+  if (entry) entry.tags = song.tags.slice();
+  renderSongTags();
+  renderSidebar();
+  edited();
+}
+
+function addSongTag(raw) {
+  const song = state.currentSong;
+  const tag = String(raw || "").replace(/\s+/g, " ").trim().slice(0, 30);
+  if (!song || !tag) return;
+  if (!Array.isArray(song.tags)) song.tags = [];
+  // reuse the spelling already in use elsewhere ("own song" vs "Own Song")
+  const known = allTags().find((t) => t.tag.toLowerCase() === tag.toLowerCase());
+  const final = known ? known.tag : tag;
+  if (song.tags.some((t) => t.toLowerCase() === final.toLowerCase())) return;
+  if (song.tags.length >= 12) return toast("Twelve tags is the most a song can have.", "warn");
+  song.tags.push(final);
+  songTagsChanged();
+}
+
+els.songTagInput.addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter" || ev.key === ",") {
+    ev.preventDefault();
+    addSongTag(els.songTagInput.value);
+    els.songTagInput.value = "";
+  } else if (ev.key === "Backspace" && !els.songTagInput.value && state.currentSong && (state.currentSong.tags || []).length) {
+    state.currentSong.tags.pop();
+    songTagsChanged();
+  }
+});
+// picking a suggestion from the list adds it straight away
+els.songTagInput.addEventListener("input", (ev) => {
+  const v = els.songTagInput.value;
+  if (ev.inputType === "insertReplacementText" || (ev.inputType === undefined && allTags().some((t) => t.tag === v))) {
+    addSongTag(v);
+    els.songTagInput.value = "";
+  }
+});
+els.songTagInput.addEventListener("blur", () => {
+  if (els.songTagInput.value.trim()) addSongTag(els.songTagInput.value);
+  els.songTagInput.value = "";
 });
 
 document.getElementById("new-song-btn").addEventListener("click", () => openQuick());
@@ -1263,27 +1478,65 @@ function renderHints(container, section) {
 
 async function openSetlist(id) {
   const setlist = await api("GET", `/setlists/${id}`);
+  if (!state.currentSetlist || state.currentSetlist.id !== id) {
+    state.setlistQuery = "";
+    els.setlistSearch.value = "";
+  }
   state.currentSetlist = setlist;
+  // the song list on the left follows the setlist you're looking at
+  state.songOrder = id;
+  prefs.set("songOrder", id);
   showView("setlist");
   if (document.activeElement !== els.setlistName) els.setlistName.value = setlist.name;
   renderSetlistSongs();
   renderSidebar();
 }
 
+function songMatches(song, query) {
+  if (!query) return true;
+  const hay = [song.title || "", ...songTags(song)].join(" ").toLowerCase();
+  return query.toLowerCase().split(/\s+/).filter(Boolean).every((w) => hay.includes(w));
+}
+
+function tagBadges(song) {
+  const tags = songTags(song);
+  const box = el("span", "tag-badges");
+  for (const t of tags) box.appendChild(el("span", "tag-badge", t));
+  return box;
+}
+
 function renderSetlistSongs() {
   const setlist = state.currentSetlist;
   if (!setlist) return;
+  renderTagFilter(els.setlistTagFilter);
   const songsById = Object.fromEntries(state.songs.map((s) => [s.id, s]));
+  const query = state.setlistQuery.trim();
+  const filtering = !!query || activeTagFilter().length > 0;
+  const visible = (song) => !filtering || (song && songMatches(song, query) && passesTagFilter(song));
   let total = 0;
+  let hidden = 0;
   els.setlistSongs.innerHTML = "";
+  els.setlistSongs.classList.toggle("filtering", filtering);
   setlist.songs.forEach((songId, index) => {
     const song = songsById[songId];
     if (song) total += song.duration_ms;
+    if (!visible(song)) {
+      hidden++;
+      return;
+    }
     const li = el("li");
+    li.dataset.index = String(index);
+    const handle = el("span", "drag-handle", "⋮⋮");
+    handle.title = filtering ? "Clear the search and tag filter to reorder by dragging" : "Drag to move";
+    if (!filtering) handle.addEventListener("pointerdown", (ev) => startSetlistDrag(ev, li));
+    li.appendChild(handle);
     li.appendChild(el("span", "song-order", String(index + 1)));
+    const main = el("span", "setlist-song-main");
     const title = el("span", "setlist-song-title", song ? song.title : "(deleted song)");
     if (song) title.addEventListener("click", () => go(`#/song/${song.id}`));
-    li.appendChild(title);
+    main.appendChild(title);
+    if (song && songTags(song).length) main.appendChild(tagBadges(song));
+    li.appendChild(main);
     if (song) li.appendChild(el("span", "item-count", `${song.default_bpm} BPM · ${Timing.fmtDuration(song.duration_ms)}`));
     const mk = (label, tip, fn, disabled) => {
       const b = el("button", "btn-icon", label);
@@ -1295,39 +1548,142 @@ function renderSetlistSongs() {
     const swap = (d) => {
       const j = index + d;
       [setlist.songs[index], setlist.songs[j]] = [setlist.songs[j], setlist.songs[index]];
-      renderSetlistSongs();
-      saveSetlist();
+      setlistReordered();
     };
     mk("↑", "Move up", () => swap(-1), index === 0);
     mk("↓", "Move down", () => swap(1), index === setlist.songs.length - 1);
     mk("−", "Remove from setlist", () => {
       setlist.songs.splice(index, 1);
-      renderSetlistSongs();
-      saveSetlist();
+      setlistReordered();
     });
     li.lastChild.classList.add("danger");
     els.setlistSongs.appendChild(li);
   });
+  if (filtering && hidden === setlist.songs.length && setlist.songs.length) {
+    els.setlistSongs.appendChild(el("li", "setlist-empty", "Nothing in this setlist matches."));
+  }
+  els.setlistDragNote.textContent = filtering
+    ? `showing ${setlist.songs.length - hidden} of ${setlist.songs.length}`
+    : "drag ⋮⋮ to reorder";
   els.setlistSummary.textContent = setlist.songs.length
     ? `${setlist.songs.length} songs · about ${Timing.fmtDuration(total)} of music`
     : "Empty: add songs from the right.";
 
   els.setlistAvailable.innerHTML = "";
+  let available = 0;
   for (const song of state.songs) {
     if (setlist.songs.includes(song.id)) continue;
+    available++;
+    if (!visible(song)) continue;
     const li = el("li");
-    li.appendChild(el("span", "setlist-song-title", song.title));
+    const main = el("span", "setlist-song-main");
+    main.appendChild(el("span", "setlist-song-title", song.title));
+    if (songTags(song).length) main.appendChild(tagBadges(song));
+    li.appendChild(main);
     li.appendChild(el("span", "item-count", `${song.default_bpm} BPM · ${Timing.fmtDuration(song.duration_ms)}`));
     const addBtn = el("button", "btn-icon", "+");
     addBtn.title = "Add to setlist";
     addBtn.addEventListener("click", () => {
       setlist.songs.push(song.id);
-      renderSetlistSongs();
-      saveSetlist();
+      setlistReordered();
     });
     li.appendChild(addBtn);
     els.setlistAvailable.appendChild(li);
   }
+  if (!els.setlistAvailable.children.length) {
+    const msg = available ? "No other song matches." : "Every song is already in this setlist.";
+    els.setlistAvailable.appendChild(el("li", "setlist-empty", msg));
+  }
+}
+
+// the setlist changed order or contents here: redraw both lists, save
+function setlistReordered() {
+  renderSetlistSongs();
+  renderSidebar();
+  saveSetlist();
+}
+
+els.setlistSearch.addEventListener("input", () => {
+  state.setlistQuery = els.setlistSearch.value;
+  renderSetlistSongs();
+});
+
+// -- drag to reorder (pointer events: mouse, touch and pen alike) ------------
+
+function scrollParent(node) {
+  for (let n = node.parentElement; n; n = n.parentElement) {
+    const oy = getComputedStyle(n).overflowY;
+    if ((oy === "auto" || oy === "scroll") && n.scrollHeight > n.clientHeight) return n;
+  }
+  return document.scrollingElement;
+}
+
+function startSetlistDrag(ev, li) {
+  if (ev.button !== undefined && ev.button !== 0) return;
+  ev.preventDefault();
+  const list = els.setlistSongs;
+  const scroller = scrollParent(list);
+  const before = [...list.children].map((r) => r.dataset.index);
+  let lastY = ev.clientY;
+  let frame = 0;
+  // listen on the window, not the handle: moving the row in the page drops
+  // any pointer capture the handle had, and the drop would never arrive
+  const pid = ev.pointerId;
+  state.dragging = true;
+  li.classList.add("dragging");
+  list.classList.add("drag-active");
+
+  const place = () => {
+    const rows = [...list.children].filter((r) => r !== li);
+    let next = null;
+    for (const r of rows) {
+      const box = r.getBoundingClientRect();
+      if (lastY < box.top + box.height / 2) {
+        next = r;
+        break;
+      }
+    }
+    if (li.nextSibling !== next) list.insertBefore(li, next);
+  };
+  // keep scrolling while the finger rests near the top or bottom edge
+  const tick = () => {
+    const box = scroller === document.scrollingElement ? { top: 0, bottom: window.innerHeight } : scroller.getBoundingClientRect();
+    const edge = 48;
+    let dy = 0;
+    if (lastY < box.top + edge) dy = -Math.ceil((box.top + edge - lastY) / 4);
+    else if (lastY > box.bottom - edge) dy = Math.ceil((lastY - (box.bottom - edge)) / 4);
+    if (dy) {
+      scroller.scrollTop += dy;
+      place();
+    }
+    frame = requestAnimationFrame(tick);
+  };
+  frame = requestAnimationFrame(tick);
+
+  const onMove = (e) => {
+    if (e.pointerId !== pid) return;
+    e.preventDefault();
+    lastY = e.clientY;
+    place();
+  };
+  const onEnd = (e) => {
+    if (e.pointerId !== pid) return;
+    cancelAnimationFrame(frame);
+    window.removeEventListener("pointermove", onMove);
+    window.removeEventListener("pointerup", onEnd);
+    window.removeEventListener("pointercancel", onEnd);
+    li.classList.remove("dragging");
+    list.classList.remove("drag-active");
+    state.dragging = false;
+    const after = [...list.children].map((r) => r.dataset.index);
+    const setlist = state.currentSetlist;
+    if (!setlist || after.join() === before.join()) return renderSetlistSongs();
+    setlist.songs = after.map((i) => setlist.songs[Number(i)]);
+    setlistReordered();
+  };
+  window.addEventListener("pointermove", onMove, { passive: false });
+  window.addEventListener("pointerup", onEnd);
+  window.addEventListener("pointercancel", onEnd);
 }
 
 const saveSetlist = debounce(async () => {
@@ -1483,12 +1839,13 @@ Sync.on("song_deleted", (data, msg) => {
 Sync.on("setlist", (setlist, msg) => {
   refreshListsSoon();
   if (mine(msg)) return;
-  if (state.currentSetlist && state.currentSetlist.id === setlist.id && !saveSetlist.pending()) {
+  if (state.currentSetlist && state.currentSetlist.id === setlist.id && !saveSetlist.pending() && !state.dragging) {
     state.currentSetlist = setlist;
     preserveFocus(() => {
       if (document.activeElement !== els.setlistName) els.setlistName.value = setlist.name;
       renderSetlistSongs();
     });
+    renderSidebar(); // the song list follows this setlist's order
   }
 });
 

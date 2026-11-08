@@ -2,6 +2,10 @@
   "id": "5d820c467c67",
   "title": "Encore Jam",
   "default_bpm": 140,
+  "tags": [
+    "Jam",
+    "Encore"
+  ],
   "sections": [
     {
       "id": "e00f727b85d3",

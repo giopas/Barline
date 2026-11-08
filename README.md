@@ -23,7 +23,10 @@ moving through the song together, each with its own click.
 - **Everyone edits the same copy.** Change a bar count on the laptop and the
   singer's phone updates a moment later. No refresh, no "which version is
   the latest".
-- **Build setlists** and switch between songs instantly. In a hurry? Paste
+- **Build setlists** and switch between songs instantly. Drag songs into
+  playing order; the song list follows the setlist you're on. Tag songs
+  (own song, a cover's artist, ballad, encore...) and filter by tag, or
+  search a setlist. In a hurry? Paste
   your set ("Song A - 124", one per line) or tap a tempo in: a title and a
   BPM is all the click needs.
 - **Play it live.** Anyone can press Start -- usually the drummer. Every

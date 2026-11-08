@@ -113,6 +113,17 @@ SONGS = [
     ]),
 ]
 
+# 0.15: tags, to filter the song list ("own song", a cover's artist, a mood...)
+TAGS = {
+    "Harbour Lights": ["Own song", "Opener"],
+    "Paper Boats": ["Own song", "Ballad", "Acoustic"],
+    "Night Bus to Nowhere": ["Own song", "Fast"],
+    "Slow Tide": ["Own song", "Ballad"],
+    "Lantern Parade": ["Own song", "Fast", "Crowd pleaser"],
+    "Coffee at Midnight": ["Own song", "New"],
+    "Encore Jam": ["Jam", "Encore"],
+}
+
 SETLISTS = [
     ("Friday at the Harbour Bar", ["Harbour Lights", "Night Bus to Nowhere", "Paper Boats",
                                    "Lantern Parade", "Slow Tide", "Encore Jam"]),
@@ -139,7 +150,7 @@ def song_doc(title, bpm, sections):
                 "visibility": "all" if who == "all" else P[who],
             } for j, (text, who, clip) in enumerate(hints)],
         })
-    return {"id": sid, "title": title, "default_bpm": bpm, "sections": out,
+    return {"id": sid, "title": title, "default_bpm": bpm, "tags": TAGS.get(title, []), "sections": out,
             "created_at": STAMP, "updated_at": STAMP}
 
 

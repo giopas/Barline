@@ -5,6 +5,36 @@ follows semver (MAJOR.MINOR.PATCH).
 
 ## [Unreleased]
 
+## [0.15.0] -- 2026-11-08
+
+Setlists you can drag, a song list that follows them, and tags.
+
+### Added
+
+- **Drag to reorder a setlist.** Grab a song by its ⋮⋮ handle and drop it
+  where it goes, with a mouse or a finger (the list scrolls when you reach
+  its edge). The arrows are still there.
+- **The song list follows the setlist.** In the sidebar, the setlist you're
+  looking at sets the order: its songs first, numbered as played, then the
+  rest under "Not in ...". It stays that way while you open songs from it.
+  A menu above the list switches to A–Z or another setlist's order; each
+  device remembers its own choice. A reorder on one device shows up in
+  every device's list straight away.
+- **Search a setlist.** A search box above the setlist finds songs by title
+  or tag, in the setlist and in "All songs" (dragging pauses while
+  searching).
+- **Tags on songs.** Type a tag under a song's title and press Enter: own
+  song, a cover's artist, ballad, encore, anything. Up to twelve per song;
+  the spelling already in use is reused. Click tags in the sidebar or above
+  a setlist to show only songs with any of them. Songs keep their tags
+  through export/import; older song files simply have none.
+- Demo band: every song is tagged.
+
+### Changed
+
+- `GET /api/setlists` lists each setlist's song ids (the running order), and
+  `GET /api/songs` each song's tags.
+
 ## [0.14.1] -- 2026-11-08
 
 ### Fixed

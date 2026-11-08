@@ -69,7 +69,17 @@ Everybody connected sees the same song, and changes show up on every screen with
 
 ## Building a setlist
 
-Click **+** next to Setlists. Add songs from "All songs" on the right, and use the arrows to put them in playing order. The setlist shows how long the set runs, count-ins included. Switching between songs and setlists is instant; there's no loading screen.
+Click **+** next to Setlists. Add songs from "All songs" on the right, then put them in playing order: drag a song by its **⋮⋮** handle (mouse or finger), or use the arrows. The setlist shows how long the set runs, count-ins included. Switching between songs and setlists is instant; there's no loading screen.
+
+The song list in the sidebar follows the setlist you're looking at: its songs first, numbered in playing order, then the songs that aren't in it. It stays that way when you open a song, so you can walk through the set from the sidebar. The menu above the list switches back to **A–Z** or to another setlist's order (each device remembers its own choice).
+
+The search box above the setlist finds songs by title or tag, in the setlist and in "All songs". While searching or filtering, dragging is off (clear the search to reorder).
+
+## Tags
+
+Give a song tags under its title: type one and press Enter (or pick one already in use). Tags are whatever helps your band: *Own song*, a cover's artist, *Ballad*, *Acoustic*, *Encore*... Up to twelve per song; the spelling already in use is reused, so "own song" and "Own song" stay one tag.
+
+Click a tag in the sidebar (or above the setlist) to show only songs with it; pick more than one to see songs with **any** of them. **× all songs** clears the filter.
 
 ![A setlist](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/02-setlist.png)
 
