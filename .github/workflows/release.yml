@@ -35,7 +35,7 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y python3-tk tk-dev
       - name: Install
-        run: python -m pip install pyinstaller certifi  # certifi: the update check needs a CA list in the packaged app
+        run: python -m pip install pyinstaller certifi truststore  # the update check: certifi as a fallback list, truststore for what the computer itself trusts (company networks)
         shell: bash
       - name: Server tests
         # browser tests need Playwright and run in tests.yml; these need nothing.

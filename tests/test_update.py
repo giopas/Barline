@@ -16,6 +16,7 @@ import json
 import os
 import shutil
 import ssl
+import subprocess
 import stat
 import sys
 import tarfile
@@ -221,6 +222,49 @@ class UpdateTests(unittest.TestCase):
         self.assertIsInstance(update._ssl_context(), ssl.SSLContext)
         self.assertIn("context=_ssl_context()", inspect.getsource(update._read))
         self.assertIn("context=_ssl_context()", inspect.getsource(update._download))
+
+    def test_trusts_the_mac_keychains(self):
+        """Without truststore, a Mac adds its system keychains (a company's
+        certificate lives there) to the list it trusts."""
+        pem = "-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----"
+        seen = {}
+
+        def fake_run(cmd, **kw):
+            seen["cmd"] = cmd
+            return subprocess.CompletedProcess(cmd, 0, stdout=f"junk\n{pem}\n{pem}\n", stderr="")
+        self.assertEqual(update._mac_keychain_pems(run=fake_run), [pem, pem])
+        self.assertEqual(seen["cmd"][:4], ["/usr/bin/security", "find-certificate", "-a", "-p"])
+        self.assertIn("/Library/Keychains/System.keychain", seen["cmd"])
+        self.assertEqual(update._mac_keychain_pems(run=lambda *a, **k: (_ for _ in ()).throw(OSError())), [])
+
+    def test_context_is_built_once(self):
+        update._CTX = None
+        try:
+            a = update._ssl_context()
+            self.assertIs(update._ssl_context(), a)
+        finally:
+            update._CTX = None
+
+    def test_reasons_in_words(self):
+        import socket
+        import urllib.error
+        cert = urllib.error.URLError(ssl.SSLCertVerificationError(1, "[SSL: CERTIFICATE_VERIFY_FAILED] self signed"))
+        self.assertIn("certificate", update.reason(cert))
+        self.assertIn("try again later", update.reason(urllib.error.HTTPError("u", 403, "rate", {}, None)))
+        self.assertIn("404", update.reason(urllib.error.HTTPError("u", 404, "nf", {}, None)))
+        self.assertIn("no internet", update.reason(urllib.error.URLError(socket.gaierror(8, "nodename"))))
+        self.assertIn("too long", update.reason(urllib.error.URLError(TimeoutError())))
+        self.assertIn("too long", update.reason(TimeoutError()))
+        self.assertEqual(update.reason(ValueError("x")), "ValueError")
+
+    def test_check_says_why(self):
+        import urllib.error
+        update._CTX = None
+        with mock.patch.object(update, "_read", side_effect=urllib.error.URLError(
+                ssl.SSLCertVerificationError(1, "CERTIFICATE_VERIFY_FAILED"))):
+            d = update.check(force=True)
+        self.assertIn("certificate", d["error"])
+        self.assertIn("CERTIFICATE_VERIFY_FAILED", d["error_detail"])
 
     def test_downloads_only_from_github(self):
         with self.assertRaises(ValueError):

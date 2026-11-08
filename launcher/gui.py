@@ -533,7 +533,9 @@ class LauncherApp:
             self._enqueue_log(f"Update: SSP {info.get('latest')} is available (this is {info['current']}).")
         elif not quiet:
             if info.get("error"):
-                msg = "Couldn't check for updates (no internet?). SSP doesn't need it."
+                msg = info["error"] + " SSP works without it."
+                if info.get("error_detail"):
+                    self._enqueue_log("Update check: " + info["error_detail"])
             else:
                 msg = f"You have the latest version ({info['current']})."
             self.footer_var.set(msg)
@@ -1199,6 +1201,13 @@ def smoke() -> int:
         demo = os.path.isfile(os.path.join(paths.demo_data_dir(), "band.json"))
         ok = ok and demo
         print(f"{'ok ' if demo else 'BAD'} demo band")
+        # the update check trusts what the computer trusts (truststore) on macOS/Windows
+        import platform
+        ctx = update._ssl_context()
+        native = type(ctx).__module__.startswith("truststore")
+        good = native or platform.system() not in ("Darwin", "Windows")
+        ok = ok and good
+        print(f"{'ok ' if good else 'BAD'} update check trusts {'the system store' if native else 'certifi + system files'}")
     finally:
         server_app.stop_server(httpd)
     print(f"SSP {server_app.VERSION}: {'smoke test passed' if ok else 'smoke test FAILED'}")

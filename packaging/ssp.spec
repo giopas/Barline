@@ -38,7 +38,7 @@ a = Analysis(  # noqa: F821
     datas=[(os.path.join(ROOT, "web", "static"), os.path.join("web", "static")),
            (os.path.join(ROOT, "demo"), "demo")],
     hiddenimports=["app", "paths", "platform_dirs", "storage", "models", "settings", "timeline",
-                   "transport", "events", "export", "paper", "click_track", "qr", "version", "update", "hotspot"],
+                   "transport", "events", "export", "paper", "click_track", "qr", "version", "update", "hotspot", "truststore"],
     excludes=["pytest", "playwright", "tests"],
     noarchive=False,
 )

@@ -5,6 +5,30 @@ follows semver (MAJOR.MINOR.PATCH).
 
 ## [Unreleased]
 
+## [0.14.1] -- 2026-11-08
+
+### Fixed
+
+- **"Couldn't check for updates (no internet?)" with the internet working.**
+  The packaged app trusted only the certificate list it ships with
+  (certifi), so on a network or computer with its own certificate (a
+  company's HTTPS inspection, some antivirus) every check and download
+  failed while the browser was fine. The update check now trusts what the
+  computer trusts: the system's own store through `truststore` on macOS and
+  Windows (bundled in the apps); otherwise the system defaults plus certifi,
+  the usual CA files and, on a Mac, the system keychains. From source it
+  works as before (nothing to install).
+- The panel now says *why* a check failed (certificate not trusted, no
+  internet, GitHub asking to wait, too slow...) and writes the details to
+  the log, instead of "no internet?" for everything; same for a failed
+  update.
+- The packaged app's `--smoke` check (run on every release) reports which
+  certificates the update check trusts, and fails on macOS/Windows if it
+  isn't the system's.
+
+Note: an app that can't check (0.12.1 to 0.14.0 on such a network) can't
+update itself to this one either: download 0.14.1 once by hand.
+
 ## [0.14.0] -- 2026-11-08
 
 The band's own Wi-Fi, for a room with no network.

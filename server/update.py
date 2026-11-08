@@ -169,24 +169,88 @@ _CA_FILES = ("/etc/ssl/cert.pem",                      # macOS (and some Linux)
              "/etc/pki/tls/certs/ca-bundle.crt")       # Fedora / RHEL
 
 
+_MAC_KEYCHAINS = ("/System/Library/Keychains/SystemRootCertificates.keychain",  # Apple's roots
+                  "/Library/Keychains/System.keychain")  # added by an admin or the company (MDM)
+_CTX = None
+
+
+def _mac_keychain_pems(run=subprocess.run) -> List[str]:
+    """The certificates in the Mac's system keychains, as PEM blocks (``security``,
+    built into macOS). A company network that inspects HTTPS (Zscaler and the like)
+    puts its certificate there: Safari and Chrome trust it, a bundled Python doesn't."""
+    try:
+        res = run(["/usr/bin/security", "find-certificate", "-a", "-p", *_MAC_KEYCHAINS],
+                  capture_output=True, text=True, timeout=10, check=False)  # nosec B603
+    except (OSError, subprocess.SubprocessError):
+        return []
+    blocks = re.findall(r"-----BEGIN CERTIFICATE-----.+?-----END CERTIFICATE-----", res.stdout or "", re.S)
+    return blocks
+
+
 def _ssl_context() -> ssl.SSLContext:
-    """A bundled (PyInstaller) Python often has no list of trusted certificates and then cannot
-    open any https:// address: use certifi's list, else the system's file, else the default."""
-    cafile = None
+    """Trust what this computer trusts, not only a list shipped with the app.
+
+    A bundled (PyInstaller) Python has no certificate list of its own, and certifi's
+    list alone misses a company's or antivirus's certificate that the computer itself
+    trusts (the update check then failed with "no internet?" while the browser worked).
+    So: on macOS and Windows, the system's own trust store through ``truststore`` when
+    it's there (the packaged apps ship it); otherwise the system defaults, plus
+    certifi, plus the usual CA files, plus (macOS) the system keychains."""
+    global _CTX
+    if _CTX is not None:
+        return _CTX
+    system = platform.system()
+    if system in ("Darwin", "Windows"):
+        try:
+            import truststore  # optional: in the packaged apps, not needed from source
+            _CTX = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            return _CTX
+        except Exception:  # noqa: BLE001 - not installed, or too old a system: the long way
+            pass
+    ctx = ssl.create_default_context()  # the system defaults (on Windows: its certificate store)
+    files = [os.environ.get("SSL_CERT_FILE")]
     try:
         import certifi
-        cafile = certifi.where()
+        files.append(certifi.where())
     except Exception:  # noqa: BLE001
-        for p in _CA_FILES:
-            if os.path.isfile(p):
-                cafile = p
-                break
-    if cafile and os.path.isfile(cafile):
-        try:
-            return ssl.create_default_context(cafile=cafile)
-        except Exception:  # noqa: BLE001
-            pass
-    return ssl.create_default_context()
+        pass
+    files.extend(_CA_FILES)
+    for cafile in files:
+        if cafile and os.path.isfile(cafile):
+            try:
+                ctx.load_verify_locations(cafile=cafile)
+            except Exception:  # noqa: BLE001 - one unreadable file doesn't spoil the rest
+                pass
+    if system == "Darwin":
+        for pem in _mac_keychain_pems():
+            try:
+                ctx.load_verify_locations(cadata=pem)
+            except Exception:  # noqa: BLE001
+                pass
+    _CTX = ctx
+    return ctx
+
+
+def reason(e: BaseException) -> str:
+    """Why a check or download failed, in words (the panel used to say "no internet?" for all)."""
+    import socket
+    import urllib.error
+    text = str(e)
+    inner = getattr(e, "reason", None)
+    if isinstance(e, ssl.SSLCertVerificationError) or isinstance(inner, ssl.SSLCertVerificationError) \
+            or "CERTIFICATE_VERIFY_FAILED" in text:
+        return "this computer doesn't trust the certificate it got for GitHub"
+    if isinstance(e, urllib.error.HTTPError):
+        if e.code in (403, 429):
+            return "GitHub asks to try again later (too many checks from this network)"
+        return f"GitHub answered {e.code}"
+    if isinstance(inner, socket.gaierror) or isinstance(e, socket.gaierror):
+        return "no internet (GitHub's name didn't resolve)"
+    if isinstance(e, (TimeoutError, socket.timeout)) or isinstance(inner, (TimeoutError, socket.timeout)):
+        return "GitHub took too long to answer"
+    if isinstance(inner, ConnectionRefusedError) or isinstance(e, ConnectionRefusedError):
+        return "the connection was refused (a firewall or proxy?)"
+    return type(inner).__name__ if isinstance(inner, BaseException) else type(e).__name__
 
 
 def _check_host(url: str) -> None:
@@ -272,7 +336,9 @@ def check(force: bool = False, now: float = None) -> dict:
             raise ValueError("unexpected answer")
         res = _summary(rel)
     except Exception as e:  # noqa: BLE001 -- offline at the venue is normal
-        return status(error=f"Could not check for updates ({type(e).__name__}).")
+        d = status(error=f"Couldn't check for updates: {reason(e)}.")
+        d["error_detail"] = f"{type(e).__name__}: {e}"[:400]
+        return d
     st["cache"] = {"at": now, "for": VERSION, "result": res}
     _save(st)
     return status(res)
@@ -489,4 +555,4 @@ def install(info: dict = None) -> dict:
                 "message": f"Version {info.get('latest')} is ready: SSP quits and starts again."}
     except Exception as e:  # noqa: BLE001
         shutil.rmtree(work, ignore_errors=True)
-        return {"ok": False, "message": f"Could not update: {e}"}
+        return {"ok": False, "message": f"Couldn't update: {reason(e)}. ({type(e).__name__}: {e})"[:500]}
