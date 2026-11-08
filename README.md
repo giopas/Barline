@@ -1,6 +1,10 @@
-# SSP -- Song and Setlist Planner
+<p align="center">
+  <img src="packaging/icons/icon-256.png" width="128" height="128" alt="SSP app icon: a bar of four beats, the first one lit">
+</p>
 
-Plan your set, and keep everyone in sync on stage.
+<h1 align="center">SSP -- Song and Setlist Planner</h1>
+
+<p align="center">Plan your set, and keep everyone in sync on stage.</p>
 
 SSP is a tool for bands and other music groups to work out a song's
 structure together -- sections, tempo, count-ins, and reminders for each

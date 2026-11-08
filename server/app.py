@@ -30,12 +30,15 @@ from __future__ import annotations
 
 import argparse
 import atexit
+import ipaddress
 import json
 import os
+import platform
 import re
 import shutil
 import signal
 import socket
+import subprocess
 import sys
 import tempfile
 import threading
@@ -66,31 +69,74 @@ MAX_IMPORT_BYTES = 40 * 1024 * 1024
 # core/stage_monitor.py local_addresses()).
 # ---------------------------------------------------------------------------
 
+_IPV4 = re.compile(r"(?<![\d.])(\d{1,3}(?:\.\d{1,3}){3})(?![\d.])")
+# Hotspot ranges: macOS Internet Sharing, NetworkManager (the Pi's "SSP-Band"
+# hotspot), Windows Mobile Hotspot. When this computer *is* the band's Wi-Fi,
+# that's the address phones can reach, so it goes first.
+_HOTSPOT = ("192.168.2.", "10.42.0.", "192.168.137.")
+
+
+def _usable(ip: str) -> bool:
+    try:
+        a = ipaddress.IPv4Address(ip)
+    except ValueError:
+        return False
+    return not (a.is_loopback or a.is_unspecified or a.is_multicast or a.is_link_local
+                or ip.endswith(".255"))
+
+
+def parse_addresses(text: str, system: str) -> list:
+    """IPv4 addresses of this computer from ``ifconfig`` (macOS),
+    ``ip -4 addr`` (Linux) or ``ipconfig`` (Windows) output."""
+    found = []
+    for line in text.splitlines():
+        low = line.lower()
+        if system == "Windows":
+            if "ipv4" not in low:
+                continue
+        else:
+            if "inet " not in low:
+                continue
+            line = line.split("inet ", 1)[1].split()[0].split("/")[0]
+        for ip in _IPV4.findall(line):
+            if _usable(ip) and ip not in found:
+                found.append(ip)
+                break
+    return found
+
+
 def local_addresses() -> list:
-    """Best-effort list of this machine's LAN IPv4 addresses, for printing
-    a reachable URL on startup. The UDP "connect" never sends a packet --
-    it only asks the OS which interface it would route through."""
-    addrs = set()
+    """This computer's LAN IPv4 addresses, best first (a hotspot this
+    computer runs, then private addresses), for the URL and QR code.
+
+    Read from ifconfig / ip / ipconfig with a 3-second limit, never from a
+    DNS lookup of this computer's own name: on a Mac that name ends in
+    .local and resolving it can stall for a long time with no network
+    (it hung the macOS release builds, and would freeze the Connect screen
+    at a venue with no internet). Same approach as Swiss Knife's
+    core/stage_monitor.py."""
+    system = platform.system()
+    cmd = {"Darwin": ["ifconfig"], "Linux": ["ip", "-4", "addr"],
+           "Windows": ["ipconfig"]}.get(system, ["ifconfig"])
+    ips = []
     try:
-        hostname = socket.gethostname()
-        _, _, ips = socket.gethostbyname_ex(hostname)
-        for ip in ips:
-            if not ip.startswith("127."):
-                addrs.add(ip)
-    except socket.error:
-        pass
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        try:
-            s.connect(("10.255.255.255", 1))
-            ip = s.getsockname()[0]
-            if not ip.startswith("127."):
-                addrs.add(ip)
-        finally:
-            s.close()
-    except OSError:
-        pass
-    return sorted(addrs)
+        res = subprocess.run(cmd, capture_output=True, text=True, timeout=3, check=False)  # nosec B603
+        ips = parse_addresses(res.stdout or "", system)
+    except (OSError, subprocess.SubprocessError):
+        ips = []
+    if not ips:
+        try:  # the address the system would use to go out; sends nothing (UDP)
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.connect(("10.255.255.255", 1))
+                ip = s.getsockname()[0]
+                if _usable(ip):
+                    ips.append(ip)
+        except OSError:
+            pass
+
+    def rank(ip):
+        return 0 if ip.startswith(_HOTSPOT) else 1 if ipaddress.IPv4Address(ip).is_private else 2
+    return sorted(ips, key=rank)
 
 
 # ---------------------------------------------------------------------------

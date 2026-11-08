@@ -3,6 +3,29 @@
 All notable changes to this project are documented here. Versioning
 follows semver (MAJOR.MINOR.PATCH).
 
+## [0.12.1] -- 2026-11-08
+
+The macOS apps, for the first time.
+
+### Fixed
+
+- **The macOS builds hung and never got published** (0.10.1 to 0.12.0 had
+  Windows and Linux only). Finding this computer's Wi-Fi address looked up
+  the Mac's own `.local` name, which can stall for minutes when nothing
+  answers: it timed out the release builds, and could have frozen the
+  Connect screen or the control panel at a venue with no internet. SSP now
+  reads the addresses from `ifconfig` / `ip` / `ipconfig` (with a 3-second
+  limit), as QLC+ Swiss Knife does, and lists a hotspot this computer runs
+  (the Pi's `SSP-Band`, macOS Internet Sharing, Windows Mobile Hotspot)
+  first.
+
+### Changed
+
+- The README starts with the app icon.
+- Every push now also runs the server tests on a Mac (`tests.yml`), so a
+  macOS-only problem shows up before a release. The release build runs the
+  update tests too.
+
 ## [0.12.0] -- 2026-11-08
 
 Updates from inside the app, the same way QLC+ Swiss Knife does it.

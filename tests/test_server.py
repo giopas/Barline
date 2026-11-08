@@ -23,6 +23,7 @@ import urllib.error
 import urllib.request
 import wave
 import zipfile
+from unittest import mock
 import array
 import io
 
@@ -480,6 +481,64 @@ class StorageCompatTests(unittest.TestCase):
             httpd.server_close()
         finally:
             shutil.rmtree(tmp)
+
+
+IFCONFIG = """lo0: flags=8049<UP,LOOPBACK,RUNNING,MULTICAST> mtu 16384
+	inet 127.0.0.1 netmask 0xff000000
+en0: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500
+	inet 192.168.1.23 netmask 0xffffff00 broadcast 192.168.1.255
+bridge100: flags=8863<UP,BROADCAST,SMART,RUNNING,SIMPLEX,MULTICAST> mtu 1500
+	inet 192.168.2.1 netmask 0xffffff00 broadcast 192.168.2.255
+en5: flags=8863<UP> mtu 1500
+	inet 169.254.10.2 netmask 0xffff0000
+"""
+IPADDR = """1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536
+    inet 127.0.0.1/8 scope host lo
+3: wlan0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500
+    inet 10.42.0.1/24 brd 10.42.0.255 scope global noprefixroute wlan0
+"""
+IPCONFIG = """Wireless LAN adapter Local Area Connection* 2:
+   IPv4 Address. . . . . . . . . . . : 192.168.137.1
+   Subnet Mask . . . . . . . . . . . : 255.255.255.0
+Ethernet adapter Ethernet:
+   IPv4 Address. . . . . . . . . . . : 10.0.0.5(Preferred)
+   Default Gateway . . . . . . . . . : 10.0.0.1
+"""
+
+
+class AddressTests(unittest.TestCase):
+    """The URL/QR addresses come from ifconfig / ip / ipconfig (ported from
+    Swiss Knife), never from a DNS lookup of this computer's own name: that
+    lookup hung every macOS release build (and could freeze the Connect
+    screen at a venue with no internet)."""
+
+    def test_addresses_from_each_system(self):
+        self.assertEqual(app.parse_addresses(IFCONFIG, "Darwin"), ["192.168.1.23", "192.168.2.1"])
+        self.assertEqual(app.parse_addresses(IPADDR, "Linux"), ["10.42.0.1"])
+        self.assertEqual(app.parse_addresses(IPCONFIG, "Windows"), ["192.168.137.1", "10.0.0.5"])
+
+    def test_hotspot_address_comes_first(self):
+        class Result:
+            stdout = IFCONFIG
+        with mock.patch.object(app.platform, "system", lambda: "Darwin"), \
+                mock.patch.object(app.subprocess, "run", lambda *a, **k: Result()):
+            self.assertEqual(app.local_addresses(), ["192.168.2.1", "192.168.1.23"])
+
+    def test_no_dns_lookup_of_this_computers_name(self):
+        def boom(*_a, **_k):
+            raise AssertionError("local_addresses() must not resolve the hostname")
+        with mock.patch.object(app.socket, "gethostbyname_ex", boom), \
+                mock.patch.object(app.socket, "gethostbyname", boom), \
+                mock.patch.object(app.socket, "getaddrinfo", boom):
+            started = time.monotonic()
+            app.local_addresses()
+            self.assertLess(time.monotonic() - started, 5)
+
+    def test_falls_back_when_the_tool_is_missing(self):
+        def missing(*_a, **_k):
+            raise FileNotFoundError("ip")
+        with mock.patch.object(app.subprocess, "run", missing):
+            self.assertIsInstance(app.local_addresses(), list)
 
 
 if __name__ == "__main__":
