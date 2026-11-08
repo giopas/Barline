@@ -1,17 +1,12 @@
 """
-Export (v0.7): getting songs out of SSP.
+Export (v0.7): a portable song file (`.ssp.json`) -- the song plus any
+recorded hint clips, base64-encoded, in one file you can email or put on a
+USB stick and import on another band's SSP. The plain `data/songs/<id>.json`
+is still portable on its own; this is the version that keeps the clips.
 
-Two kinds:
-
-  * Printable charts -- a plain, light-themed HTML page per song or per
-    setlist, for the whole band or for one player (that player's hints plus
-    the band-wide ones). Open it, then use the browser's Print -> "Save as
-    PDF" for a PDF. Server-rendered, no script, so it prints the same
-    everywhere.
-  * A portable song file (`.ssp.json`) -- the song plus any recorded hint
-    clips, base64-encoded, in one file you can email or put on a USB stick
-    and import on another band's SSP. The plain `data/songs/<id>.json` is
-    still portable on its own; this is the version that keeps the clips.
+Paper charts are server/paper.py (0.13: real PDFs; they replaced v0.7's
+printable HTML pages). A song's PDF carries this same bundle inside it, so
+`payload_from_bytes` reads either file.
 """
 
 from __future__ import annotations
@@ -19,134 +14,13 @@ from __future__ import annotations
 import base64
 import binascii
 import copy
-import html
+import json
 import os
 
 import models
-import timeline
+import paper
 
-# Same palette as web/static/app.js, so a printout matches the screen.
-PALETTE = ["#5b8cff", "#45c08a", "#e2b93b", "#e2574c", "#b073f0", "#39c2c9", "#f08a3c", "#6fcf97"]
 EXPORT_FORMAT = 1
-
-
-def _e(text) -> str:
-    return html.escape(str(text if text is not None else ""), quote=True)
-
-
-def fmt_duration(ms: float) -> str:
-    s = int(round(ms / 1000.0))
-    return f"{s // 60}:{s % 60:02d}"
-
-
-def _player_map(band: dict) -> dict:
-    return {p["id"]: p for p in band.get("players", [])}
-
-
-def _song_block(song: dict, band: dict, player_id: str = None) -> str:
-    players = _player_map(band)
-    sections = sorted(song.get("sections", []), key=lambda s: s.get("order", 0))
-    total = sum(s["bars"] for s in sections) or 1
-    shape = "".join(
-        f'<div class="blk" style="flex-grow:{s["bars"]};background:{PALETTE[i % len(PALETTE)]}">'
-        f'{_e(s["label"]) if s["bars"] / total > 0.06 else ""}</div>'
-        for i, s in enumerate(sections)
-    )
-    rows = []
-    bar = 1
-    for i, s in enumerate(sections):
-        bpm = s.get("bpm") or song["default_bpm"]
-        ci = s.get("count_in") or {}
-        ci_txt = f'{ci.get("bars")} bar{"s" if ci.get("bars") != 1 else ""} ({_e(ci.get("style"))})' \
-            if ci.get("style", "none") != "none" and ci.get("bars") else ""
-        hints = []
-        for h in s.get("hints", []):
-            vis = h.get("visibility", "all")
-            if player_id and vis not in ("all", player_id):
-                continue
-            if not (h.get("text") or "").strip() and not h.get("audio"):
-                continue
-            who = ""
-            cls = "hint"
-            if vis != "all":
-                p = players.get(vis)
-                who = f'<span class="who">{_e(p["name"]) if p else "?"}</span> '
-                if player_id and vis == player_id:
-                    cls += " mine"
-            clip = ' <span class="clip">(voice memo)</span>' if h.get("audio") else ""
-            hints.append(f'<li class="{cls}">{who}{_e(h.get("text"))}{clip}</li>')
-        tempo = f'<b>{bpm}</b>' if s.get("bpm") else str(bpm)
-        rows.append(
-            f'<tr><td class="sw" style="background:{PALETTE[i % len(PALETTE)]}"></td>'
-            f'<td class="num">{bar}</td><td class="lbl">{_e(s["label"])}</td>'
-            f'<td class="num">{s["bars"]}</td><td class="num">{tempo}</td><td>{ci_txt}</td>'
-            f'<td><ul>{"".join(hints)}</ul></td></tr>'
-        )
-        bar += s["bars"]
-    dur = fmt_duration(timeline.duration_ms(song)) if sections else "0:00"
-    return (
-        f'<section class="song"><h1>{_e(song["title"])}</h1>'
-        f'<p class="meta">{song["default_bpm"]} BPM · {total if sections else 0} bars · about {dur}</p>'
-        f'<div class="shape">{shape}</div>'
-        '<table><thead><tr><th></th><th>Bar</th><th>Section</th><th>Bars</th><th>BPM</th>'
-        '<th>Count-in</th><th>Hints</th></tr></thead>'
-        f'<tbody>{"".join(rows)}</tbody></table></section>'
-    )
-
-
-_CSS = """
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-color:#111;background:#fff;margin:24px;font-size:13px}
-h1{font-size:22px;margin:0 0 2px}.meta{color:#555;margin:0 0 10px}
-.top{color:#555;font-size:12px;border-bottom:1px solid #ddd;padding-bottom:6px;margin-bottom:14px}
-.shape{display:flex;gap:2px;height:22px;margin-bottom:12px;border-radius:4px;overflow:hidden}
-.blk{color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;
-white-space:nowrap;overflow:hidden;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-table{border-collapse:collapse;width:100%}th{text-align:left;font-size:11px;color:#555;
-border-bottom:1px solid #ccc;padding:4px 6px}td{border-bottom:1px solid #eee;padding:5px 6px;vertical-align:top}
-td.sw{width:6px;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-td.num{text-align:right;width:40px;color:#333}td.lbl{font-weight:600;width:22%}
-ul{margin:0;padding-left:16px}.who{font-weight:600}.mine{font-weight:700}
-.mine::before{content:"\\2192 ";}.clip{color:#777;font-style:italic}
-.song{page-break-after:always;margin-bottom:28px}.song:last-child{page-break-after:auto}
-ol.setlist{font-size:15px;line-height:1.6}
-@media print{body{margin:12mm}.noprint{display:none}}
-.noprint{margin-bottom:14px;color:#555}
-"""
-
-
-def _page(title: str, body: str, band: dict, player_id: str = None) -> str:
-    who = "whole band"
-    p = _player_map(band).get(player_id) if player_id else None
-    if p:
-        who = f'{_e(p["name"])} ({_e(p["role"])})'
-    return (
-        "<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">"
-        "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
-        f"<title>{_e(title)}</title><style>{_CSS}</style></head><body>"
-        "<p class=\"noprint\">Print this page (or Save as PDF) from your browser's menu.</p>"
-        f'<div class="top">{_e(band.get("name", ""))} · chart for {who} · made with SSP</div>'
-        f"{body}</body></html>"
-    )
-
-
-def song_html(song: dict, band: dict, player_id: str = None) -> str:
-    return _page(song["title"], _song_block(song, band, player_id), band, player_id)
-
-
-def setlist_html(setlist: dict, songs: dict, band: dict, player_id: str = None) -> str:
-    present = [songs[s] for s in setlist["songs"] if s in songs]
-    total = sum(timeline.duration_ms(s) for s in present)
-    cover = (
-        f'<section class="song"><h1>{_e(setlist["name"])}</h1>'
-        f'<p class="meta">{len(present)} songs · about {fmt_duration(total)} of music</p>'
-        '<ol class="setlist">'
-        + "".join(f'<li>{_e(s["title"])} <span class="meta">— {s["default_bpm"]} BPM, '
-                  f'{fmt_duration(timeline.duration_ms(s))}</span></li>' for s in present)
-        + "</ol></section>"
-    )
-    return _page(setlist["name"], cover + "".join(_song_block(s, band, player_id) for s in present),
-                 band, player_id)
 
 
 # ---------------------------------------------------------------------------
@@ -197,3 +71,22 @@ def unbundle(payload: dict, storage, taken_ids) -> dict:
     song.setdefault("created_at", models.now())
     models.validate_song(song)
     return song
+
+
+def payload_from_bytes(data: bytes) -> dict:
+    """What an imported file holds, ready for `unbundle`: an `.ssp.json`, a
+    plain song `.json`, or a song chart PDF made by SSP 0.13 or later."""
+    if data[:5] == b"%PDF-":
+        payload = paper.read_embedded(data)
+        if payload is None:
+            raise models.ValidationError(
+                "this PDF has no song inside it -- only a song's paper chart from SSP 0.13 "
+                "or later carries one (a set's PDF doesn't)")
+        return payload
+    try:
+        payload = json.loads(data.decode("utf-8-sig"))
+    except (ValueError, UnicodeDecodeError):
+        raise models.ValidationError("that isn't an SSP song file (.ssp.json, .json or a song's PDF)") from None
+    if not isinstance(payload, dict):
+        raise models.ValidationError("that isn't an SSP song file")
+    return payload

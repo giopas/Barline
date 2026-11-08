@@ -48,7 +48,7 @@
           </span>
         </div>
         <ul id="song-list" class="item-list"></ul>
-        <input type="file" id="import-file" accept=".json,application/json" class="hidden" />
+        <input type="file" id="import-file" accept=".json,application/json,.pdf,application/pdf" class="hidden" />
       </section>
 
       <footer class="sidebar-footer">
@@ -99,7 +99,7 @@
             <button class="btn" id="song-click-settings" title="This device's click: sound, subdivisions, spoken count-in, ear, test">&#9881; Click</button>
             <button class="btn" id="song-wav-btn" title="Download a practice click track (.wav) with this device's click settings">&#8615; Click track</button>
           </span>
-          <button class="btn" id="song-print-btn" title="Printable chart (whole band, or your part)">&#9113; Print chart</button>
+          <button class="btn" id="song-print-btn" title="A PDF to print: whole band, or one player's part">&#9113; Paper chart</button>
           <button class="btn" id="song-export-btn" title="Download this song as one portable file, with its voice memos">&#8615; Export</button>
           <button id="delete-song-btn" class="btn-danger">Delete</button>
         </div>
@@ -121,7 +121,7 @@
         </header>
         <div class="toolbar">
           <button class="btn btn-go" id="setlist-live-btn" title="Put this setlist on every live screen">&#9654; Go live with this setlist</button>
-          <button class="btn" id="setlist-print-btn" title="Printable charts for the whole set">&#9113; Print set</button>
+          <button class="btn" id="setlist-print-btn" title="A PDF to print: the running order, then every song's chart">&#9113; Print set</button>
           <button class="btn" id="setlist-zip-btn" title="One click track per song, in a .zip, with this device's click settings: practise anywhere, no server needed">&#8615; Practice tracks</button>
           <button id="delete-setlist-btn" class="btn-danger">Delete</button>
         </div>
@@ -244,10 +244,24 @@
   <div class="modal hidden" id="print-modal">
     <div class="modal-card">
       <div class="modal-head">
-        <h2>Print a chart</h2>
+        <h2 id="print-title">Paper chart</h2>
         <button class="btn-icon" data-close>&times;</button>
       </div>
-      <p class="modal-note">Opens a printable page. Use your browser's Print, or "Save as PDF".</p>
+      <div class="print-settings">
+        <div class="seg" data-opt="size" role="group" aria-label="Size">
+          <button type="button" data-v="fit" title="Type grows until the page is full">Fit to page</button>
+          <button type="button" data-v="floor" title="The biggest type that fits on one sheet, to read from the floor">Floor sheet</button>
+        </div>
+        <div class="seg" data-opt="ink" role="group" aria-label="Colour">
+          <button type="button" data-v="color">Colour</button>
+          <button type="button" data-v="bw" title="Grey section bands: less toner, photocopies well">Black &amp; white</button>
+        </div>
+        <div class="seg" data-opt="parts" id="print-parts" role="group" aria-label="What to print">
+          <button type="button" data-v="all">Set list + charts</button>
+          <button type="button" data-v="list" title="Just the running order, in big type">Set list only</button>
+        </div>
+      </div>
+      <p class="modal-note" id="print-note">Opens a PDF in a new tab: print it from there, or save it.</p>
       <div id="print-options" class="who-options"></div>
     </div>
   </div>

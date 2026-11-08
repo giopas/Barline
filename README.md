@@ -33,9 +33,20 @@ moving through the song together, each with its own click.
   Y-splitter into in-ears, a click for count-ins only. Drummers get a big
   view (tempo, bar, bars to the next part), and a device keeps playing on
   its own if the server drops mid-song.
+- **Put it on paper.** A song's chart as a PDF, for the whole band or one
+  player: tempo, how it starts, the song's shape, each section's first bar,
+  a box per bar to count along on, tempo changes, count-ins and hints. It
+  grows to fill the page, or makes a **floor sheet** in the biggest type
+  that fits on one page; colour, or black and white. A setlist prints its
+  running order in big type, then one chart per song.
 - **Take it with you.** Download a practice click track (`.wav`) that follows
-  the song's tempo changes (or a `.zip` of them for a whole setlist), print a chart for the whole band or one player,
-  or export a song (voice memos included) as a single file for another band.
+  the song's tempo changes (or a `.zip` of them for a whole setlist), or
+  export a song (voice memos included) as a single file for another band. A
+  song's PDF carries the song too, so another SSP can import the printout's file.
+
+| A bass player's chart | The set's running order, and a floor sheet |
+|---|---|
+| ![A song's paper chart for the bass player](screenshots/10-print-chart-bass.png) | ![The running order on one page, and a song as a black-and-white floor sheet](screenshots/16-paper-setlist-and-floor.png) |
 
 | On the drummer's tablet | On the bassist's phone |
 |---|---|
@@ -272,6 +283,9 @@ SSP's song-structure focus takes its cue from
 synced client" pattern, the per-player "tablet on stage" idea, the QR code
 encoder, the click-track sounds, the updater and the look of the control panel are adapted from
 [QLC+ Swiss Knife](https://github.com/giopas/qlc-plus-swiss-knife-tool-script).
+The paper charts (the PDF writer, Fit to page, the floor sheet, black and
+white, the song carried inside its PDF) come from
+[Song Notation Tool](https://github.com/giopas/song-notation-tool).
 
 ## License
 

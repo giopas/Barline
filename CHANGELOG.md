@@ -5,8 +5,46 @@ follows semver (MAJOR.MINOR.PATCH).
 
 ## [Unreleased]
 
+## [0.13.0] -- 2026-11-08
+
+Paper charts: real PDFs to print, after Song Notation Tool's.
+
+### Added
+
+- **Paper charts as PDFs** (`server/paper.py`), made by SSP itself with the
+  standard library: no PDF library, nothing to install. The PDF writer, the
+  sizing rules, the floor sheet, black and white and the song carried inside
+  its PDF come from
+  [Song Notation Tool](https://github.com/giopas/song-notation-tool) (whose
+  writer came from QLC+ Swiss Knife). A song's chart shows its tempo, length,
+  how it starts (count-in or lead-in click) and its coloured shape, then each
+  section: its name and first bar, a box per bar in groups of four to count
+  along on, the new tempo where it changes, its count-in, and its hints (who
+  each is for; for one player, the band-wide hints plus their own, marked
+  "»"; "(voice memo)" where a hint has one). Sections never split across
+  pages; a long song carries on with "(continued)" and page numbers.
+- **Size: Fit to page** (the type grows until the page is full, or shrinks a
+  little if that saves a page) or **Floor sheet** (the biggest type on one
+  page; portrait or landscape, one or two columns, whichever is biggest;
+  two columns put section names on a band across the top, with a rule
+  between the columns).
+- **Colour or Black & white** (grey bands, black names: less toner, and it
+  photocopies well).
+- **The set's running order** in the biggest type that fits on one page, as
+  the first page of **Print set**, or on its own with **Set list only**.
+- **Import a song from its PDF**: a song's chart carries the song (voice
+  memos included) as an attachment, `song.ssp.json`, and the ⇡ import button
+  takes the PDF.
+- The print dialog remembers size, colour and what to print on each device;
+  each choice also has a ⤓ download button.
+
 ### Changed
 
+- **⎙ Print chart** is now **⎙ Paper chart**, and it and **⎙ Print set** open
+  a PDF instead of a printable web page. `/export/song/<id>` and
+  `/export/setlist/<id>` return the PDF (options `player`, `size=fit|floor`,
+  `ink=color|bw`, `parts=all|list`, `download=1`); a link with a player who
+  has since left the band gives the whole band's chart.
 - README: a full **Install** section, after QLC+ Swiss Knife's: what to
   download for each computer; the first launch of an unsigned app (macOS
   right-click **Open**, **Open Anyway** on macOS 15+, or

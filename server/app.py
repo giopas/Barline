@@ -51,6 +51,7 @@ import click_track
 import events
 import export
 import models
+import paper
 import paths
 import qr
 import timeline
@@ -378,7 +379,7 @@ class Store:
 
 
 # ---------------------------------------------------------------------------
-# HTTP handler -- JSON REST API under /api/, printable charts under
+# HTTP handler -- JSON REST API under /api/, paper charts (PDF) under
 # /export/, static files otherwise. Locked-down static serving adapted from
 # Swiss Knife's stage_monitor.py pattern.
 # ---------------------------------------------------------------------------
@@ -565,7 +566,8 @@ class Handler(BaseHTTPRequestHandler):
             if route == ["songs"] and method == "POST":
                 return self._send_json(201, store.create_song(self._read_json_body(), origin))
             if route == ["songs", "import"] and method == "POST":
-                return self._send_json(201, store.import_song(self._read_json_body(MAX_IMPORT_BYTES), origin))
+                payload = export.payload_from_bytes(self._read_body(MAX_IMPORT_BYTES))
+                return self._send_json(201, store.import_song(payload, origin))
             if len(route) == 2 and route[0] == "songs":
                 if method == "GET":
                     return self._send_json(200, store.get_song(route[1]))
@@ -684,22 +686,44 @@ class Handler(BaseHTTPRequestHandler):
             pass  # the device went away; hub.stream already unsubscribed it
         self.close_connection = True
 
-    # -- printable charts -------------------------------------------------
+    # -- paper charts (PDF) ------------------------------------------------
     def _route_export(self, parsed) -> None:
+        """/export/song/<id> and /export/setlist/<id>: a PDF, shown in the
+        browser (?download=1 saves it instead). Options: player=<id>,
+        size=fit|floor, ink=color|bw, and for a setlist parts=all|list."""
         parts = [p for p in parsed.path.split("/") if p]
-        player = (parse_qs(parsed.query).get("player") or [None])[0]
+        q = parse_qs(parsed.query)
+        opt = lambda key, default: (q.get(key) or [default])[0]  # noqa: E731
+        player = opt("player", None)
+        size, ink = opt("size", "fit"), opt("ink", "color")
         store = self.store
         try:
             band = store.get_band()
+            if player and player not in {p["id"] for p in band.get("players", [])}:
+                player = None  # a player removed since the link was made: whole band
             if len(parts) == 3 and parts[1] == "song":
-                page = export.song_html(store.get_song(parts[2]), band, player)
+                song = store.get_song(parts[2])
+                with store.lock:
+                    bundle = export.bundle(song, store.storage)
+                body = paper.song_pdf(song, band, player, size, ink, bundle=bundle)
+                name = song["title"]
             elif len(parts) == 3 and parts[1] == "setlist":
-                page = export.setlist_html(store.get_setlist(parts[2]), store.songs, band, player)
+                setlist = store.get_setlist(parts[2])
+                body = paper.setlist_pdf(setlist, store.songs, band, player, size, ink, opt("parts", "all"))
+                name = setlist["name"]
             else:
                 raise KeyError(parsed.path)
         except KeyError:
             return self._send_json(404, {"error": "not found"})
-        self._send(200, page.encode("utf-8"), "text/html; charset=utf-8")
+        except ValidationError as exc:
+            return self._send_json(400, {"error": str(exc)})
+        p = next((x for x in band.get("players", []) if x["id"] == player), None)
+        filename = f"{name} - {p['name']}.pdf" if p else f"{name}.pdf"
+        filename = re.sub(r'[\\/:*?"<>|]+', "-", filename)
+        how = "attachment" if opt("download", "") in ("1", "true") else "inline"
+        self._send(200, body, "application/pdf", {
+            "Content-Disposition": f"{how}; filename*=UTF-8''{quote(filename)}",
+        })
 
     # -- static file serving -----------------------------------------------
     def _serve_static(self, url_path: str) -> None:

@@ -12,7 +12,8 @@ The "connect a device" address is replaced with a made-up one
 (192.168.1.20), so no real network address ends up in the repo.
 
 Needs: pip install playwright pillow, and a Chromium (playwright install
-chromium). Writes to screenshots/ (or OUT_DIR as a second argument).
+chromium); for the paper-chart pictures, poppler's pdftoppm or pip install
+pypdfium2. Writes to screenshots/ (or OUT_DIR as a second argument).
 
 Part of the release routine (see WORKPLAN.md, "Release checklist"): any
 change to what a screen looks like reruns this and commits the result.
@@ -195,11 +196,20 @@ class Shooter:
         self.save(tab, "09-live-count-in.png")
         self.stop()
 
-        # printable chart for one player
-        ch = self.page(viewport={"width": 1000, "height": 1100})
-        ch.goto(f"{self.srv.base}/export/song/{hl}?player={self.players['Sam']}")
-        ch.wait_for_timeout(300)
-        self.save(ch, "10-print-chart-bass.png")
+        # paper charts (0.13): the PDFs themselves, drawn as pictures --
+        # one player's chart, the set's running order next to a floor sheet
+        self.save_pdf(f"/export/song/{hl}?player={self.players['Sam']}", "10-print-chart-bass.png")
+        friday = self.setlists["Friday at the Harbour Bar"]
+        self.save_pdfs([f"/export/setlist/{friday}?parts=list",
+                        f"/export/song/{self.songs['Lantern Parade']}?size=floor&ink=bw"],
+                       "16-paper-setlist-and-floor.png")
+        lap.goto(f"{self.srv.base}/#/setlist/{friday}")
+        lap.wait_for_selector("#setlist-songs li")
+        lap.click("#setlist-print-btn")
+        lap.wait_for_selector("#print-modal:not(.hidden)")
+        lap.wait_for_timeout(300)
+        self.save(lap, "17-print-dialog.png")
+        lap.keyboard.press("Escape")
 
         # phone: who's holding this device, and editing on the go
         p2 = self.page("iPhone 13", None)
@@ -230,10 +240,36 @@ class Shooter:
         lap.wait_for_timeout(300)
         self.save(lap, "15-quick-add.png")
         lap.keyboard.press("Escape")
-        for pg in (lap, tab, phone, ch, p2):
+        for pg in (lap, tab, phone, p2):
             pg.context.close()
 
     # -----------------------------------------------------------------
+    def pdf_image(self, path, dpi=110):
+        """The first page of a PDF from the server, as a picture: poppler's
+        pdftoppm if it's installed, else pypdfium2 (pip install pypdfium2)."""
+        pdf = urllib.request.urlopen(self.srv.base + path, timeout=30).read()
+        if shutil.which("pdftoppm"):
+            with tempfile.TemporaryDirectory() as tmp:
+                with open(os.path.join(tmp, "in.pdf"), "wb") as f:
+                    f.write(pdf)
+                subprocess.run(["pdftoppm", "-png", "-r", str(dpi), "-f", "1", "-l", "1", "-singlefile",
+                                os.path.join(tmp, "in.pdf"), os.path.join(tmp, "out")], check=True)
+                return Image.open(os.path.join(tmp, "out.png")).convert("RGB")
+        import pypdfium2  # noqa: PLC0415 - only needed here
+        return pypdfium2.PdfDocument(pdf)[0].render(scale=dpi / 72).to_pil().convert("RGB")
+
+    def save_pdf(self, path, name):
+        img = self.pdf_image(path)
+        frame = Image.new("RGB", (img.width + 2, img.height + 2), (200, 200, 200))  # a thin page edge
+        frame.paste(img, (1, 1))
+        frame.save(os.path.join(OUT, name), optimize=True)
+        print("  ✓", name)
+
+    def save_pdfs(self, paths, name):
+        self.side_by_side([self.pdf_image(p, dpi=80) for p in paths], gap=24, bg=(225, 225, 225)).save(
+            os.path.join(OUT, name), optimize=True)
+        print("  ✓", name)
+
     @staticmethod
     def grab(pg, scale_to=None):
         img = Image.open(io.BytesIO(pg.screenshot())).convert("RGB")

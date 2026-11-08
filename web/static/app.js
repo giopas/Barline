@@ -762,23 +762,76 @@ document.getElementById("song-export-btn").addEventListener("click", () => {
   location.href = `/api/songs/${state.currentSong.id}/export`;
 });
 
-function openPrint(kind, id) {
+// Paper charts: a PDF made by the server (server/paper.py). Size, colour
+// and (for a set) what to print are remembered on this device.
+const PRINT_DEFAULTS = { size: "fit", ink: "color", parts: "all" };
+let printTarget = null;
+
+function printOptions() {
+  return Object.assign({}, PRINT_DEFAULTS, prefs.get("print", {}));
+}
+
+function renderPrintChoices() {
+  if (!printTarget) return;
+  const { kind, id } = printTarget;
+  const opts = printOptions();
+  document.querySelectorAll("#print-modal .seg").forEach((seg) => {
+    for (const b of seg.querySelectorAll("button")) b.classList.toggle("active", b.dataset.v === opts[seg.dataset.opt]);
+  });
+  document.getElementById("print-parts").classList.toggle("hidden", kind !== "setlist");
+  const listOnly = kind === "setlist" && opts.parts === "list";
   const box = document.getElementById("print-options");
   box.innerHTML = "";
-  const add = (label, sub, player) => {
-    const b = el("a", "who-option");
-    b.href = `/export/${kind}/${id}` + (player ? `?player=${player}` : "");
-    b.target = "_blank";
-    b.rel = "noopener";
-    b.appendChild(el("strong", "", label));
-    b.appendChild(el("span", "", sub));
-    b.addEventListener("click", () => closeModal("print-modal"));
-    box.appendChild(b);
+  const href = (player, download) => {
+    const q = new URLSearchParams({ size: opts.size, ink: opts.ink });
+    if (kind === "setlist") q.set("parts", opts.parts);
+    if (player) q.set("player", player);
+    if (download) q.set("download", "1");
+    return `/export/${kind}/${id}?${q}`;
   };
+  const add = (label, sub, player) => {
+    const row = el("div", "who-option print-row");
+    const open = el("a", "print-open");
+    open.href = href(player);
+    open.target = "_blank";
+    open.rel = "noopener";
+    open.appendChild(el("strong", "", label));
+    open.appendChild(el("span", "", sub));
+    open.addEventListener("click", () => closeModal("print-modal"));
+    const save = el("a", "print-save", "\u2913");
+    save.href = href(player, true);
+    save.title = "Download the PDF";
+    save.setAttribute("aria-label", `Download the PDF for ${label}`);
+    row.appendChild(open);
+    row.appendChild(save);
+    box.appendChild(row);
+  };
+  if (listOnly) {
+    add("Set list", "The running order on one page, in big type");
+    return;
+  }
   add("Whole band", "Every hint, with who it's for");
   for (const p of state.band.players) add(p.name, `${p.role}: band-wide hints plus ${p.name}'s own`, p.id);
+}
+
+function openPrint(kind, id) {
+  printTarget = { kind, id };
+  document.getElementById("print-title").textContent = kind === "setlist" ? "Print the set" : "Paper chart";
+  document.getElementById("print-note").textContent =
+    kind === "setlist"
+      ? "Opens a PDF in a new tab: the running order, then one chart per song. Print it from there, or save it."
+      : "Opens a PDF in a new tab: print it from there, or save it. The PDF carries the song, so \u21e1 Import reads it back.";
+  renderPrintChoices();
   openModal("print-modal");
 }
+
+document.querySelectorAll("#print-modal .seg button").forEach((b) => {
+  b.addEventListener("click", () => {
+    const key = b.closest(".seg").dataset.opt;
+    prefs.set("print", Object.assign(printOptions(), { [key]: b.dataset.v }));
+    renderPrintChoices();
+  });
+});
 
 document.getElementById("song-print-btn").addEventListener("click", () => {
   if (state.currentSong) openPrint("song", state.currentSong.id);
@@ -792,8 +845,12 @@ document.getElementById("import-file").addEventListener("change", async (ev) => 
   ev.target.value = "";
   if (!file) return;
   try {
-    const payload = JSON.parse(await file.text());
-    const song = await api("POST", "/songs/import", payload);
+    // a song file, or a song's paper chart (its PDF carries the song)
+    const pdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+    const song = await api("POST", "/songs/import", undefined, {
+      body: file,
+      type: pdf ? "application/pdf" : "application/json",
+    });
     toast(`Imported "${song.title}"`);
     await refreshLists();
     go(`#/song/${song.id}`);

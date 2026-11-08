@@ -1,4 +1,4 @@
-"""Server tests: REST API, live sync stream, transport, clips, export/import.
+"""Server tests: REST API, live sync stream, transport, clips, paper charts, export/import.
 
     python3 -m unittest discover -s tests
 
@@ -35,6 +35,19 @@ import click_track  # noqa: E402
 import models  # noqa: E402
 import qr  # noqa: E402
 import timeline  # noqa: E402
+
+
+def paper_text(pdf: bytes) -> str:
+    """Every string drawn on the pages of one of SSP's PDFs, in order."""
+    import re
+    import zlib
+    out = []
+    for m in re.finditer(rb"<< /Length (\d+) /Filter /FlateDecode >>\nstream\n", pdf):
+        raw = pdf[m.end():m.end() + int(m.group(1))]
+        page = zlib.decompress(raw).decode("latin-1")
+        for t in re.finditer(r"\(((?:\\.|[^\\)])*)\) Tj", page):
+            out.append(re.sub(r"\\(.)", r"\1", t.group(1)).encode("latin-1").decode("cp1252"))
+    return "\n".join(out)
 
 
 class Server:
@@ -261,24 +274,54 @@ class ApiTests(unittest.TestCase):
         decoded, _, _ = cv2.QRCodeDetector().detectAndDecode(img)
         self.assertEqual(decoded, text)
 
-    def test_export_page_escapes_and_filters(self):
+    def test_paper_chart_pdf_filters_and_options(self):
         song = demo_song(self.s, "Harbour Lights")
         band = self.s.store.get_band()
         sam = next(p for p in band["players"] if p["name"] == "Sam")
-        status, body, _ = self.s.call("GET", f"/export/song/{song['id']}")
-        page = body.decode()
+        status, body, headers = self.s.call("GET", f"/export/song/{song['id']}")
         self.assertEqual(status, 200)
-        self.assertIn("Brushes", page)  # Ruby's hint, on the whole-band chart
-        status, body, _ = self.s.call("GET", f"/export/song/{song['id']}?player={sam['id']}")
-        page = body.decode()
-        self.assertIn("Root notes only", page)
-        self.assertNotIn("Brushes", page)  # not Sam's
-        # titles are escaped
-        _, s2 = self.s.json("POST", "/api/songs", {"title": "<script>x</script>"})
-        _, body, _ = self.s.call("GET", f"/export/song/{s2['id']}")
-        self.assertNotIn(b"<script>x", body)
+        self.assertEqual(headers["Content-Type"], "application/pdf")
+        self.assertTrue(body.startswith(b"%PDF-1.4"))
+        self.assertIn("inline", headers["Content-Disposition"])
+        text = paper_text(body)
+        self.assertIn("Brushes", text)  # Ruby's hint, on the whole-band chart
+        self.assertIn("62 BPM", text)  # the bridge's tempo change
+        status, body, headers = self.s.call("GET", f"/export/song/{song['id']}?player={sam['id']}&download=1")
+        text = paper_text(body)
+        self.assertIn("Root notes only", text)
+        self.assertNotIn("Brushes", text)  # not Sam's
+        self.assertIn("attachment", headers["Content-Disposition"])
+        self.assertIn("Sam.pdf", headers["Content-Disposition"])
+        for q in ("size=floor&ink=bw", "size=fit&ink=color"):
+            self.assertEqual(self.s.call("GET", f"/export/song/{song['id']}?{q}")[0], 200)
+        self.assertEqual(self.s.call("GET", f"/export/song/{song['id']}?size=huge")[0], 400)
+        self.assertEqual(self.s.call("GET", "/export/song/nope")[0], 404)
+        # a player who's gone: the whole band's chart, not an error
+        self.assertIn("Brushes", paper_text(self.s.call("GET", f"/export/song/{song['id']}?player=gone")[1]))
+        sl = next(s for s in self.s.store.setlists.values() if s["name"].startswith("Friday"))
+        status, body, _ = self.s.call("GET", f"/export/setlist/{sl['id']}")
+        self.assertEqual(status, 200)
+        self.assertEqual(body.count(b"/Type /Page "), 1 + 6)  # running order + six charts
+        status, body, _ = self.s.call("GET", f"/export/setlist/{sl['id']}?parts=list")
+        self.assertEqual(body.count(b"/Type /Page "), 1)
+        self.assertIn("Night Bus to Nowhere", paper_text(body))
+        self.assertEqual(self.s.call("GET", f"/export/setlist/{sl['id']}?parts=some")[0], 400)
+
+    def test_import_a_song_back_from_its_pdf(self):
+        song = demo_song(self.s, "Harbour Lights")
+        _, pdf, _ = self.s.call("GET", f"/export/song/{song['id']}")
+        status, imported = self.s.json("POST", "/api/songs/import", raw=pdf, ctype="application/pdf")
+        self.assertEqual(status, 201)
+        self.assertNotEqual(imported["id"], song["id"])
+        self.assertEqual([x["label"] for x in imported["sections"]], [x["label"] for x in song["sections"]])
+        clip = next(h["audio"] for s in imported["sections"] for h in s["hints"] if h["audio"])
+        self.assertEqual(self.s.call("GET", f"/api/audio/{clip}")[0], 200)  # the voice memo came too
+        self.s.call("DELETE", f"/api/songs/{imported['id']}")
         sl = next(iter(self.s.store.setlists.values()))
-        self.assertEqual(self.s.call("GET", f"/export/setlist/{sl['id']}")[0], 200)
+        _, set_pdf, _ = self.s.call("GET", f"/export/setlist/{sl['id']}?parts=list")
+        status, err = self.s.json("POST", "/api/songs/import", raw=set_pdf, ctype="application/pdf")
+        self.assertEqual(status, 400)
+        self.assertIn("no song inside", err["error"])
 
     def test_audio_upload_serve_and_cleanup(self):
         status, res = self.s.json("POST", "/api/audio", raw=b"RIFFfakewav", ctype="audio/wav")
