@@ -8,7 +8,7 @@ This computer is home base for your band's songs. Pick whoever's laptop is usual
 
 The easy way: download SSP for your computer from the [latest release](https://github.com/giopas/SSP---Song-and-Setlist-Planner/releases/latest). Nothing else to install.
 
-- **On a Mac:** the `.dmg` (`arm64` for M1 and newer Macs, `x86_64` for older Intel ones). Open it and drag **SSP** into Applications. The first time, right-click SSP and choose **Open**: it isn't signed by Apple yet, so macOS asks once.
+- **On a Mac:** the `.dmg` (`arm64` for M1 and newer Macs, `x86_64` for older Intel ones). Open it and drag **SSP** into Applications. The first time, right-click SSP and choose **Open**: it isn't signed by Apple yet, so macOS asks once. On macOS 15 or newer, if that doesn't work, go to **System Settings › Privacy & Security** and click **Open Anyway**. If it says SSP "is damaged", that's just the download quarantine: open Terminal and paste `xattr -dr com.apple.quarantine "/Applications/SSP.app"`.
 - **On Windows:** the `-setup.exe`. It installs just for you (no admin password) and puts SSP in the Start menu. If Windows says "protected your PC", click **More info**, then **Run anyway**. The `.zip` works too, with no install.
 - **On Linux:** unpack the `.tar.gz` and run `SSP/SSP`.
 
@@ -37,6 +37,8 @@ http://192.168.1.20:8420/
 That's what every phone and tablet in the room opens. Click the address to open it on this computer too.
 
 Underneath, the **On stage** card fills in as people connect: one chip per phone or tablet, with the player it's set to ("Sam · Bass"), and the song that's on the live screens. The top-right corner says how many devices are connected. If something looks wrong, **Show log** at the bottom opens the server's log.
+
+The first time you press **Start server**, your computer may ask whether SSP can accept connections or find devices on your network (or Windows shows a firewall box). Say **Allow** (on Windows, tick **Private networks**), or the phones can't get in.
 
 ## Step 4: Get everyone on the same Wi-Fi
 

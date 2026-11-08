@@ -59,40 +59,125 @@ internet connection involved at all.
 the internet: a remote server is exactly the kind of lag and dropped
 connection a rehearsal or a live set can't afford. The server makes no
 outbound connections, sends no telemetry, and only reads and writes its own
-data folder.
+data folder. (The desktop control panel asks GitHub for updates, once, when it
+opens: see [Privacy and security](#privacy-and-security).)
 
 **Trust model:** anyone on the same Wi-Fi who has the address can read and
 edit everything. There's no per-user login -- treat the address the way
 you'd treat a whiteboard in your rehearsal room.
 
-## Getting started
+## Install
 
-**Download the app** from the [latest release](https://github.com/giopas/SSP---Song-and-Setlist-Planner/releases/latest), with nothing
-else to install:
+**Download, open, start.** From the [latest release](https://github.com/giopas/SSP---Song-and-Setlist-Planner/releases/latest),
+take the file for your computer. Nothing else to install: Python comes inside.
+
+| Computer | File | Then |
+|---|---|---|
+| macOS, Apple silicon (M1 and later) | `SSP-<version>-macos-arm64.dmg` | open it, drag **SSP** to Applications |
+| macOS, Intel | `SSP-<version>-macos-x86_64.dmg` | the same |
+| Windows 10/11 | `SSP-<version>-windows-x64-setup.exe` | run the installer (no administrator needed; Start menu entry, uninstaller). Or the `…-windows-x64.zip`: unzip, run `SSP.exe` |
+| Linux (x64) | `SSP-<version>-linux-x64.tar.gz` | `tar xzf SSP-*-linux-x64.tar.gz`, then `./SSP/SSP` |
+
+The macOS `.tar.gz` files in the release are for SSP's own updater: take the
+`.dmg`. Only one computer in the band needs SSP; everyone else just opens the
+address in a browser.
+
+### The first time you open it
+
+The apps aren't signed (that costs a yearly fee to Apple and Microsoft), so the
+system asks once.
+
+**macOS.** If it says SSP "can't be opened" or "is damaged", it's the download
+quarantine, not a broken app. Any one of these fixes it:
+
+- right-click (or Control-click) **SSP** in Applications and choose **Open**,
+  then **Open** again;
+- on macOS 15 Sequoia and later: try to open it once, then **System Settings ›
+  Privacy & Security**, scroll down and click **Open Anyway**;
+- or in Terminal:
+
+  ```bash
+  xattr -dr com.apple.quarantine "/Applications/SSP.app"
+  ```
+
+**Windows.** SmartScreen shows "Windows protected your PC": click **More info ›
+Run anyway**.
+
+**Let phones and tablets in.** The first time you press **Start server**, the
+system may ask whether SSP can accept incoming connections or find devices on
+your local network (macOS), or show a Windows Defender Firewall prompt. Click
+**Allow** (on Windows, tick **Private networks**). Say no and SSP runs, but no
+phone can reach it. To change it later: macOS **System Settings › Network ›
+Firewall** and **Privacy & Security › Local Network**; Windows **Allow an app
+through Windows Firewall**.
+
+**Check the download** (optional). Each release has a `SHA256SUMS` file. In the
+folder with both files:
+
+```bash
+shasum -a 256 -c SHA256SUMS --ignore-missing     # macOS
+sha256sum -c SHA256SUMS --ignore-missing         # Linux
+```
+
+On Windows: `certutil -hashfile SSP-<version>-windows-x64-setup.exe SHA256`, and
+compare with the line in `SHA256SUMS`.
+
+### Updating
+
+When a new version is out, a blue bar appears at the top of the control panel.
+**Update and restart** downloads it, checks it against the release's
+checksums, swaps it in and starts SSP again; your songs and settings stay as
+they are. The same way QLC+ Swiss Knife does it. SSP asks GitHub once when the
+control panel opens (nothing about you or your band is sent, and with no
+internet it stays quiet). **Auto-check updates** at the bottom switches that
+off; **Check for updates** asks on demand. Coming from 0.12.0 or older, download
+the new version by hand once.
+
+### Uninstalling
+
+Delete the app (macOS: drag SSP from Applications to the Bin; Windows:
+**Settings › Apps › SSP › Uninstall**, or delete the unzipped folder; Linux:
+delete the `SSP` folder). Your songs stay in the folder you picked for them.
+The control panel's settings are in:
 
 | | |
 |---|---|
-| macOS, Apple silicon (M1 and later) | `SSP-<version>-macos-arm64.dmg` |
-| macOS, Intel | `SSP-<version>-macos-x86_64.dmg` |
-| Windows | `SSP-<version>-windows-x64-setup.exe` (or the `.zip`, no install) |
-| Linux | `SSP-<version>-linux-x64.tar.gz` |
+| macOS | `~/Library/Application Support/SingleSongPlanner/` |
+| Windows | `%APPDATA%\SingleSongPlanner\` |
+| Linux | `~/.config/single-song-planner/` |
 
-The apps aren't signed yet. On a Mac, the first time: right-click SSP ->
-**Open**. On Windows: "More info" -> **Run anyway**.
+## Run from the source code
 
-After that, SSP keeps itself up to date: when a new version is out, the
-control panel says so and **Update and restart** downloads it, checks it
-against the release's checksums and swaps it in, the same way QLC+ Swiss
-Knife does. Your songs and settings live outside the app and are never
-touched. It's one quiet request to GitHub when the panel opens (nothing about
-you or your band is sent), and **Auto-check updates** at the bottom turns it
-off; **Check for updates** asks on demand.
+Same app, for a laptop where you'd rather not use the download, or for a
+Raspberry Pi.
 
-Or run it from the source code, on a laptop:
+| Requirement | Details |
+|---|---|
+| Python | 3.9 or newer. The server uses only the standard library: nothing to `pip install` |
+| Tk | for the control panel. Included with python.org's installers for macOS and Windows; on Linux `sudo apt install python3-tk` |
+| Phones and tablets | any recent browser (Safari, Chrome, Firefox, Edge) |
 
-- macOS: double-click `launchers/start-macos.command`
-- Windows: double-click `launchers/start-windows.bat`
-- Linux: run `launchers/start-linux.sh`
+**First time:**
+
+```bash
+git clone https://github.com/giopas/SSP---Song-and-Setlist-Planner.git
+cd SSP---Song-and-Setlist-Planner
+python3 launcher/gui.py          # Windows: python launcher\gui.py
+```
+
+**Every later run:** double-click `launchers/start-macos.command` (macOS),
+`launchers/start-windows.bat` (Windows) or run `launchers/start-linux.sh`
+(Linux). Or `python3 launcher/gui.py` as above.
+
+**Updating:** `git pull` in that folder. The control panel's update bar says
+so too.
+
+**No screen, or a Raspberry Pi:** skip the control panel and run the server
+itself: `python3 server/app.py` (`--port`, `--data <folder>`, `--demo`; see
+`--help`). On a Pi, `launchers/pi/install.sh` sets it up as a service in one
+command: see the wiki page *Running on a Raspberry Pi*.
+
+## First run
 
 ![The control panel](screenshots/13-launcher.png)
 
@@ -110,26 +195,33 @@ connected device at once) loads a fictional band
 copy, so nothing you do there sticks. From a terminal:
 `python3 server/app.py --demo`.
 
-On a Raspberry Pi with no screen, skip the control panel and run the server
-as a service: see the wiki page *Running on a Raspberry Pi* and
-`launchers/ssp.service`.
+**Nobody can connect?** Check that the phone is on the same Wi-Fi as the
+computer (not on mobile data, not on a guest network that keeps devices
+apart), that you allowed SSP through the firewall (above), and that you typed
+`http://`, not `https://`. The wiki page *Getting Started* (step 4) has more.
 
-Requires Python 3.9 or newer. The server uses only Python's standard
-library; the control panel also needs Tk (included with python.org's
-installers for Windows and macOS; on Linux, `sudo apt install python3-tk`).
+## Supported platforms
 
-### Packaged builds
+| Platform | Status |
+|---|---|
+| macOS 11 or later, Apple silicon and Intel | app built and self-tested on every release; tested by hand from the source code |
+| Windows 10/11 (x64) | app and installer built, installed and self-tested on every release |
+| Linux x64 (Ubuntu 22.04 or newer, and similar) | app built and self-tested on every release |
+| Raspberry Pi (Raspberry Pi OS) | from the source code, as a service |
+| Phones and tablets | the browser: iPhone/iPad (Safari), Android (Chrome); tested on an iPad and an Android phone |
 
-Pushing a version tag (`git tag v0.10.1 && git push origin v0.10.1`) builds
-the apps for every OS on GitHub (`.github/workflows/release.yml`), checks
-each one starts and serves the web app, and attaches them to the release
-with that version's CHANGELOG section. The same recipe as QLC+ Swiss Knife.
+## Privacy and security
 
-To build one yourself, on its own OS (PyInstaller doesn't cross-compile):
-`packaging/build-macos.sh`, `packaging\build-windows.bat` or
-`packaging/build-linux.sh`. Any build checks itself with `--smoke`, and
-`--headless [server options]` runs it as a plain server with no window
-(on Windows, use `SSP Server.exe` for both).
+Everything stays in your rehearsal room. The server listens on your local
+network only: never put it on the internet (no port forwarding). There are no
+accounts and no telemetry, and the songs are plain JSON files in the folder you
+picked. Anyone on the same Wi-Fi who has the address can read and edit
+everything (see the trust model above).
+
+The only internet request is the update check, made by the desktop control
+panel (not by the server the band's devices use): once when it opens, to
+GitHub, with nothing about you or your band. Switch it off with **Auto-check
+updates**.
 
 ## More
 
@@ -156,6 +248,19 @@ moving songs between setups, and running SSP on a Raspberry Pi.
   wiki's "Running on a Raspberry Pi").
 - No build step: the web app in `web/static/` is plain HTML, CSS and
   JavaScript.
+
+### Building the apps
+
+Pushing a version tag (`git tag v0.10.1 && git push origin v0.10.1`) builds
+the apps for every OS on GitHub (`.github/workflows/release.yml`), checks
+each one starts and serves the web app, and attaches them to the release
+with that version's CHANGELOG section. The same recipe as QLC+ Swiss Knife.
+
+To build one yourself, on its own OS (PyInstaller doesn't cross-compile):
+`packaging/build-macos.sh`, `packaging\build-windows.bat` or
+`packaging/build-linux.sh`. Any build checks itself with `--smoke`, and
+`--headless [server options]` runs it as a plain server with no window
+(on Windows, use `SSP Server.exe` for both).
 
 ## Credit
 

@@ -3,6 +3,21 @@
 All notable changes to this project are documented here. Versioning
 follows semver (MAJOR.MINOR.PATCH).
 
+## [Unreleased]
+
+### Changed
+
+- README: a full **Install** section, after QLC+ Swiss Knife's: what to
+  download for each computer; the first launch of an unsigned app (macOS
+  right-click **Open**, **Open Anyway** on macOS 15+, or
+  `xattr -dr com.apple.quarantine "/Applications/SSP.app"`; Windows
+  SmartScreen); allowing SSP through the firewall so phones can connect;
+  checking the download with `SHA256SUMS`; updating; uninstalling and where
+  the settings live. Then running from the source code, a first-run guide
+  with a "nobody can connect?" checklist, supported platforms, and privacy
+  and security. The wiki's Getting Started and the release notes carry the
+  same first-launch and firewall tips.
+
 ## [0.12.1] -- 2026-11-08
 
 The macOS apps, for the first time.
