@@ -36,6 +36,10 @@ DEFAULTS = {
     "data_dir": None,  # None -> caller falls back to paths.default_data_dir()
     "port": 8420,
     "recent_data_dirs": [],
+    # the band Wi-Fi this computer can make (server/hotspot.py): name and a
+    # generated password, kept so phones that joined once rejoin by themselves
+    "hotspot_ssid": None,
+    "hotspot_password": None,
 }
 
 

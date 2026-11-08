@@ -38,6 +38,7 @@ for _p in (_HERE, _SERVER_DIR):
         sys.path.insert(0, _p)
 
 import app as server_app  # server/app.py
+import hotspot  # server/hotspot.py
 import paths  # server/paths.py
 import platform_dirs  # server/platform_dirs.py
 import qr  # server/qr.py
@@ -185,6 +186,12 @@ class LauncherApp:
         self._demo = False
         self.update_info = None  # the last update check's answer (server/update.py)
         self._update_busy = False
+        self._ips = []  # this computer's addresses, best first (polled while running)
+        self._port = None
+        self.wifi = None  # the band Wi-Fi when there is one: {"ssid", "password", "ours"}
+        self.qr_mode = "open"  # which QR the Connect card shows: "join" (Wi-Fi) or "open" (SSP)
+        self._wifi_busy = False
+        self._wifi_dialog = None
 
         self.data_dir_var = tk.StringVar(value=self.settings.get("data_dir") or paths.default_data_dir())
         self.port_var = tk.StringVar(value=str(self.settings.get("port", server_app.DEFAULT_PORT)))
@@ -259,8 +266,8 @@ class LauncherApp:
         style.map("Vertical.TScrollbar", background=[("active", C["btn_hover"])])
 
     def _label(self, parent, text="", font="body", fg="text", **kw):
-        return tk.Label(parent, text=text, bg=parent.cget("bg"), fg=C[fg], font=self.fonts[font],
-                        anchor="w", justify="left", **kw)
+        kw = dict({"anchor": "w", "justify": "left"}, **kw)
+        return tk.Label(parent, text=text, bg=parent.cget("bg"), fg=C[fg], font=self.fonts[font], **kw)
 
     # -- layout ---------------------------------------------------------------
 
@@ -399,6 +406,15 @@ class LauncherApp:
         # 3 -- connect (right column)
         card3 = Card(right, 3, "Connect phones & tablets", "Same Wi-Fi as this computer, then scan.", f)
         card3.pack(fill="both", expand=True)
+        self.connect_card = card3
+        # with a band Wi-Fi: two codes, join the Wi-Fi first, then open SSP
+        self.qr_tabs = tk.Frame(card3.body, bg=C["card"])
+        self.tab_join = FlatButton(self.qr_tabs, "1 · Join Wi-Fi", lambda: self._set_qr_mode("join"),
+                                   font=f["small"], padx=10, pady=3)
+        self.tab_join.pack(side="left", padx=(0, 6))
+        self.tab_open = FlatButton(self.qr_tabs, "2 · Open SSP", lambda: self._set_qr_mode("open"),
+                                   font=f["small"], padx=10, pady=3)
+        self.tab_open.pack(side="left")
         self.qr_canvas = tk.Canvas(card3.body, width=196, height=196, highlightthickness=0, bg=C["card"])
         self.qr_canvas.pack(pady=(4, 12))
         self.url_label = self._label(card3.body, "", font="url", fg="accent", cursor="hand2")
@@ -409,6 +425,18 @@ class LauncherApp:
         self.other_urls.configure(anchor="center", justify="center")
         self.other_urls.pack(fill="x", pady=(6, 0))
         self.addresses_frame = card3  # older name, kept for anyone scripting this
+
+        # no network here? this computer can be the band's Wi-Fi (server/hotspot.py)
+        wifi_row = tk.Frame(card3.body, bg=C["card"])
+        wifi_row.pack(fill="x", side="bottom")
+        tk.Frame(card3.body, bg=C["line"], height=1).pack(fill="x", pady=(12, 8), side="bottom")
+        self.wifi_label = self._label(wifi_row, "", font="small", fg="dim")
+        self.wifi_label.configure(anchor="w", justify="left")
+        self.wifi_label.pack(side="left", fill="x", expand=True)
+        self.wifi_btn = FlatButton(wifi_row, "Make a Wi-Fi", self._wifi_button, kind="ghost",
+                                   font=f["button"], padx=8, pady=4)
+        self.wifi_btn.pack(side="right")
+        self._paint_wifi()
 
         # 4 -- on stage (full width)
         card4 = Card(body, 4, "On stage", "Who's connected, and what the band sees right now.", f)
@@ -689,6 +717,7 @@ class LauncherApp:
         if running and port:
             self._show_addresses(port)
             self._refresh_live()
+            self.root.after(4000, self._poll_addresses)
         else:
             self._show_addresses(None)
             self._show_band(None)
@@ -698,20 +727,274 @@ class LauncherApp:
     # -- addresses / QR ---------------------------------------------------
 
     def _show_addresses(self, port) -> None:
+        self._port = port
+        self._ips = server_app.local_addresses() if port else []
+        self._render_connect()
+
+    def _poll_addresses(self) -> None:
+        """While the server runs, look again every few seconds (in the
+        background: it runs ifconfig/ip/ipconfig), so a Wi-Fi turned on in
+        System Settings, a hotspot coming up or a network change show up
+        without a restart."""
+        if self.httpd is None:
+            return
+        port = self._port
+        box = {}
+
+        def work():
+            box["ips"] = server_app.local_addresses()
+
+        def done():
+            if "ips" not in box:
+                self.root.after(150, done)
+                return
+            if self.httpd is not None and self._port == port and box["ips"] != self._ips:
+                self._ips = box["ips"]
+                self._render_connect()
+            self.root.after(4000, self._poll_addresses)
+
+        threading.Thread(target=work, daemon=True).start()
+        self.root.after(150, done)
+
+    def _set_qr_mode(self, mode: str) -> None:
+        self.qr_mode = mode
+        self._render_connect()
+
+    def _render_connect(self) -> None:
+        port, ips = self._port, self._ips
+        wifi = self.wifi
+        if wifi:
+            self.qr_tabs.pack(before=self.qr_canvas, pady=(0, 6))
+            self.tab_join.set(kind="primary" if self.qr_mode == "join" else "secondary")
+            self.tab_open.set(kind="primary" if self.qr_mode == "open" else "secondary")
+        else:
+            self.qr_tabs.pack_forget()
+            self.qr_mode = "open"
+        if wifi and self.qr_mode == "join":
+            self.url_label.configure(text=wifi["ssid"], cursor="arrow")
+            self.other_urls.configure(text=f"password  {wifi['password']}\n"
+                                           "joined? tap 2 · Open SSP")
+            self._draw_qr(qr.wifi_text(wifi["ssid"], wifi["password"]))
+            self._paint_wifi()
+            return
+        self.url_label.configure(cursor="hand2")
         if not port:
             self.url_label.configure(text="")
             self.other_urls.configure(text="The QR code and address\nappear here once the server runs.")
             self._draw_qr(None)
+            self._paint_wifi()
             return
-        ips = server_app.local_addresses()
         main = f"http://{ips[0]}:{port}/" if ips else f"http://localhost:{port}/"
         self.url_label.configure(text=main.replace("http://", "").rstrip("/"))
         others = [f"{ip}:{port}" for ip in ips[1:]]
         others.append(f"localhost:{port}  (this computer)")
         if not ips:
-            others = ["No Wi-Fi address found:", "is this computer on a network?"]
+            others = ["No network here yet:", "make one below."]
         self.other_urls.configure(text="\n".join(others))
         self._draw_qr(main if ips else None)
+        self._paint_wifi()
+
+    # -- band Wi-Fi (server/hotspot.py) -----------------------------------
+
+    def _wifi_values(self) -> tuple:
+        """The saved name and password, made up (and saved) the first time."""
+        ssid = self.settings.get("hotspot_ssid") or hotspot.DEFAULT_SSID
+        password = self.settings.get("hotspot_password")
+        if not password or hotspot.check(ssid, password):
+            password = hotspot.make_password()
+            self.settings["hotspot_ssid"], self.settings["hotspot_password"] = ssid, password
+            launcher_settings.save(self.settings)
+        return ssid, password
+
+    def _paint_wifi(self) -> None:
+        wifi = self.wifi
+        if self._wifi_busy:
+            self.wifi_btn.set(enabled=False)
+            return
+        if wifi:
+            self.wifi_label.configure(text=f"Band Wi-Fi: {wifi['ssid']}", fg=C["ok"], font=self.fonts["bold"])
+            self.wifi_btn.set(text="Turn off" if wifi.get("ours") else "Turn off…", kind="secondary", enabled=True)
+            return
+        offline = self.httpd is not None and not self._ips
+        self.wifi_label.configure(text="No network here?" if not offline else "No network: make one",
+                                  fg=C["text"] if offline else C["dim"],
+                                  font=self.fonts["bold" if offline else "small"])
+        self.wifi_btn.set(text="Make a Wi-Fi", kind="primary" if offline else "ghost", enabled=True)
+
+    def _wifi_button(self) -> None:
+        if self._wifi_busy:
+            return
+        if self.wifi:
+            self._wifi_off()
+        else:
+            self._open_wifi_dialog()
+
+    def _set_wifi(self, wifi) -> None:
+        """Remember the band Wi-Fi (or None), and give the web app's Connect
+        screen the same "join" QR code."""
+        self.wifi = wifi
+        server_app.Handler.wifi_ssid = wifi["ssid"] if wifi else None
+        server_app.Handler.wifi_password = wifi["password"] if wifi else None
+        self.qr_mode = "join" if wifi else "open"
+        self._render_connect()
+        if self.httpd is not None:  # the hotspot's address takes a moment to appear
+            for ms in (1500, 4000, 8000):
+                self.root.after(ms, lambda p=self._port: self._port == p and self._show_addresses(p))
+
+    def _open_wifi_dialog(self) -> None:
+        if self._wifi_dialog is not None and self._wifi_dialog.winfo_exists():
+            self._wifi_dialog.lift()
+            return
+        f = self.fonts
+        ssid, password = self._wifi_values()
+        one_click = hotspot.one_click()
+        steps = hotspot.steps()
+
+        d = tk.Toplevel(self.root)
+        self._wifi_dialog = d
+        d.title("Band Wi-Fi")
+        d.configure(bg=C["card"])
+        d.transient(self.root)
+        d.resizable(False, False)
+        box = tk.Frame(d, bg=C["card"])
+        box.pack(fill="both", expand=True, padx=22, pady=18)
+        self._label(box, "Make this computer the band's Wi-Fi", font="h").pack(anchor="w")
+        intro = ("For a room with no network: phones and tablets join this Wi-Fi, then scan SSP's code. "
+                 "It has no internet, and it's only for the band.")
+        if one_click and self._ips:
+            intro += " While it's on, this computer leaves the network it's on now."
+        self._label(box, intro, font="small", fg="dim", wraplength=430, justify="left").pack(anchor="w", pady=(4, 12))
+
+        grid = tk.Frame(box, bg=C["card"])
+        grid.pack(fill="x")
+        grid.columnconfigure(1, weight=1)
+        self._wifi_ssid_var = tk.StringVar(value=ssid)
+        self._wifi_pass_var = tk.StringVar(value=password)
+        self._label(grid, "Name", font="small", fg="dim").grid(row=0, column=0, sticky="w", padx=(0, 10), pady=4)
+        ttk.Entry(grid, textvariable=self._wifi_ssid_var, font=f["body"]).grid(row=0, column=1, sticky="ew", pady=4)
+        self._label(grid, "Password", font="small", fg="dim").grid(row=1, column=0, sticky="w", padx=(0, 10), pady=4)
+        ttk.Entry(grid, textvariable=self._wifi_pass_var, font=f["mono"]).grid(row=1, column=1, sticky="ew", pady=4)
+        FlatButton(grid, "New", lambda: self._wifi_pass_var.set(hotspot.make_password()), kind="quiet",
+                   font=f["small"], padx=8, pady=3).grid(row=1, column=2, padx=(6, 0))
+
+        self._wifi_steps = self._label(box, "\n".join(steps), font="small", fg="text", wraplength=430,
+                                       justify="left")
+        if steps and not one_click:
+            self._wifi_steps.pack(anchor="w", pady=(12, 0))
+        self._wifi_msg = self._label(box, "", font="small", fg="danger", wraplength=430, justify="left")
+        self._wifi_msg.pack(anchor="w", pady=(10, 0))
+
+        btns = tk.Frame(box, bg=C["card"])
+        btns.pack(fill="x", pady=(10, 0))
+        if one_click:
+            self._wifi_go = FlatButton(btns, "Turn on Wi-Fi", self._wifi_on, kind="primary", font=f["button"])
+        else:
+            self._wifi_go = FlatButton(btns, "Open Sharing settings" if steps is hotspot.MAC_STEPS
+                                       else "Open settings", self._wifi_open_settings, kind="primary",
+                                       font=f["button"])
+        self._wifi_go.pack(side="right")
+        self._wifi_done = FlatButton(btns, "It's on", self._wifi_manual_done, font=f["button"])
+        if not one_click:
+            self._wifi_done.pack(side="right", padx=(0, 8))
+        FlatButton(btns, "Cancel", d.destroy, kind="quiet", font=f["button"]).pack(side="left")
+        d.update_idletasks()
+        x = self.root.winfo_rootx() + (self.root.winfo_width() - d.winfo_reqwidth()) // 2
+        y = self.root.winfo_rooty() + 120
+        d.geometry(f"+{max(x, 0)}+{max(y, 0)}")
+
+    def _wifi_entered(self):
+        """The dialog's name and password, saved, or None (and a message) if they won't do."""
+        ssid = self._wifi_ssid_var.get().strip()
+        password = self._wifi_pass_var.get()
+        problem = hotspot.check(ssid, password)
+        if problem:
+            self._wifi_msg.configure(text=problem, fg=C["danger"])
+            return None
+        self.settings["hotspot_ssid"], self.settings["hotspot_password"] = ssid, password
+        launcher_settings.save(self.settings)
+        return ssid, password
+
+    def _wifi_on(self) -> None:
+        values = self._wifi_entered()
+        if not values or self._wifi_busy:
+            return
+        ssid, password = values
+        self._wifi_busy = True
+        self._wifi_go.set(text="Turning on…", enabled=False)
+        self._wifi_msg.configure(text="This can take a few seconds.", fg=C["dim"])
+        self._paint_wifi()
+        box = {}
+        threading.Thread(target=lambda: box.update(r=hotspot.start(ssid, password)), daemon=True).start()
+
+        def wait():
+            if "r" not in box:
+                self.root.after(150, wait)
+                return
+            self._wifi_busy = False
+            r = box["r"]
+            dialog = self._wifi_dialog if self._wifi_dialog is not None and self._wifi_dialog.winfo_exists() else None
+            if r["ok"]:
+                self._enqueue_log("Band Wi-Fi: " + r["message"])
+                self._set_wifi({"ssid": ssid, "password": password, "ours": True})
+                self.footer_var.set(f'Band Wi-Fi "{ssid}" is on: phones scan code 1, then 2.')
+                if dialog:
+                    dialog.destroy()
+                return
+            self._enqueue_log("Band Wi-Fi didn't start: " + r["message"])
+            self._paint_wifi()
+            if dialog:
+                self._wifi_msg.configure(text=r["message"], fg=C["danger"])
+                self._wifi_go.set(text="Try again", enabled=True)
+                if r.get("manual"):  # the system's own settings are the way: open them, show the steps
+                    hotspot.open_settings()
+                    self._wifi_steps.pack(anchor="w", pady=(12, 0), before=self._wifi_msg)
+                    self._wifi_done.pack(side="right", padx=(0, 8))
+
+        self.root.after(150, wait)
+
+    def _wifi_open_settings(self) -> None:
+        if not self._wifi_entered():
+            return
+        if hotspot.open_settings():
+            self._wifi_msg.configure(text='Settings are open. Once Wi-Fi sharing is on, click "It\'s on".',
+                                     fg=C["dim"])
+        else:
+            self._wifi_msg.configure(text="Couldn't open the settings: open them by hand.", fg=C["danger"])
+
+    def _wifi_manual_done(self) -> None:
+        """Turned on in the system's settings: SSP only shows the join code."""
+        values = self._wifi_entered()
+        if not values:
+            return
+        self._set_wifi({"ssid": values[0], "password": values[1], "ours": False})
+        self.footer_var.set(f'Band Wi-Fi "{values[0]}": phones scan code 1, then 2.')
+        if self._wifi_dialog is not None:
+            self._wifi_dialog.destroy()
+
+    def _wifi_off(self) -> None:
+        wifi = self.wifi
+        if not wifi:
+            return
+        if not wifi.get("ours"):
+            hotspot.open_settings()
+            self._set_wifi(None)
+            self.footer_var.set("Turn the Wi-Fi off in the settings that just opened.")
+            return
+        self._wifi_busy = True
+        self.wifi_btn.set(text="Turning off…", enabled=False)
+        box = {}
+        threading.Thread(target=lambda: box.update(r=hotspot.stop()), daemon=True).start()
+
+        def wait():
+            if "r" not in box:
+                self.root.after(150, wait)
+                return
+            self._wifi_busy = False
+            self._enqueue_log("Band Wi-Fi: " + box["r"]["message"])
+            self._set_wifi(None)
+            self.footer_var.set(box["r"]["message"])
+
+        self.root.after(150, wait)
 
     def _draw_qr(self, url) -> None:
         c = self.qr_canvas
@@ -871,6 +1154,11 @@ class LauncherApp:
     # -- shutdown -------------------------------------------------------
 
     def _on_close(self) -> None:
+        if self.wifi and self.wifi.get("ours"):  # SSP turned it on: SSP turns it off
+            try:
+                hotspot.stop()
+            except Exception:  # noqa: BLE001 - closing on the way out
+                pass
         if self.httpd is not None:
             try:
                 server_app.stop_server(self.httpd)

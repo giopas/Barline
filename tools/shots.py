@@ -4,7 +4,7 @@
     python3 tools/shots.py            # everything
     python3 tools/shots.py stills     # just the PNGs
     python3 tools/shots.py gifs       # just the GIFs
-    python3 tools/shots.py launcher   # the desktop control panel (needs Tk + a display, or xvfb-run)
+    python3 tools/shots.py launcher   # the desktop control panel (13, and 18 with the band Wi-Fi on) (needs Tk + a display, or xvfb-run)
 
 Starts its own server on a fresh copy of the fictional demo band (demo/),
 so nothing real is ever shown and every run starts from the same songs.
@@ -511,6 +511,24 @@ def launcher_shot():
         except Exception:  # noqa: BLE001 - no grab support: fall back to ImageMagick
             subprocess.run(["import", "-window", "root", "-crop", f"{w}x{h}+{x}+{y}", path], check=True)
         print("  ✓ 13-launcher.png")
+        # the band Wi-Fi on (made up: no radio is touched), code 1 showing
+        panel._set_wifi({"ssid": "SSP-Band", "password": "kmrt-vhae-4827", "ours": True})
+        panel.footer_var.set('Band Wi-Fi "SSP-Band" is on: phones scan code 1, then 2.')
+        root.after(500, shoot_wifi)
+
+    def shoot_wifi():
+        root.update()
+        x, y = root.winfo_rootx(), root.winfo_rooty()
+        w, h = root.winfo_width(), root.winfo_height()
+        path = os.path.join(OUT, "18-launcher-wifi.png")
+        try:
+            from PIL import ImageGrab
+            ImageGrab.grab(bbox=(x, y, x + w, y + h)).save(path)
+        except Exception:  # noqa: BLE001 - no grab support: fall back to ImageMagick
+            subprocess.run(["import", "-window", "root", "-crop", f"{w}x{h}+{x}+{y}", path], check=True)
+        print("  ✓ 18-launcher-wifi.png")
+        panel.wifi = None  # never call the real hotspot.stop() on the way out
+        server_app.Handler.wifi_ssid = server_app.Handler.wifi_password = None
         panel._stop_server()
         root.after(600, root.destroy)
 

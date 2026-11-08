@@ -44,7 +44,7 @@ The first time you press **Start server**, your computer may ask whether SSP can
 
 This is the one rule that matters: every device has to be on the same Wi-Fi network as the computer running SSP. Phone, tablet on a mic stand, whatever. Same Wi-Fi, same room.
 
-SSP never needs the internet. Nothing about your set leaves the room, there's no account, and no cloud service can lag or drop out mid-song. If the venue has no Wi-Fi, a phone's hotspot works, or a Raspberry Pi can make its own network (see [[Running on a Raspberry Pi]]).
+SSP never needs the internet. Nothing about your set leaves the room, there's no account, and no cloud service can lag or drop out mid-song. If the venue has no Wi-Fi, the control panel's **Make a Wi-Fi** button (in the Connect card) makes this computer the band's Wi-Fi, and shows a code that joins it. One click on Linux and usually on Windows, a few steps in System Settings on a Mac: see [[No Wi-Fi at the Venue]], which also covers phone hotspots, travel routers and a Raspberry Pi.
 
 ## Step 5: Scan the code on each phone or tablet
 

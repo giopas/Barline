@@ -19,6 +19,7 @@ It builds on two things:
 - **[[Metronome and Click Tracks]]**: the click on each device, and practice click tracks to download.
 - **[[For Drummers]]**: coming from a metronome app? Your set and click in five minutes, the big drummer view, and what happens if the Wi-Fi drops.
 - **[[Printing and Moving Songs]]**: paper charts as PDFs (whole band or one player, floor sheets, set lists), and taking a song to another setup.
+- **[[No Wi-Fi at the Venue]]**: one click makes the computer the band's Wi-Fi; or a phone hotspot, a travel router, a Pi.
 - **[[Running on a Raspberry Pi]]**: a small always-on box that runs SSP on its own, even with no Wi-Fi at the venue.
 
 ## Elsewhere in the repo

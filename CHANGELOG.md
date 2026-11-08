@@ -5,6 +5,37 @@ follows semver (MAJOR.MINOR.PATCH).
 
 ## [Unreleased]
 
+## [0.14.0] -- 2026-11-08
+
+The band's own Wi-Fi, for a room with no network.
+
+### Added
+
+- **Make a Wi-Fi** in the control panel's Connect card (`server/hotspot.py`):
+  this computer becomes the band's Wi-Fi, `SSP-Band` with a password SSP
+  makes up (easy to type: `kmrt-vhae-4827`; both editable and remembered).
+  When the computer has no network the button turns blue and the card says
+  so. While it's on, the card shows two codes, **1 · Join Wi-Fi** and
+  **2 · Open SSP**, and the web app's **Connect a device** shows the join
+  code too. Closing the control panel turns off a Wi-Fi SSP turned on.
+  - **Linux:** one click (NetworkManager, `nmcli device wifi hotspot`, its
+    own `SSP-Desktop-Hotspot` profile, removed again on Turn off).
+  - **Windows:** one click through Mobile hotspot's WinRT API (PowerShell,
+    the name and password passed as environment variables, never in the
+    script). Windows only hotspots a connection it can share; when it says
+    no, SSP opens the Mobile hotspot settings and says why. The wiki shows
+    the one-time Loopback Adapter setup that makes it work with no network.
+  - **Mac:** macOS has no way for an app to turn on Internet Sharing, so SSP
+    opens System Settings › Sharing, shows the four steps, and shows the join
+    code once you click **It's on**.
+- The control panel looks for this computer's addresses again every few
+  seconds while the server runs, so a hotspot coming up (or any network
+  change) shows in the address and code without a restart.
+- Wiki page **No Wi-Fi at the Venue** (the button per system, a phone's
+  hotspot, a travel router, a Pi); screenshot `18-launcher-wifi.png`.
+- Tests: `tests/test_hotspot.py` (16, no radio touched); a Windows CI job
+  checks the PowerShell parses and its WinRT types load.
+
 ## [0.13.0] -- 2026-11-08
 
 Paper charts: real PDFs to print, after Song Notation Tool's.

@@ -199,6 +199,18 @@ command: see the wiki page *Running on a Raspberry Pi*.
    the address.
 4. Start planning. Everything is saved as you go.
 
+**No Wi-Fi in the room?** The Connect card's **Make a Wi-Fi** button makes
+this computer the band's Wi-Fi (`SSP-Band`, with a password SSP makes up)
+and shows two codes: one joins the Wi-Fi, one opens SSP. One click on Linux
+(NetworkManager) and on Windows when Windows allows it (Mobile hotspot;
+with no network at all it needs a one-time Loopback Adapter setup); on a
+Mac it opens System Settings › Sharing and shows the steps, since macOS
+doesn't let apps turn Internet Sharing on. The wiki page *No Wi-Fi at the
+Venue* has the details and the other ways (a phone's hotspot, a travel
+router, a Raspberry Pi).
+
+![The band Wi-Fi on: code 1 joins it, code 2 opens SSP](screenshots/18-launcher-wifi.png)
+
 Want to look around first? **Try the demo band** (in the control panel, or
 at the bottom of the sidebar in the app itself, where it switches every
 connected device at once) loads a fictional band
