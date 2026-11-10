@@ -37,7 +37,7 @@ A count-in is extra bars played *before* a section, so everyone comes in togethe
 - **verbal**: someone counts out loud ("one, two, three, four")
 - **none**: straight in
 
-and how many bars. A count-in doesn't eat into the section: a 4-bar intro with a 1-bar count-in plays five bars in total. They show as dashed squares in front of the section.
+and how many bars. A count-in doesn't eat into the section: a 4-bar intro with a 1-bar count-in plays five bars in total. Each section has a yellow count-in row above it: pick the bars (1, 2, 4 or any 0 to 8), the style, and press **▶ Listen** to hear the count-in and the first bar at that section's tempo. It shows on the overview strips and in the live song list as its own block.
 
 Count-ins aren't just for the top of a song. After a dead stop in the middle, give the next section a count-in, and the live view counts the band back in.
 

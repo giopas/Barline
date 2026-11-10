@@ -20,8 +20,9 @@ from SSP? See [Renamed from SSP](#renamed-from-ssp).*
 
 - **Draft a song's structure as a band.** Verses, choruses, bridges, however
   you think about your songs. Bars and tempo per section (a half-time bridge
-  can have its own BPM), a count-in (or set them for every song in one
-  go: at the start, at every section change, or where the tempo changes), and hints: a note for the whole band,
+  can have its own BPM), a count-in of its own (1, 2, 4 bars or any 0 to 8, with a Listen button;
+  or set them for every song in one go: at the start, at every section change,
+  or where the tempo changes), and hints: a note for the whole band,
   or one aimed at a single player ("Bass: root notes only here"). A hint can
   carry a short voice memo too.
 - **Everyone edits the same copy.** Change a bar count on the laptop and the
@@ -38,7 +39,9 @@ from SSP? See [Renamed from SSP](#renamed-from-ssp).*
   *your* hints up front. Each device plays its own metronome click in time,
   set up its own way (wood, beep, tick, ride bell, cowbell, finger snap,
   side stick): subdivisions, a spoken count-in, one ear only for a
-  Y-splitter into in-ears, a click for count-ins only. Drummers get a big
+  Y-splitter into in-ears, a click for count-ins only. Per song, a click
+  pattern: a different sound and accent on each beat of the bar (wood on 1,
+  beeps after; accents on 2 and 4). Drummers get a big
   view (tempo, bar, bars to the next part), and a device keeps playing on
   its own if the server drops mid-song. Mid-song, jump to any section from
   the next bar line (the singer went to the chorus early), or nudge the

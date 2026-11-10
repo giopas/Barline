@@ -5,6 +5,11 @@ follows semver (MAJOR.MINOR.PATCH).
 
 ## [Unreleased]
 
+## [0.19.0] -- 2026-11-10
+
+The count-in as a block of its own you can listen to, a click pattern per
+song, and a click test that shows what it is doing.
+
 ### Added
 
 - **Click pattern, per song.** Song page -> Advanced -> Click pattern: for

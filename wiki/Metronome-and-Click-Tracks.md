@@ -14,7 +14,7 @@ In the live view, every phone and tablet can play its own click, in time with th
 
 ## Click check
 
-At the bottom of **⚙ Click**, **Test the click** plays a count-in and two bars with your settings, right there, no song needed. Plug in what you use on stage first (headphones, a Y-splitter into your in-ears) so you test the real thing. Under the button, Barline shows what the device reports: whether the sound engine is running, mono or stereo output (left/right only works in stereo), and on iPhone/iPad whether the silent switch can mute it.
+At the bottom of **⚙ Click**, **Test the click** plays a count-in and two bars with your settings, right there, no song needed. The button turns into Stop while it plays, four dots follow the beat and a line says where it is. It won't run while a song is playing (that click would be replaced): stop the song first. Plug in what you use on stage first (headphones, a Y-splitter into your in-ears) so you test the real thing. Under the button, Barline shows what the device reports: whether the sound engine is running, mono or stereo output (left/right only works in stereo), and on iPhone/iPad whether the silent switch can mute it.
 
 The drummer might want it in their in-ears while the singer leaves it off. Each device remembers its own choice.
 
@@ -27,6 +27,10 @@ If the server drops off the Wi-Fi in the middle of a song, a device with the scr
 During a *sticks* count-in, the click switches to a different sound for those bars, so a stick count-in sounds different from the song itself.
 
 The click follows the song's tempo map exactly, including sections with their own BPM and count-ins in the middle of a song.
+
+## A click pattern for the song
+
+Beat 1 is the accent unless you say otherwise. On a song page, **Advanced -> Click pattern** gives each of the four beats its own sound (this device's, wood, beep, tick, ride bell, cowbell, finger snap, side stick, or silent) and an accent tick. Try "Wood on 1, beeps after", "Accents on 2 and 4", or build your own, then **Hear 2 bars**. The pattern belongs to the song, so every device plays it, in the live view, the preview and the .wav click tracks. Beats left on "device sound" use each device's own sound. Count-ins keep their own click.
 
 ## Hearing it while you plan
 
