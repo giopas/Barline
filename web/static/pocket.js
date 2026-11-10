@@ -26,7 +26,7 @@
   const AUDIO_EXTS = { webm: "audio/webm", ogg: "audio/ogg", m4a: "audio/mp4", mp4: "audio/mp4", mp3: "audio/mpeg", wav: "audio/wav", aac: "audio/aac" };
   const ID_RE = /^[A-Za-z0-9_-]{1,40}$/;
 
-  const mem = { band: { id: "band", name: "My Band", players: [] }, songs: {}, setlists: {}, clips: {}, urls: {} };
+  const mem = { band: { id: "band", name: "My Band", players: [] }, songs: {}, setlists: {}, clips: {}, urls: {}, demo: false };
   let db = null;
 
   // -- storage ---------------------------------------------------------------
@@ -76,6 +76,7 @@
       const kv = await allOf("kv");
       for (const [k, v] of Object.entries(kv)) {
         if (k === "band") mem.band = v;
+        else if (k === "demo") mem.demo = !!v;
         else if (k.startsWith("song:")) mem.songs[v.id] = v;
         else if (k.startsWith("setlist:")) mem.setlists[v.id] = v;
       }
@@ -325,7 +326,8 @@
       return {
         version: root.BARLINE_VERSION || "", band: mem.band, songs: listSongs(), setlists: listSetlists(),
         transport: root.SSPLive ? root.SSPLive.soloState() : { state: "stopped" }, presence: [], now: performance.now(),
-        demo: { on: false, can_return: false }, pocket: true,
+        // the demo band loaded with "Try the demo band": the banner offers a way out
+        demo: { on: mem.demo, can_return: mem.demo }, pocket: true,
       };
     }
     if (r[0] === "bundle") {
@@ -538,10 +540,18 @@
       return mem.urls[ref];
     },
     empty: () => !Object.keys(mem.songs).length,
-    // for the tests: wipe this device's copy
+    isDemo: () => mem.demo,
+    async setDemo(on) {
+      mem.demo = !!on;
+      await put("demo", mem.demo);
+    },
+    // empty this device: every song, setlist, player and voice memo
     async reset() {
+      await ready;
       await tx("kv", "readwrite", (s) => s.clear());
       await tx("audio", "readwrite", (s) => s.clear());
+      Object.values(mem.urls).forEach((u) => URL.revokeObjectURL(u));
+      Object.assign(mem, { band: { id: "band", name: "My Band", players: [] }, songs: {}, setlists: {}, clips: {}, urls: {}, demo: false });
     },
   };
 })(window);

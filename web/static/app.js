@@ -744,7 +744,7 @@ document.getElementById("pocket-demo-btn").addEventListener("click", async () =>
   try {
     const res = await fetch("demo.ssp.json");
     if (!res.ok) throw new Error("the demo isn't in this copy of Pocket");
-    await importFile(new File([await res.blob()], "The demo band", { type: "application/json" }));
+    await importFile(new File([await res.blob()], "The demo band", { type: "application/json" }), { demo: true });
   } catch (err) {
     toast("Couldn't load the demo: " + err.message, "error");
   }
@@ -1181,8 +1181,20 @@ async function readImportFile(file) {
 
 let pendingImport = null;
 
-async function importFile(file) {
+async function importFile(file, opts = {}) {
   const fileData = Files.normalize(await readImportFile(file));
+  // Pocket in the demo: the band's own file shouldn't land among the demo songs
+  if (Pocket && Pocket.isDemo() && !opts.demo) {
+    if (confirm("You're trying the demo band. Leave the demo first, so your songs don't mix with the demo's?\n\nOK: leave the demo, then import.\nCancel: import into the demo.")) {
+      await Pocket.reset();
+      setMe(null);
+      state.demo = { on: false, can_return: false };
+      state.band = await api("GET", "/band");
+      renderDemo();
+      renderWho();
+      await refreshLists();
+    }
+  }
   const here = await api("GET", "/bundle");
   const p = Files.plan(fileData, here);
   // the everyday case, one new song: straight in, as before
@@ -1198,7 +1210,7 @@ async function importFile(file) {
     go(`#/song/${p.items[0].local.id}`);
     return;
   }
-  pendingImport = { name: file.name, file: fileData, plan: p, here, choices: {} };
+  pendingImport = { name: file.name, file: fileData, plan: p, here, choices: {}, demo: !!opts.demo };
   renderImport();
   openModal("import-modal");
 }
@@ -1272,7 +1284,7 @@ function renderImport() {
 }
 
 async function applyImport() {
-  const { file, plan: p, choices, here } = pendingImport;
+  const { file, plan: p, choices, here, demo } = pendingImport;
   const btn = document.getElementById("import-apply");
   btn.disabled = true;
   const done = { added: 0, merged: 0, setlists: 0 };
@@ -1328,6 +1340,12 @@ async function applyImport() {
     if (done.setlists) bits.push(`${done.setlists} setlist${done.setlists === 1 ? "" : "s"}`);
     toast(bits.length ? `Imported: ${bits.join(", ")}` : "Nothing new to import");
     pendingImport = null;
+    if (Pocket && demo) {
+      // the demo band on Pocket: the banner says so and offers the way out
+      await Pocket.setDemo(true);
+      state.demo = { on: true, can_return: true };
+      renderDemo();
+    }
     await refreshLists();
     renderWho();
     // a first import on Pocket brings the band: say who's holding this device
@@ -2330,7 +2348,22 @@ function renderDemo() {
   document.getElementById("demo-on-btn").textContent = on ? "Fresh copy of the demo" : "Try the demo band";
 }
 
+// Pocket: leave the demo, or empty the device. Everything on this device
+// goes; the page starts again as on the first visit.
+async function wipePocket(question) {
+  if (!confirm(question)) return;
+  await Pocket.reset();
+  prefs.set("player", null);
+  location.hash = "#/";
+  location.reload();
+}
+
 async function switchDemo(on) {
+  if (Pocket && !on) {
+    return wipePocket(
+      "Leave the demo?\n\nThe demo band leaves this device, with anything you added while trying it. Pocket is then empty, ready for your band's file."
+    );
+  }
   const msg = on
     ? "Switch to the demo band?\n\nEvery connected device switches with you. Your own songs are kept safe and come back with \"Back to my band\"."
     : "Back to your band's own songs? Everything changed in the demo is thrown away, on every connected device.";
@@ -2343,6 +2376,85 @@ async function switchDemo(on) {
 }
 
 document.getElementById("demo-on-btn").addEventListener("click", () => switchDemo(true));
+document.getElementById("pocket-wipe-btn").addEventListener("click", () =>
+  wipePocket(
+    "Delete everything on this device?\n\nEvery song, setlist, player and voice memo in Pocket on this device is deleted. This can't be undone: export first (Export everything) if you want to keep them."
+  )
+);
+
+// -- Pocket offline: install, and show whether it's ready (0.18.1) ------------
+
+let installPrompt = null; // Chrome and Edge: their own "install this app" dialog
+window.addEventListener("beforeinstallprompt", (ev) => {
+  ev.preventDefault();
+  installPrompt = ev;
+  renderOffline();
+});
+window.addEventListener("appinstalled", () => {
+  installPrompt = null;
+  renderOffline();
+});
+
+function thisBrowser() {
+  const ua = navigator.userAgent;
+  const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+  if (/Firefox|FxiOS/.test(ua) && !ios) return "firefox";
+  if (ios) return "ios";
+  if (/Android/.test(ua)) return "android";
+  if (/Edg\//.test(ua)) return "edge";
+  if (/Chrome|Chromium|CriOS/.test(ua)) return "chrome";
+  if (/Safari/.test(ua)) return "safari";
+  return "";
+}
+
+function installed() {
+  return window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+}
+
+function renderOffline() {
+  if (!Pocket) return;
+  const ready = !!(navigator.serviceWorker && navigator.serviceWorker.controller);
+  const status = document.getElementById("offline-status");
+  status.classList.toggle("ok", ready);
+  status.textContent = !("serviceWorker" in navigator)
+    ? "This browser can't keep Pocket for offline use. Try Chrome, Edge, Safari or Firefox."
+    : !ready
+      ? "Getting ready to work offline… If this doesn't change in a few seconds, reload the page once while online."
+      : installed()
+        ? "✓ Installed, and ready to work with no internet."
+        : "✓ Ready to work with no internet in this browser. Installing it is better, see below.";
+  document.getElementById("offline-install-row").classList.toggle("hidden", !installPrompt || installed());
+  const btn = document.getElementById("pocket-offline-btn");
+  btn.textContent = ready && installed() ? "✓ Offline ready" : "Use offline";
+}
+
+function openOffline() {
+  const here = thisBrowser();
+  document.querySelectorAll("#offline-guides details").forEach((d) => {
+    const mine = d.dataset.browser === here;
+    d.toggleAttribute("data-here", mine);
+    d.open = mine;
+  });
+  renderOffline();
+  openModal("offline-modal");
+}
+
+document.getElementById("pocket-offline-btn").addEventListener("click", openOffline);
+document.getElementById("empty-offline-btn").addEventListener("click", openOffline);
+document.getElementById("offline-install-btn").addEventListener("click", async () => {
+  if (!installPrompt) return;
+  installPrompt.prompt();
+  try {
+    await installPrompt.userChoice;
+  } finally {
+    installPrompt = null;
+    renderOffline();
+  }
+});
+if (Pocket && navigator.serviceWorker) {
+  navigator.serviceWorker.addEventListener("controllerchange", renderOffline);
+  navigator.serviceWorker.ready.then(() => setTimeout(renderOffline, 300));
+}
 document.getElementById("demo-off-btn").addEventListener("click", () => switchDemo(false));
 
 // Someone switched bands: start this page fresh on the new one (stays in
@@ -2422,6 +2534,10 @@ async function boot() {
     document.getElementById("connection-label").textContent = "Pocket: on this device";
     document.querySelector(".sidebar-header .tagline").textContent = "Pocket";
     document.querySelector(".mobile-title").textContent = "Barline Pocket";
+    document.querySelector("#demo-banner .demo-long").textContent = ": a made-up band to try things on. Leave the demo to empty Pocket for your own band's file.";
+    document.querySelector("#demo-banner .demo-short").textContent = ": a made-up band to try things";
+    document.getElementById("demo-off-btn").textContent = "Leave the demo";
+    renderOffline();
   }
   try {
     await loadState(false);

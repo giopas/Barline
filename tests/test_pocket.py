@@ -176,5 +176,65 @@ class PocketRoundTrip(unittest.TestCase):
         self.assertIn("Sam (Bass)", bp.evaluate("[...document.querySelectorAll('.hint-author')].map(e => e.textContent).join('|')"))
 
 
+    def test_leave_the_demo_and_use_offline(self):
+        ctx = self.browser.new_context()
+        self.addCleanup(ctx.close)
+        pg = self.page(ctx)
+        pg.goto(self.pocket_url)
+        pg.wait_for_selector("#pocket-demo-btn", state="visible")
+        # the three start buttons sit on one line
+        tops = pg.evaluate("['empty-quick-btn','pocket-import-btn','pocket-demo-btn'].map(i => document.getElementById(i).getBoundingClientRect().top)")
+        self.assertEqual(len(set(tops)), 1, tops)
+
+        # Use offline: this browser's steps open, and it says whether it's ready
+        pg.click("#pocket-offline-btn")
+        pg.wait_for_selector("#offline-modal:not(.hidden)")
+        self.assertTrue(pg.evaluate("document.querySelector('#offline-guides details[data-browser=chrome]').open"))
+        pg.wait_for_function("document.getElementById('offline-status').classList.contains('ok')")
+        self.assertIn("Ready to work with no internet", pg.text_content("#offline-status"))
+        pg.click("#offline-modal [data-close]")
+
+        pg.click("#pocket-demo-btn")
+        pg.wait_for_selector("#import-modal:not(.hidden)")
+        pg.click("#import-apply")
+        pg.wait_for_selector("#who-modal:not(.hidden)")
+        pg.click("#who-modal [data-close]")
+        pg.wait_for_selector("#demo-banner:not(.hidden)")
+        self.assertEqual(pg.text_content("#demo-off-btn"), "Leave the demo")
+        pg.reload()  # the demo is remembered
+        pg.wait_for_selector("#demo-banner:not(.hidden)")
+        pg.wait_for_selector("#who-modal:not(.hidden)")  # nobody chosen yet: it asks again
+        pg.click("#who-modal [data-close]")
+
+        # importing a band file while in the demo offers to leave it first
+        song = demo_song(self.s, "Slow Tide")
+        path = os.path.join(self.tmp.name, "one-song.ssp.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"ssp_export": 1, "song": dict(song, id="ownsong001", title="Our own song"), "audio": {}}, f)
+        pg.once("dialog", lambda d: d.accept())
+        pg.set_input_files("#import-file", path)
+        pg.wait_for_function("document.querySelectorAll('#song-list li').length === 1")
+        self.assertTrue(pg.is_hidden("#demo-banner"))
+        self.assertIn("Our own song", pg.text_content("#song-list"))
+
+        # back into the demo, then out with the banner's button
+        pg.click("#nav-band")
+        pg.once("dialog", lambda d: d.accept())
+        pg.click("#pocket-wipe-btn")
+        pg.wait_for_selector("#pocket-demo-btn", state="visible")
+        pg.click("#pocket-demo-btn")
+        pg.wait_for_selector("#import-modal:not(.hidden)")
+        pg.click("#import-apply")
+        pg.wait_for_selector("#who-modal:not(.hidden)")
+        pg.locator("#who-options .who-option strong", has_text="Ruby").click()
+        pg.wait_for_selector("#demo-banner:not(.hidden)")
+        pg.once("dialog", lambda d: d.accept())
+        pg.click("#demo-off-btn")
+        pg.wait_for_selector("#pocket-demo-btn", state="visible")
+        self.assertTrue(pg.is_hidden("#demo-banner"))
+        self.assertEqual(pg.locator("#song-list li").count(), 0)
+        self.assertEqual(pg.text_content("#who-btn").strip(), "You: Whole band")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -5,6 +5,27 @@ follows semver (MAJOR.MINOR.PATCH).
 
 ## [Unreleased]
 
+## [0.18.1] -- 2026-11-10
+
+### Added
+
+- Pocket: **Leave the demo**. After "Try the demo band", a banner says so
+  and its button empties Pocket again. Importing a file while the demo is
+  loaded offers to leave the demo first.
+- Pocket: **Band -> Delete everything on this device**, to start over.
+- Pocket: **Use offline**, at the bottom of the side bar: how to install
+  Pocket in the browser you're using (Chrome, Edge, Safari on iPhone, iPad
+  or Mac, Chrome on Android, Firefox), whether this device is ready to work
+  offline, and an Install button in Chrome and Edge.
+
+### Fixed
+
+- Pocket's address is <https://giopas.github.io/Barline/> (capital B): the
+  links in the app, the README and the wiki pointed at a lowercase address
+  that doesn't exist.
+- Pocket's start screen: Add songs, Import a file and Try the demo band sit
+  side by side.
+
 ## [0.18.0] -- 2026-11-10
 
 Merging two copies of a song, and **Barline Pocket**: the app on your own
@@ -12,7 +33,7 @@ phone or tablet with no server, to practise and take notes away from the band.
 
 ### Added
 
-- **Barline Pocket** at <https://giopas.github.io/barline/>: the same web
+- **Barline Pocket** at <https://giopas.github.io/Barline/>: the same web
   app, running on its own on a phone, tablet or computer. Add it to the home
   screen and it works offline. Songs stay on the device. Plan, practise with
   the click and record voice memos; the live view plays on that device only.

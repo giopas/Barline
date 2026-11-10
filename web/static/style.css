@@ -1233,3 +1233,16 @@ body.is-pocket [data-server-only] { display: none !important; }
 .status-dot.status-pocket { background: var(--accent); }
 .pocket-start { margin-top: 22px; max-width: 460px; }
 .pocket-start .btn { margin: 4px 4px 4px 0; }
+
+/* ---------- 0.18.1: Pocket's start screen, leaving the demo, offline ---------- */
+.empty-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 6px 0 4px; }
+.empty-actions .btn-go { margin-top: 0; }
+body.is-pocket .empty-actions .pocket-only { display: inline-block; }
+.empty-state .pocket-start { max-width: 520px; margin: 18px auto 0; }
+.empty-state .btn-link { font-size: inherit; padding: 0; }
+.offline-status { margin: 4px 0 10px; font-weight: 600; }
+.offline-status.ok { color: var(--ok); }
+.offline-guides details { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; margin: 6px 0; background: var(--bg-card); }
+.offline-guides summary { cursor: pointer; font-weight: 600; }
+.offline-guides details[data-here] summary::after { content: "  (this browser)"; color: var(--accent); font-weight: 400; }
+.offline-guides p { margin: 8px 0 2px; font-size: 13px; color: var(--text-dim); }

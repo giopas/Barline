@@ -66,6 +66,7 @@
           <button class="btn-small" id="connect-btn" data-server-only title="Show the address and QR code for phones and tablets">Connect a device</button>
         </div>
         <div class="footer-row">
+          <button class="btn-link pocket-only" id="pocket-offline-btn" title="Use Barline Pocket with no internet: install it, and check it's ready">Use offline</button>
           <button class="btn-link" id="demo-on-btn" data-server-only title="Switch every device to a throwaway demo band to try things out">Try the demo band</button>
           <span class="version-label" id="version-label"></span>
         </div>
@@ -81,13 +82,15 @@
 
       <div id="empty-state" class="empty-state">
         <p>Select a song to start planning its structure, or add some.</p>
-        <button class="btn btn-go" id="empty-quick-btn">+ Add songs</button>
+        <div class="empty-actions">
+          <button class="btn btn-go" id="empty-quick-btn">+ Add songs</button>
+          <button class="btn pocket-only" id="pocket-import-btn">&#8613; Import a file</button>
+          <button class="btn pocket-only" id="pocket-demo-btn">Try the demo band</button>
+        </div>
         <p class="modal-note">Just titles and tempos is fine: paste a whole setlist in one go.</p>
         <div class="pocket-only pocket-start">
-          <p>Already have the band's songs? On the band's Barline, open <strong>Band &rarr; Export everything</strong> (or a setlist's <strong>Export</strong>), send the file to this device, then import it here.</p>
-          <button class="btn" id="pocket-import-btn">&#8613; Import a file</button>
-          <button class="btn" id="pocket-demo-btn">Try the demo band</button>
-          <p class="modal-note">Your songs stay on this device, in this browser. Export now and then (Band &rarr; Export everything) as a backup, and to bring your notes back to the band.</p>
+          <p class="modal-note">Already have the band's songs? On the band's Barline, open <strong>Band &rarr; Export everything</strong> (or a setlist's <strong>Export</strong>), send the file to this device, then <strong>Import a file</strong> here.</p>
+          <p class="modal-note">Your songs stay on this device, in this browser. Export now and then (Band &rarr; Export everything) as a backup, and to bring your notes back to the band. To use Pocket with no internet, see <button class="btn-link" id="empty-offline-btn">Use offline</button>.</p>
         </div>
       </div>
 
@@ -177,7 +180,11 @@
             <button class="btn" id="export-all-btn">&#8615; Export everything</button>
             <button class="btn" id="band-import-btn">&#8613; Import a file</button>
           </div>
-          <p data-server-only>Barline Pocket runs on a phone or tablet with no server: open <a href="https://giopas.github.io/barline/" target="_blank" rel="noopener">giopas.github.io/barline</a> and add it to the home screen. It needs the internet once, to load; after that it works offline.</p>
+          <p data-server-only>Barline Pocket runs on a phone, tablet or computer with no server: open <a href="https://giopas.github.io/Barline/" target="_blank" rel="noopener">giopas.github.io/Barline</a> and install it (or add it to the home screen). It needs the internet once, to load; after that it works offline.</p>
+          <div class="pocket-only">
+            <button class="btn btn-danger" id="pocket-wipe-btn">Delete everything on this device</button>
+            <p>Empties Pocket on this device: every song, setlist, player and voice memo. Export first if you want to keep them.</p>
+          </div>
         </div>
       </div>
     </main>
@@ -293,6 +300,48 @@
       </div>
       <p class="modal-note">Hints aimed at you will stand out. You can change this any time.</p>
       <div id="who-options" class="who-options"></div>
+    </div>
+  </div>
+
+  <!-- Pocket: using it with no internet (0.18.1) -->
+  <div class="modal hidden" id="offline-modal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>Use Pocket offline</h2>
+        <button class="btn-icon" data-close>&times;</button>
+      </div>
+      <p class="offline-status" id="offline-status"></p>
+      <p class="modal-note">Any browser: open Pocket once with the internet on, and from then on it opens without it, at the same address. <strong>Installing it is better</strong>: it gets its own icon and window, and the browser won't clear your songs to save space, as it may do with websites you haven't opened for a while.</p>
+      <div class="ck-actions hidden" id="offline-install-row">
+        <button class="btn btn-go" id="offline-install-btn">Install Barline Pocket</button>
+      </div>
+      <div class="offline-guides" id="offline-guides">
+        <details data-browser="chrome">
+          <summary>Chrome on a computer (Windows, Mac, Linux)</summary>
+          <p>Click the install icon at the right end of the address bar. Or open the &#8942; menu &rarr; <strong>Cast, save and share</strong> &rarr; <strong>Install Barline Pocket&hellip;</strong> &rarr; <strong>Install</strong>. It opens in its own window and appears with your other apps (Start menu, Launchpad or Dock).</p>
+        </details>
+        <details data-browser="edge">
+          <summary>Edge on Windows</summary>
+          <p>Open the &hellip; menu &rarr; <strong>Apps</strong> &rarr; <strong>Install this site as an app</strong> &rarr; <strong>Install</strong>. Pin it to the Start menu or taskbar if Edge offers.</p>
+        </details>
+        <details data-browser="ios">
+          <summary>Safari on iPhone or iPad</summary>
+          <p>Tap the Share button (the square with an arrow) &rarr; <strong>Add to Home Screen</strong> &rarr; <strong>Add</strong>. Open Pocket from that icon from now on: the songs you add there stay with the icon, not with Safari.</p>
+        </details>
+        <details data-browser="safari">
+          <summary>Safari on a Mac</summary>
+          <p>Choose <strong>File &rarr; Add to Dock</strong> (macOS Sonoma or later). Open Pocket from the Dock from now on.</p>
+        </details>
+        <details data-browser="android">
+          <summary>Chrome on Android</summary>
+          <p>Open the &#8942; menu &rarr; <strong>Add to home screen</strong> (or <strong>Install app</strong>) &rarr; <strong>Install</strong>.</p>
+        </details>
+        <details data-browser="firefox">
+          <summary>Firefox</summary>
+          <p>On Android: &#8942; menu &rarr; <strong>Add to home screen</strong>. On a computer, Firefox can't install it, but Pocket still works offline in a Firefox tab once it has been opened online: bookmark it, and export your songs now and then.</p>
+        </details>
+      </div>
+      <p class="modal-note">One device's Pocket doesn't share songs with another browser or another device: move them with Band &rarr; Export everything and Import a file.</p>
     </div>
   </div>
 

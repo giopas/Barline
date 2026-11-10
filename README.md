@@ -55,8 +55,11 @@ from SSP? See [Renamed from SSP](#renamed-from-ssp).*
   file for another band. A song's PDF carries the song too, so another
   Barline can import the printout's file.
 - **Practise at home with Barline Pocket.** The same app with no server, on
-  your own phone or tablet: open [giopas.github.io/barline](https://giopas.github.io/barline/),
-  add it to the home screen, import the band's file. It works offline. Bring
+  your own phone, tablet or computer: open
+  [giopas.github.io/Barline](https://giopas.github.io/Barline/), install it
+  (Chrome, Edge, Safari: the steps for each are in the app under "Use
+  offline" and in the [wiki](https://github.com/giopas/barline/wiki/Barline-Pocket)),
+  import the band's file. It works offline. Bring
   your notes back as a file: songs the band already has are **merged**, with
   hints from both copies, each one showing who wrote it, and you choose which
   structure to keep when the two differ.

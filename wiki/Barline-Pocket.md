@@ -1,6 +1,6 @@
 # Barline Pocket
 
-Barline normally runs on one computer in the rehearsal room, and every phone connects to it. That's right for rehearsals and gigs, but at home there's no server. **Barline Pocket** is the same app with no server: it runs on its own on your phone or tablet, keeps the band's songs on that device, and works with no internet.
+Barline normally runs on one computer in the rehearsal room, and every phone connects to it. That's right for rehearsals and gigs, but at home there's no server. **Barline Pocket** is the same app with no server: it runs on its own on your phone, tablet or computer, keeps the band's songs on that device, and works with no internet.
 
 Use it to practise with the click, look at a song's shape on the bus, or write notes ("walk up to the chorus on the A string") at home. Your notes go back to the band in a file, and the band's Barline merges them in.
 
@@ -8,11 +8,26 @@ Use it to practise with the click, look at a song's shape on the bus, or write n
 |---|---|
 | ![Barline Pocket on a phone](https://raw.githubusercontent.com/giopas/barline/main/screenshots/22-pocket-phone.png) | ![Importing a Pocket file: one song to merge, with a choice of structure](https://raw.githubusercontent.com/giopas/barline/main/screenshots/21-import-merge.png) |
 
-## Open it
+## Open it, and make it work offline
 
-1. On the phone or tablet, open **[giopas.github.io/barline](https://giopas.github.io/barline/)**. It needs the internet this once, to load.
-2. Add it to the home screen. On iPhone or iPad: Safari's Share button, then **Add to Home Screen**. On Android: Chrome's menu, then **Add to Home screen** (or **Install app**).
-3. Open it from the home screen. From now on it works offline.
+Open **[giopas.github.io/Barline](https://giopas.github.io/Barline/)** (with a capital B) on the device. It needs the internet this first time.
+
+From then on it works with no internet in any modern browser, at the same address. But **install it** too: it gets its own icon and window, and your songs are safer. A browser may clear the storage of websites you haven't opened for a while (Safari does after a few weeks), but not of installed apps.
+
+How to install it, by browser:
+
+| Browser | How |
+|---|---|
+| **Chrome** on a computer (Windows, Mac, Linux) | The install icon at the right end of the address bar, or &#8942; menu → **Cast, save and share** → **Install Barline Pocket…** → **Install**. It then opens in its own window, from the Start menu, Launchpad or Dock. |
+| **Edge** on Windows | **…** menu → **Apps** → **Install this site as an app** → **Install**. |
+| **Safari** on iPhone or iPad | The Share button (square with an arrow) → **Add to Home Screen** → **Add**. Then always open Pocket from that icon: the songs belong to the icon, not to Safari. |
+| **Safari** on a Mac | **File → Add to Dock** (macOS Sonoma or later). |
+| **Chrome** on Android | &#8942; menu → **Add to home screen** (or **Install app**) → **Install**. |
+| **Firefox** | On Android: menu → **Add to home screen**. On a computer, Firefox can't install it, but it still works offline in a tab once opened online: bookmark it, and export your songs now and then. |
+
+In Pocket, **Use offline** (bottom of the side bar) shows these steps for the browser you're in, says whether this device is ready to work offline, and in Chrome and Edge has an **Install** button. Once it's installed and ready, the link reads "✓ Offline ready".
+
+Each install keeps its own songs: Pocket in Chrome and Pocket in Safari on the same computer don't see each other's songs, and neither does another device. Files move songs between them (below).
 
 Nothing to buy or sign up for, and no app store: it's a web page that keeps itself on your device.
 
@@ -25,7 +40,9 @@ On the band's Barline (the laptop or the Pi):
 
 Send the file to your phone: email it to yourself, AirDrop it, or put it in Files, iCloud Drive or Google Drive. Then in Pocket, press **Import a file** and pick it. The first time, Pocket asks who you are in the band, so it knows which hints are yours and whose name to put on the notes you write.
 
-Want a look first? **Try the demo band** loads the made-up band from the screenshots.
+Want a look first? **Try the demo band** loads the made-up band from the screenshots. A banner at the top says you're in the demo; **Leave the demo** there empties Pocket again, ready for your band's file. If you import a file while the demo is still loaded, Pocket offers to leave the demo first, so your songs don't mix with the demo's.
+
+To start over at any time, **Band → Delete everything on this device** empties Pocket on that device (export first if you want to keep anything).
 
 ## What works in Pocket
 
