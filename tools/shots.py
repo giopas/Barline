@@ -528,12 +528,7 @@ def launcher_shot():
         root.update()
         x, y = root.winfo_rootx(), root.winfo_rooty()
         w, h = root.winfo_width(), root.winfo_height()
-        path = os.path.join(OUT, "13-launcher.png")
-        try:
-            from PIL import ImageGrab
-            ImageGrab.grab(bbox=(x, y, x + w, y + h)).save(path)
-        except Exception:  # noqa: BLE001 - no grab support: fall back to ImageMagick
-            subprocess.run(["import", "-window", "root", "-crop", f"{w}x{h}+{x}+{y}", path], check=True)
+        grab_screen(x, y, w, h, os.path.join(OUT, "13-launcher.png"))
         print("  ✓ 13-launcher.png")
         # the band Wi-Fi on (made up: no radio is touched), code 1 showing
         panel._set_wifi({"ssid": "Barline-Band", "password": "kmrt-vhae-4827", "ours": True})
