@@ -337,6 +337,31 @@ class BrowserSync(unittest.TestCase):
         self.assertRegex(drum.inner_text("#st-bar"), r"^\d+/\d+$")
         self.s.httpd.ssp_transport.stop()
 
+    def test_export_a_setlist_and_import_it_back_changes_nothing(self):
+        import json
+        import tempfile
+        sl = next(iter(self.s.store.setlists.values()))
+        before = len(self.s.store.songs), len(self.s.store.setlists)
+        pg = self.page(accept_downloads=True)
+        pg.goto(f"{self.s.base}/#/setlist/{sl['id']}")
+        pg.wait_for_selector("#setlist-export-btn")
+        with pg.expect_download() as dl:
+            pg.click("#setlist-export-btn")
+        path = os.path.join(tempfile.mkdtemp(prefix="ssp-dl-"), "set.ssp.json")
+        dl.value.save_as(path)
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+        self.assertEqual((data["ssp_export"], [x["id"] for x in data["setlists"]]), (2, [sl["id"]]))
+        self.assertEqual([x["id"] for x in data["songs"]], [i for i in sl["songs"] if i in self.s.store.songs])
+        self.assertEqual(len(data["band"]["players"]), len(self.s.store.band["players"]))
+        pg.set_input_files("#import-file", path)
+        pg.wait_for_selector("#import-modal:not(.hidden)")
+        self.assertEqual(pg.locator(".import-item").count(), pg.locator(".import-same").count())
+        self.assertIn("already here: kept as it is", pg.text_content("#import-extra"))
+        pg.click("#import-apply")
+        pg.wait_for_selector("#import-modal.hidden", state="attached")
+        self.assertEqual((len(self.s.store.songs), len(self.s.store.setlists)), before)
+
     def test_solo_mode_plays_on_its_own(self):
         song = demo_song(self.s, "Coffee at Midnight")
         self.s.httpd.ssp_transport.cue(song["id"])

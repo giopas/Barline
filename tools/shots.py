@@ -266,6 +266,85 @@ class Shooter:
         self.stop()
         for pg in (lap, tab, phone, p2):
             pg.context.close()
+        self.merge_and_pocket()
+
+    # -----------------------------------------------------------------
+    def merge_and_pocket(self):
+        """0.18: importing a file that merges (21) and Barline Pocket on a
+        phone (22), from a Pocket built into a temp folder."""
+        import copy
+        import functools
+        import http.server
+        import threading
+
+        sys.path.insert(0, os.path.join(ROOT, "tools"))
+        import build_pocket
+
+        # a copy of two songs as Sam's Pocket would send it back: new notes
+        # from Sam, and on Harbour Lights a longer intro
+        band = self.srv.get("/api/band")
+        sam = next(p for p in band["players"] if p["name"] == "Sam")
+        hl = copy.deepcopy(self.srv.get(f"/api/songs/{self.songs['Harbour Lights']}"))
+        hl["sections"][0]["bars"] += 4
+        hl["sections"][2]["hints"].append({"id": "pocketnote01", "text": "Walk up to the chorus on the A string",
+                                           "audio": None, "visibility": "all", "updated_at": time.time(),
+                                           "author": {"id": sam["id"], "name": sam["name"], "role": sam["role"]}})
+        ps = copy.deepcopy(self.srv.get(f"/api/songs/{self.songs['Slow Tide']}"))
+        ps["sections"][1]["hints"].append({"id": "pocketnote02", "text": "Bass drops out for 2 bars", "audio": None,
+                                           "visibility": "all", "updated_at": time.time(),
+                                           "author": {"id": sam["id"], "name": sam["name"], "role": sam["role"]}})
+        tmp = tempfile.mkdtemp(prefix="shots-pocket-")
+        path = os.path.join(tmp, "Sam's Pocket.ssp.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"ssp_export": 2, "songs": [hl, ps, self.srv.get(f"/api/songs/{self.songs['Paper Boats']}")],
+                       "setlists": [], "band": band, "audio": {}}, f)
+        lap = self.page()
+        lap.goto(f"{self.srv.base}/#/song/{self.songs['Harbour Lights']}")
+        lap.wait_for_selector(".section-card")
+        lap.set_input_files("#import-file", path)
+        lap.wait_for_selector("#import-modal:not(.hidden)")
+        lap.locator(".import-merge", has_text="Harbour Lights").locator("button", has_text="Keep the file's").click()
+        lap.wait_for_timeout(300)
+        self.save(lap, "21-import-merge.png")
+        lap.context.close()
+
+        site = os.path.join(tmp, "site")
+        build_pocket.build(site)
+
+        class Quiet(http.server.SimpleHTTPRequestHandler):
+            def log_message(self, *a):
+                pass
+
+        httpd = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Quiet, directory=site))
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        try:
+            url = f"http://127.0.0.1:{httpd.server_address[1]}/"
+            ctx = self.browser.new_context(**self.pw.devices["iPhone 13"])
+            ctx.add_init_script(f"localStorage.setItem('ssp.asked','true');localStorage.setItem('ssp.player', {json.dumps(json.dumps(sam['id']))});")
+            pg = ctx.new_page()
+            pg.set_default_timeout(8000)
+            pg.goto(url)
+            pg.wait_for_selector("#pocket-demo-btn", state="visible")
+            pg.click("#pocket-demo-btn")
+            pg.wait_for_selector("#import-modal:not(.hidden)")
+            pg.click("#import-apply")
+            pg.wait_for_selector("#who-modal:not(.hidden)")  # Pocket asks who's holding it
+            pg.locator("#who-options .who-option strong", has_text="Sam").click()
+            pg.goto(url + f"#/song/{self.songs['Harbour Lights']}")
+            pg.wait_for_selector(".section-card")
+            card = pg.locator(".section-card").nth(0)
+            card.locator(".add-hint").click()
+            pg.keyboard.type("Bass in on bar 3 with the guitar")
+            pg.locator("#song-title").focus()
+            pg.wait_for_timeout(700)
+            pg.evaluate("document.getElementById('toasts').innerHTML = ''; window.scrollTo(0, 0); document.querySelector('.main').scrollTo(0, 0)")
+            pg.wait_for_timeout(300)
+            self.save(pg, "22-pocket-phone.png")
+            ctx.close()
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+            shutil.rmtree(tmp, ignore_errors=True)
 
     # -----------------------------------------------------------------
     def pdf_image(self, path, dpi=110):

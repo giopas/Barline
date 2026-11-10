@@ -88,6 +88,8 @@
     },
 
     connect() {
+      // Pocket (0.18) has no server: nothing to stream from, nobody to sync with
+      if (root.BarlinePocket) return;
       if (this.source) this.source.close();
       const device = /iPad|Tablet/i.test(navigator.userAgent) ? "tablet" : /Mobi|iPhone|Android/i.test(navigator.userAgent) ? "phone" : "computer";
       const q = new URLSearchParams({ client: clientId, device });

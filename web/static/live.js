@@ -201,6 +201,14 @@
     },
   };
 
+  // Pocket (0.18): no server, so the live view always plays on this device,
+  // and the app's own transport calls (Go live) land here.
+  if (window.BarlinePocket) {
+    live.solo = true;
+    live.soloWhy = "pocket";
+    document.body.classList.add("is-solo");
+  }
+
   // Every transport button goes through here: to the server, or to this
   // device's own transport in solo mode.
   async function command(body) {
@@ -308,12 +316,13 @@
       li.appendChild(S.el("span", "hint-who", kind === "mine" ? "For you" : who ? who.name : ""));
     }
     li.appendChild(S.el("span", "hint-body", h.text || "(voice memo)"));
+    if (h.author) li.appendChild(S.el("span", "hint-by", window.BarlineFiles.authorLabel(h.author, S.state.band)));
     if (h.audio) {
       const b = S.el("button", "btn-icon hint-play-live", "▶");
       b.title = "Play the voice memo";
       b.addEventListener("click", (ev) => {
         ev.stopPropagation();
-        metronome.playClip(`/api/audio/${h.audio}`);
+        metronome.playClip(S.clipUrl(h.audio));
       });
       li.appendChild(b);
     }
@@ -1017,7 +1026,7 @@
   function awakeVideo() {
     if (!live.awakeVideo) {
       const v = document.createElement("video");
-      v.src = "/keepawake.mp4";
+      v.src = "keepawake.mp4";
       v.muted = true;
       v.loop = true;
       v.playsInline = true;
@@ -1149,6 +1158,11 @@
     },
     transport: applyTransport,
     song: () => live.song,
+    soloState: () => ({ ...solo.state }),
+    soloCommand(body) {
+      solo.command(body);
+      return { ...solo.state };
+    },
     keepAwake: (on) => keepAwake(on && live.visibleNow),
     awake: () => !!live.wakeLock || !!(live.awakeVideo && !live.awakeVideo.paused),
     // click settings changed on this device: a running click picks them up

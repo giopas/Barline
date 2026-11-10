@@ -1205,3 +1205,31 @@ body.is-demo .live { top: 34px; }
 .chart-jump { display: none; margin-left: auto; }
 .chart-row.jump-armed { outline: 2px dashed var(--accent); }
 .chart-row.jump-armed .chart-jump { display: inline-block; }
+
+/* ---------- import / merge (0.18) ---------- */
+.hint-author { font-size: 11px; color: var(--text-dim); white-space: nowrap; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.import-list { list-style: none; margin: 8px 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.import-item { background: var(--bg-card); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+.import-item.import-merge { border-color: var(--accent); }
+.import-item.import-same { opacity: 0.65; }
+.import-head { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.import-title { font-weight: 600; }
+.import-kind { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; }
+.import-detail { margin: 6px 0 0; font-size: 13px; color: var(--text-dim); }
+.import-warn { color: var(--text); }
+.import-choice { margin-top: 8px; }
+.band-files { margin-top: 32px; max-width: 720px; }
+.band-files h3 { font-size: 12px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 6px; }
+.band-files p { color: var(--text-dim); font-size: 13px; margin: 0 0 10px; }
+.band-files .tool-group { margin-bottom: 12px; flex-wrap: wrap; }
+.band-files a { color: var(--accent); }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.live-hint .hint-by { color: var(--text-dim); font-size: 0.75em; margin-left: 8px; white-space: nowrap; }
+
+/* ---------- Barline Pocket (0.18): no server ---------- */
+.pocket-only { display: none; }
+body.is-pocket .pocket-only { display: block; }
+body.is-pocket [data-server-only] { display: none !important; }
+.status-dot.status-pocket { background: var(--accent); }
+.pocket-start { margin-top: 22px; max-width: 460px; }
+.pocket-start .btn { margin: 4px 4px 4px 0; }

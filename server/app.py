@@ -228,6 +228,13 @@ class Store:
             self.hub.publish("song", song, origin)
         return band
 
+    def author_of(self, origin) -> dict:
+        """The band player behind a device (its "who's using this" choice),
+        as a hint author, or None."""
+        pid = self.hub.players.get(origin) if origin else None
+        player = next((p for p in self.band.get("players", []) if p.get("id") == pid), None) if pid else None
+        return models.author_from_player(player)
+
     # -- songs --------------------------------------------------------------
     def song_summary(self, s: dict) -> dict:
         return {
@@ -268,14 +275,20 @@ class Store:
         if isinstance(payload.get("sections"), list):
             song["sections"] = payload["sections"]
         song["tags"] = payload.get("tags", [])
+        with self.lock:
+            models.stamp_changes(None, song, self.author_of(origin))
         return self._add_song(song, origin)
 
     def import_song(self, payload: dict, origin=None) -> dict:
         with self.lock:
             song = export.unbundle(payload, self.storage, set(self.songs))
+            models.tidy_stamps(song)
         return self._add_song(song, origin)
 
-    def put_song(self, song_id: str, payload: dict, origin=None) -> dict:
+    def put_song(self, song_id: str, payload: dict, origin=None, merge: bool = False) -> dict:
+        """Save an edit. A merge (0.18, `merge` true) brings hints written
+        elsewhere, so their own authors and times are kept as they come;
+        any other edit is stamped here (models.stamp_changes)."""
         with self.lock:
             if song_id not in self.songs:
                 raise KeyError(song_id)
@@ -290,6 +303,10 @@ class Store:
                 "updated_at": models.now(),
             }
             models.validate_song(song)
+            if merge:
+                models.tidy_stamps(song)
+            else:
+                models.stamp_changes(existing, song, self.author_of(origin))
             dropped = models.audio_refs(existing) - models.audio_refs(song)
             self.songs[song_id] = song
             self.storage.save_song(song)
@@ -392,7 +409,12 @@ class Store:
 
     def create_setlist(self, payload: dict, origin=None) -> dict:
         with self.lock:
-            setlist = models.new_setlist(name=str(payload.get("name", "New Setlist"))[:120])
+            # an imported setlist keeps its id when it's free here (0.18), so
+            # the next copy of it is recognised as the same setlist
+            sid = payload.get("id")
+            if not (isinstance(sid, str) and models.ID_RE.match(sid) and sid not in self.setlists):
+                sid = None
+            setlist = models.new_setlist(name=str(payload.get("name", "New Setlist"))[:120], setlist_id=sid)
             setlist["songs"] = payload.get("songs", [])
             models.validate_setlist(setlist)
             self.setlists[setlist["id"]] = setlist
@@ -626,11 +648,16 @@ class Handler(BaseHTTPRequestHandler):
             if route == ["songs", "import"] and method == "POST":
                 payload = export.payload_from_bytes(self._read_body(MAX_IMPORT_BYTES))
                 return self._send_json(201, store.import_song(payload, origin))
+            if route == ["import", "read"] and method == "POST":
+                # what's inside a file to import (0.18): the web app reads a
+                # .json itself, but a song's PDF needs the server to unpack
+                return self._send_json(200, export.payload_from_bytes(self._read_body(MAX_IMPORT_BYTES)))
             if len(route) == 2 and route[0] == "songs":
                 if method == "GET":
                     return self._send_json(200, store.get_song(route[1]))
                 if method == "PUT":
-                    return self._send_json(200, store.put_song(route[1], self._read_json_body(), origin))
+                    return self._send_json(200, store.put_song(route[1], self._read_json_body(), origin,
+                                                               merge=q("merge") == "1"))
                 if method == "DELETE":
                     store.delete_song(route[1], origin)
                     tr.song_deleted(route[1])

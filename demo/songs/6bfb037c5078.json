@@ -22,7 +22,13 @@
           "id": "d71676c2cd13",
           "text": "Swell in from nothing",
           "audio": null,
-          "visibility": "82d79b465f9b"
+          "visibility": "82d79b465f9b",
+          "author": {
+            "id": "82d79b465f9b",
+            "name": "Jonas",
+            "role": "Keys"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -41,7 +47,13 @@
           "id": "0da1ca57452b",
           "text": "Brushes, very light",
           "audio": null,
-          "visibility": "c62f1fc099f4"
+          "visibility": "c62f1fc099f4",
+          "author": {
+            "id": "bd713934e53d",
+            "name": "Mia",
+            "role": "Vocals"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -72,7 +84,13 @@
           "id": "9e286dec3640",
           "text": "Pushes a little: 80 BPM",
           "audio": null,
-          "visibility": "all"
+          "visibility": "all",
+          "author": {
+            "id": "90a91d9d374a",
+            "name": "Sam",
+            "role": "Bass"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -91,7 +109,13 @@
           "id": "334c5d6da4ed",
           "text": "Back to 72",
           "audio": null,
-          "visibility": "all"
+          "visibility": "all",
+          "author": {
+            "id": "c62f1fc099f4",
+            "name": "Ruby",
+            "role": "Drums"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -110,7 +134,13 @@
           "id": "1bec066a2ed4",
           "text": "Bass up an octave",
           "audio": null,
-          "visibility": "90a91d9d374a"
+          "visibility": "90a91d9d374a",
+          "author": {
+            "id": "82d79b465f9b",
+            "name": "Jonas",
+            "role": "Keys"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -129,7 +159,13 @@
           "id": "422eccdf412d",
           "text": "Fade together, watch Jonas",
           "audio": null,
-          "visibility": "all"
+          "visibility": "all",
+          "author": {
+            "id": "bd713934e53d",
+            "name": "Mia",
+            "role": "Vocals"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     }

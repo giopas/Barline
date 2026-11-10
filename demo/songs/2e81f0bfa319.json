@@ -22,7 +22,13 @@
           "id": "ed0c3fc9b90b",
           "text": "New song, still working it out",
           "audio": null,
-          "visibility": "all"
+          "visibility": "all",
+          "author": {
+            "id": "c62f1fc099f4",
+            "name": "Ruby",
+            "role": "Drums"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -41,7 +47,13 @@
           "id": "34723e5401b7",
           "text": "Try the walking line",
           "audio": null,
-          "visibility": "90a91d9d374a"
+          "visibility": "90a91d9d374a",
+          "author": {
+            "id": "82d79b465f9b",
+            "name": "Jonas",
+            "role": "Keys"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -60,7 +72,13 @@
           "id": "f65ae319a742",
           "text": "Bridge idea: next rehearsal",
           "audio": null,
-          "visibility": "all"
+          "visibility": "all",
+          "author": {
+            "id": "bd713934e53d",
+            "name": "Mia",
+            "role": "Vocals"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     }

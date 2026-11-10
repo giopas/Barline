@@ -1,0 +1,52 @@
+name: pocket
+
+# Barline Pocket (0.18): the web app with no server, published to GitHub
+# Pages on every version tag, at https://<owner>.github.io/<repo>/.
+# tools/build_pocket.py makes the site from web/static/. Needs the repo's
+# Settings > Pages > Source set to "GitHub Actions" (once).
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Playwright (the Pocket browser test)
+        run: |
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Merge and Pocket tests
+        run: python -m unittest tests.test_merge tests.test_pocket -v
+      - name: Build Pocket
+        run: python tools/build_pocket.py --out _site
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

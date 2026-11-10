@@ -7,5 +7,6 @@
 - [[Metronome and Click Tracks]]
 - [[For Drummers]]
 - [[Printing and Moving Songs]]
+- [[Barline Pocket]]
 - [[No Wi-Fi at the Venue]]
 - [[Running on a Raspberry Pi]]

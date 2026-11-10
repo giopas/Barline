@@ -51,6 +51,9 @@ def now() -> float:
     return time.time()
 
 
+models_now = now
+
+
 class ValidationError(ValueError):
     """Raised when a payload from the API/storage doesn't shape up."""
 
@@ -103,6 +106,83 @@ def new_hint(text: str = "", visibility: str = "all", audio=None) -> dict:
         "audio": audio,  # clip_ref string, or null -- recording lands in v0.6
         "visibility": visibility,  # "all" | player_id
     }
+
+
+def clean_author(raw):
+    """Who last wrote a hint (0.18): {"id", "name", "role"} of a band player,
+    or None. The name and role travel with the hint, so a copy taken to
+    another device (Pocket, another band's server) still says who wrote it
+    even where that player id isn't known."""
+    if not isinstance(raw, dict):
+        return None
+    pid = str(raw.get("id") or "")[:40] or None
+    name = " ".join(str(raw.get("name") or "").split())[:60]
+    role = raw.get("role") if raw.get("role") in VALID_ROLES else None
+    if not pid and not name:
+        return None
+    return {"id": pid, "name": name or "Player", "role": role}
+
+
+def author_from_player(player) -> dict:
+    if not player:
+        return None
+    return {"id": player.get("id"), "name": player.get("name") or "Player", "role": player.get("role")}
+
+
+HINT_CONTENT = ("text", "visibility", "audio")
+SECTION_SHAPE = ("label", "order", "bars", "bpm", "count_in")
+
+
+def stamp_changes(existing, song: dict, author=None, when: float = None) -> None:
+    """Note who changed what in an edit (0.18), in place on `song`.
+
+    A hint that is new or whose text, audience or clip changed gets
+    `updated_at` = now and `author` = the player behind the edit (when the
+    device says who's using it; otherwise whatever author it already had).
+    A section whose shape changed (label, bars, BPM, count-in, place) gets
+    `updated_at`. Unchanged ones keep their old stamps, whatever the
+    client sent. This is what merging two copies of a song relies on."""
+    when = models_now() if when is None else when
+    old_sections = {s.get("id"): s for s in (existing or {}).get("sections", [])}
+    old_hints = {}
+    for s in old_sections.values():
+        for h in s.get("hints", []):
+            old_hints[h.get("id")] = h
+    for s in song.get("sections", []):
+        old_s = old_sections.get(s.get("id"))
+        if old_s is None or any(old_s.get(k) != s.get(k) for k in SECTION_SHAPE):
+            s["updated_at"] = when
+        else:
+            s["updated_at"] = old_s.get("updated_at")
+        if s.get("updated_at") is None:
+            s.pop("updated_at", None)
+        for h in s.get("hints", []):
+            old_h = old_hints.get(h.get("id"))
+            if old_h is None or any(old_h.get(k) != h.get(k) for k in HINT_CONTENT):
+                h["updated_at"] = when
+                h["author"] = author or clean_author(h.get("author"))
+            else:
+                h["updated_at"] = old_h.get("updated_at")
+                h["author"] = clean_author(old_h.get("author"))
+            if h.get("updated_at") is None:
+                h.pop("updated_at", None)
+            if h.get("author") is None:
+                h.pop("author", None)
+
+
+def tidy_stamps(song: dict) -> None:
+    """Stamps as they arrive in a file or a merge: kept, but cleaned."""
+    for s in song.get("sections", []):
+        if not isinstance(s.get("updated_at"), (int, float)):
+            s.pop("updated_at", None)
+        for h in s.get("hints", []):
+            author = clean_author(h.get("author"))
+            if author:
+                h["author"] = author
+            else:
+                h.pop("author", None)
+            if not isinstance(h.get("updated_at"), (int, float)):
+                h.pop("updated_at", None)
 
 
 # ---------------------------------------------------------------------------
@@ -277,8 +357,8 @@ def apply_count_ins(song: dict, start=None, changes=None, tempo_only: bool = Fal
 # Setlist
 # ---------------------------------------------------------------------------
 
-def new_setlist(name: str = "New Setlist") -> dict:
-    return {"id": new_id(), "name": name, "songs": []}
+def new_setlist(name: str = "New Setlist", setlist_id: str = None) -> dict:
+    return {"id": setlist_id or new_id(), "name": name, "songs": []}
 
 
 def validate_setlist(setlist: dict) -> None:

@@ -43,7 +43,7 @@
         <div class="sidebar-section-head">
           <h2>Songs</h2>
           <span>
-            <button class="btn-icon" id="import-song-btn" title="Import a song file (.ssp.json)">&#8613;</button>
+            <button class="btn-icon" id="import-song-btn" title="Import a file (.ssp.json, or a song's PDF): new songs are added, songs already here are merged">&#8613;</button>
             <button class="btn-icon" id="new-song-btn" title="New song">+</button>
           </span>
         </div>
@@ -63,10 +63,10 @@
         </div>
         <div class="footer-row">
           <button class="chip" id="who-btn" title="Who's using this device?">Whole band</button>
-          <button class="btn-small" id="connect-btn" title="Show the address and QR code for phones and tablets">Connect a device</button>
+          <button class="btn-small" id="connect-btn" data-server-only title="Show the address and QR code for phones and tablets">Connect a device</button>
         </div>
         <div class="footer-row">
-          <button class="btn-link" id="demo-on-btn" title="Switch every device to a throwaway demo band to try things out">Try the demo band</button>
+          <button class="btn-link" id="demo-on-btn" data-server-only title="Switch every device to a throwaway demo band to try things out">Try the demo band</button>
           <span class="version-label" id="version-label"></span>
         </div>
       </footer>
@@ -83,6 +83,12 @@
         <p>Select a song to start planning its structure, or add some.</p>
         <button class="btn btn-go" id="empty-quick-btn">+ Add songs</button>
         <p class="modal-note">Just titles and tempos is fine: paste a whole setlist in one go.</p>
+        <div class="pocket-only pocket-start">
+          <p>Already have the band's songs? On the band's Barline, open <strong>Band &rarr; Export everything</strong> (or a setlist's <strong>Export</strong>), send the file to this device, then import it here.</p>
+          <button class="btn" id="pocket-import-btn">&#8613; Import a file</button>
+          <button class="btn" id="pocket-demo-btn">Try the demo band</button>
+          <p class="modal-note">Your songs stay on this device, in this browser. Export now and then (Band &rarr; Export everything) as a backup, and to bring your notes back to the band.</p>
+        </div>
       </div>
 
       <div id="song-view" class="song-view hidden">
@@ -107,9 +113,9 @@
           <button class="btn" id="song-preview-btn" title="Hear the song's click on this device">&#9835; Preview click</button>
           <span class="tool-group">
             <button class="btn" id="song-click-settings" title="This device's click: sound, subdivisions, spoken count-in, ear, test">&#9881; Click</button>
-            <button class="btn" id="song-wav-btn" title="Download a practice click track (.wav) with this device's click settings">&#8615; Click track</button>
+            <button class="btn" id="song-wav-btn" data-server-only title="Download a practice click track (.wav) with this device's click settings">&#8615; Click track</button>
           </span>
-          <button class="btn" id="song-print-btn" title="A PDF to print: whole band, or one player's part">&#9113; Paper chart</button>
+          <button class="btn" id="song-print-btn" data-server-only title="A PDF to print: whole band, or one player's part">&#9113; Paper chart</button>
           <button class="btn" id="song-export-btn" title="Download this song as one portable file, with its voice memos">&#8615; Export</button>
           <button id="delete-song-btn" class="btn-danger">Delete</button>
         </div>
@@ -134,9 +140,10 @@
         </header>
         <div class="toolbar">
           <button class="btn btn-go" id="setlist-live-btn" title="Put this setlist on every live screen">&#9654; Go live with this setlist</button>
-          <button class="btn" id="setlist-print-btn" title="A PDF to print: the running order, then every song's chart">&#9113; Print set</button>
+          <button class="btn" id="setlist-print-btn" data-server-only title="A PDF to print: the running order, then every song's chart">&#9113; Print set</button>
           <button class="btn" id="setlist-countins-btn" title="Count-ins at the start and/or at every section change, for every song in this setlist">&#9201; Count-ins</button>
-          <button class="btn" id="setlist-zip-btn" title="One click track per song, in a .zip, with this device's click settings: practise anywhere, no server needed">&#8615; Practice tracks</button>
+          <button class="btn" id="setlist-export-btn" title="Download this setlist with its songs, voice memos and the band, as one file (for Pocket, another server, or a backup)">&#8615; Export</button>
+          <button class="btn" id="setlist-zip-btn" data-server-only title="One click track per song, in a .zip, with this device's click settings: practise anywhere, no server needed">&#8615; Practice tracks</button>
           <button id="delete-setlist-btn" class="btn-danger">Delete</button>
         </div>
         <p id="setlist-summary" class="song-summary"></p>
@@ -163,6 +170,15 @@
         <p class="song-summary">Everyone who plays. A hint can be aimed at one of them, and each device can say who's holding it so that player's hints stand out.</p>
         <ul id="player-list" class="player-list"></ul>
         <button class="btn" id="add-player-btn">+ Add player</button>
+        <div class="band-files">
+          <h3>Files</h3>
+          <p>Everything in one file: every song, setlist, player and voice memo. Keep it as a backup, open it in Barline Pocket to practise away from the band, or bring a Pocket file back here: songs already here are merged, not doubled.</p>
+          <div class="tool-group">
+            <button class="btn" id="export-all-btn">&#8615; Export everything</button>
+            <button class="btn" id="band-import-btn">&#8613; Import a file</button>
+          </div>
+          <p data-server-only>Barline Pocket runs on a phone or tablet with no server: open <a href="https://giopas.github.io/barline/" target="_blank" rel="noopener">giopas.github.io/barline</a> and add it to the home screen. It needs the internet once, to load; after that it works offline.</p>
+        </div>
       </div>
     </main>
 
@@ -179,8 +195,8 @@
           <span id="live-setlist-pos"></span>
           <button class="btn-small" id="live-next" title="Next song">&#9654;</button>
         </div>
-        <span class="live-presence" id="live-presence"></span>
-        <button class="chip" id="live-solo">With the band</button>
+        <span class="live-presence" id="live-presence" data-server-only></span>
+        <button class="chip" id="live-solo" data-server-only>With the band</button>
         <button class="chip" id="live-big" title="Drummer view: huge tempo, bar count and what's next">Big view</button>
         <button class="chip" id="live-who" title="Who's using this device?">Whole band</button>
       </header>
@@ -340,6 +356,25 @@
     </div>
   </div>
 
+  <!-- Import a file: new songs go in, songs already here are merged (0.18) -->
+  <div class="modal hidden" id="import-modal">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>Import</h2>
+        <button class="btn-icon" data-close>&times;</button>
+      </div>
+      <p class="modal-note" id="import-summary"></p>
+      <p class="modal-note">A song that's already here is merged: hints from both copies (newest wins when both changed one), nothing deleted. When the two structures differ, you choose which to keep.</p>
+      <ul id="import-list" class="import-list"></ul>
+      <p class="modal-note" id="import-extra"></p>
+      <div class="ck-actions">
+        <button class="btn btn-go" id="import-apply">Import</button>
+        <button class="btn" data-close>Cancel</button>
+      </div>
+      <p class="modal-note" id="import-wait" role="status"></p>
+    </div>
+  </div>
+
   <!-- Quick add: a song in seconds, or a whole pasted list -->
   <div class="modal hidden" id="quick-modal">
     <div class="modal-card quick-card">
@@ -481,6 +516,7 @@
   <template id="hint-row-template">
     <li class="hint-row">
       <input class="hint-text" type="text" placeholder="e.g. Watch Ruby for the stop" />
+      <span class="hint-author hidden"></span>
       <select class="hint-visibility">
         <option value="all">For the whole band</option>
       </select>
@@ -494,6 +530,7 @@
   <script src="/timing.js"></script>
   <script src="/quick.js"></script>
   <script src="/audio.js"></script>
+  <script src="/files.js"></script>
   <script src="/sync.js"></script>
   <script src="/app.js"></script>
   <script src="/live.js"></script>

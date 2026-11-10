@@ -5,6 +5,40 @@ follows semver (MAJOR.MINOR.PATCH).
 
 ## [Unreleased]
 
+## [0.18.0] -- 2026-11-10
+
+Merging two copies of a song, and **Barline Pocket**: the app on your own
+phone or tablet with no server, to practise and take notes away from the band.
+
+### Added
+
+- **Barline Pocket** at <https://giopas.github.io/barline/>: the same web
+  app, running on its own on a phone, tablet or computer. Add it to the home
+  screen and it works offline. Songs stay on the device. Plan, practise with
+  the click and record voice memos; the live view plays on that device only.
+  No connecting other devices, paper charts or click-track downloads there.
+  Published to GitHub Pages by each release.
+- **Merging.** Importing a file with a song that's already here merges the
+  two copies instead of adding a second song: hints from both (the newer
+  one wins when both changed the same hint; nothing is deleted), structure
+  from the copy you choose when the two differ (no default: you pick). A
+  preview lists every song in the file first: new, to merge (with "2 new
+  hints from Sam (Bass)"), or already the same.
+- **Who wrote each hint**: the player's name and role next to the hint, in
+  the editor and in the live view. It comes from each device's "who's
+  using this" choice and travels with the song to other setups.
+- **Export a setlist** (its songs and the band's players) or **everything**
+  (Band -> Export everything) as one file, voice memos included. Importing
+  one brings in its setlists and any players the band doesn't have yet
+  (matched by name and role).
+
+### Changed
+
+- The import button reads every kind of Barline file (one song, a setlist,
+  everything, a song's PDF) and shows what it will do before it does it.
+  One new song still goes straight in, as before.
+- The demo band's hints show who wrote them.
+
 ## [0.17.0] -- 2026-11-10
 
 SSP is now called **Barline**. Same app, new name.

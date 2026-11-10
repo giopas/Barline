@@ -51,12 +51,23 @@ from SSP? See [Renamed from SSP](#renamed-from-ssp).*
   running order in big type, then one chart per song.
 - **Take it with you.** Download a practice click track (`.wav`) that follows
   the song's tempo changes (or a `.zip` of them for a whole setlist), or
-  export a song (voice memos included) as a single file for another band. A
-  song's PDF carries the song too, so another Barline can import the printout's file.
+  export a song, a setlist or everything (voice memos included) as a single
+  file for another band. A song's PDF carries the song too, so another
+  Barline can import the printout's file.
+- **Practise at home with Barline Pocket.** The same app with no server, on
+  your own phone or tablet: open [giopas.github.io/barline](https://giopas.github.io/barline/),
+  add it to the home screen, import the band's file. It works offline. Bring
+  your notes back as a file: songs the band already has are **merged**, with
+  hints from both copies, each one showing who wrote it, and you choose which
+  structure to keep when the two differ.
 
 | A bass player's chart | The set's running order, and a floor sheet |
 |---|---|
 | ![A song's paper chart for the bass player](screenshots/10-print-chart-bass.png) | ![The running order on one page, and a song as a black-and-white floor sheet](screenshots/16-paper-setlist-and-floor.png) |
+
+| Barline Pocket on a phone | Merging a Pocket file back into the band's copy |
+|---|---|
+| ![Barline Pocket on a phone, no server](screenshots/22-pocket-phone.png) | ![Importing a file: a song to merge, choosing which structure to keep](screenshots/21-import-merge.png) |
 
 | On the drummer's tablet | On the bassist's phone |
 |---|---|
@@ -274,7 +285,8 @@ updates**.
 
 The [wiki](https://github.com/giopas/barline/wiki)
 walks through planning a song, using it on stage, the metronome, printing,
-moving songs between setups, and running Barline on a Raspberry Pi.
+moving songs between setups, Barline Pocket, and running Barline on a
+Raspberry Pi.
 
 | Setlists | The band | Connect a device |
 |---|---|---|
@@ -287,6 +299,11 @@ moving songs between setups, and running Barline on a Raspberry Pi.
 - `python3 tools/make_demo_data.py` regenerates `demo/`;
   `python3 tools/shots.py` retakes every screenshot and GIF in
   `screenshots/` from the demo band.
+- `python3 tools/build_pocket.py` builds Barline Pocket (the web app with no
+  server) into `dist/pocket/`; `.github/workflows/pocket.yml` publishes it to
+  GitHub Pages on every version tag. Merging lives in `web/static/files.js`
+  (shared by the server's web app and Pocket); Pocket's in-page stand-in for
+  the server is `web/static/pocket.js`.
 - `tools/make_voice.sh` rebuilds the spoken count-in (`web/static/voice/`).
 - `python3 tools/make_icons.py` redraws the app icon (the bar square with
   beat 1 lit) and writes every size: browser tab, home screen, macOS

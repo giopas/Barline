@@ -23,7 +23,13 @@
           "id": "1a39acbcc1a4",
           "text": "Clap along with the crowd",
           "audio": null,
-          "visibility": "all"
+          "visibility": "all",
+          "author": {
+            "id": "82d79b465f9b",
+            "name": "Jonas",
+            "role": "Keys"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -54,7 +60,13 @@
           "id": "86b89b0cff70",
           "text": "Big unison riff",
           "audio": null,
-          "visibility": "all"
+          "visibility": "all",
+          "author": {
+            "id": "d551d118de2e",
+            "name": "Theo",
+            "role": "Guitar"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -73,7 +85,13 @@
           "id": "532e9a313bf2",
           "text": "Slap bass this time",
           "audio": null,
-          "visibility": "90a91d9d374a"
+          "visibility": "90a91d9d374a",
+          "author": {
+            "id": "90a91d9d374a",
+            "name": "Sam",
+            "role": "Bass"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -104,7 +122,13 @@
           "id": "687f61fa303b",
           "text": "Organ sound",
           "audio": null,
-          "visibility": "82d79b465f9b"
+          "visibility": "82d79b465f9b",
+          "author": {
+            "id": "82d79b465f9b",
+            "name": "Jonas",
+            "role": "Keys"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -123,13 +147,25 @@
           "id": "816acca64193",
           "text": "All yours, Ruby",
           "audio": null,
-          "visibility": "c62f1fc099f4"
+          "visibility": "c62f1fc099f4",
+          "author": {
+            "id": "bd713934e53d",
+            "name": "Mia",
+            "role": "Vocals"
+          },
+          "updated_at": 1793836800.0
         },
         {
           "id": "2e97df9c7168",
           "text": "Everyone back in on bar 1 of the chorus",
           "audio": null,
-          "visibility": "all"
+          "visibility": "all",
+          "author": {
+            "id": "d551d118de2e",
+            "name": "Theo",
+            "role": "Guitar"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -148,7 +184,13 @@
           "id": "6319eeee49fa",
           "text": "Double chorus, key change on bar 9",
           "audio": null,
-          "visibility": "all"
+          "visibility": "all",
+          "author": {
+            "id": "d551d118de2e",
+            "name": "Theo",
+            "role": "Guitar"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -167,7 +209,13 @@
           "id": "849ccd042a17",
           "text": "Big ending: three hits",
           "audio": null,
-          "visibility": "all"
+          "visibility": "all",
+          "author": {
+            "id": "90a91d9d374a",
+            "name": "Sam",
+            "role": "Bass"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     }

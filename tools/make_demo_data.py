@@ -131,6 +131,11 @@ SETLISTS = [
 ]
 
 
+def author(n: int) -> dict:
+    name, role = PLAYERS[n % len(PLAYERS)]
+    return {"id": P[name], "name": name, "role": role}
+
+
 def song_doc(title, bpm, sections):
     sid = fid("song", title)
     out = []
@@ -148,6 +153,9 @@ def song_doc(title, bpm, sections):
                 "text": text,
                 "audio": clip,
                 "visibility": "all" if who == "all" else P[who],
+                # who wrote it (0.18): taken in turns, so the demo shows names
+                "author": author(i + j + len(title)),
+                "updated_at": STAMP,
             } for j, (text, who, clip) in enumerate(hints)],
         })
     return {"id": sid, "title": title, "default_bpm": bpm, "tags": TAGS.get(title, []), "sections": out,

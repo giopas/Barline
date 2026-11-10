@@ -23,13 +23,25 @@
           "id": "4e1206d1dc30",
           "text": "Mia counts in, soft",
           "audio": null,
-          "visibility": "bd713934e53d"
+          "visibility": "bd713934e53d",
+          "author": {
+            "id": "d551d118de2e",
+            "name": "Theo",
+            "role": "Guitar"
+          },
+          "updated_at": 1793836800.0
         },
         {
           "id": "cc23a9fef691",
           "text": "Fingerpicked, no pick",
           "audio": null,
-          "visibility": "d551d118de2e"
+          "visibility": "d551d118de2e",
+          "author": {
+            "id": "90a91d9d374a",
+            "name": "Sam",
+            "role": "Bass"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -48,7 +60,13 @@
           "id": "64deeaa1cf11",
           "text": "Bass waits until bar 9",
           "audio": null,
-          "visibility": "90a91d9d374a"
+          "visibility": "90a91d9d374a",
+          "author": {
+            "id": "90a91d9d374a",
+            "name": "Sam",
+            "role": "Bass"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -67,7 +85,13 @@
           "id": "757462229864",
           "text": "Rim clicks only",
           "audio": null,
-          "visibility": "c62f1fc099f4"
+          "visibility": "c62f1fc099f4",
+          "author": {
+            "id": "c62f1fc099f4",
+            "name": "Ruby",
+            "role": "Drums"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -98,7 +122,13 @@
           "id": "19bdd4be1644",
           "text": "Full kit now",
           "audio": null,
-          "visibility": "c62f1fc099f4"
+          "visibility": "c62f1fc099f4",
+          "author": {
+            "id": "bd713934e53d",
+            "name": "Mia",
+            "role": "Vocals"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -117,13 +147,25 @@
           "id": "1ee98eca8739",
           "text": "Take your time, it's yours",
           "audio": null,
-          "visibility": "d551d118de2e"
+          "visibility": "d551d118de2e",
+          "author": {
+            "id": "d551d118de2e",
+            "name": "Theo",
+            "role": "Guitar"
+          },
+          "updated_at": 1793836800.0
         },
         {
           "id": "7ab0b5060d5b",
           "text": "Pad under the solo",
           "audio": null,
-          "visibility": "82d79b465f9b"
+          "visibility": "82d79b465f9b",
+          "author": {
+            "id": "90a91d9d374a",
+            "name": "Sam",
+            "role": "Bass"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -142,7 +184,13 @@
           "id": "fafef566108e",
           "text": "Drop to just vocals for the first 4 bars",
           "audio": null,
-          "visibility": "all"
+          "visibility": "all",
+          "author": {
+            "id": "90a91d9d374a",
+            "name": "Sam",
+            "role": "Bass"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -161,7 +209,13 @@
           "id": "8ab0e6436942",
           "text": "Let it ring",
           "audio": null,
-          "visibility": "all"
+          "visibility": "all",
+          "author": {
+            "id": "c62f1fc099f4",
+            "name": "Ruby",
+            "role": "Drums"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     }

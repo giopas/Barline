@@ -22,7 +22,13 @@
           "id": "a0101e26cfcb",
           "text": "Keys alone for 2 bars, guitar joins on bar 3",
           "audio": null,
-          "visibility": "82d79b465f9b"
+          "visibility": "82d79b465f9b",
+          "author": {
+            "id": "82d79b465f9b",
+            "name": "Jonas",
+            "role": "Keys"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -41,13 +47,25 @@
           "id": "96dbcc09ef74",
           "text": "Root notes only, follow the kick",
           "audio": null,
-          "visibility": "90a91d9d374a"
+          "visibility": "90a91d9d374a",
+          "author": {
+            "id": "bd713934e53d",
+            "name": "Mia",
+            "role": "Vocals"
+          },
+          "updated_at": 1793836800.0
         },
         {
           "id": "8ba44962af0a",
           "text": "Keep it quiet, the vocal carries this",
           "audio": null,
-          "visibility": "all"
+          "visibility": "all",
+          "author": {
+            "id": "d551d118de2e",
+            "name": "Theo",
+            "role": "Guitar"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -66,7 +84,13 @@
           "id": "accbb870d564",
           "text": "Build: open the hi-hat",
           "audio": null,
-          "visibility": "c62f1fc099f4"
+          "visibility": "c62f1fc099f4",
+          "author": {
+            "id": "d551d118de2e",
+            "name": "Theo",
+            "role": "Guitar"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -85,13 +109,25 @@
           "id": "3ea055fc79fb",
           "text": "Everyone in, full volume",
           "audio": null,
-          "visibility": "all"
+          "visibility": "all",
+          "author": {
+            "id": "90a91d9d374a",
+            "name": "Sam",
+            "role": "Bass"
+          },
+          "updated_at": 1793836800.0
         },
         {
           "id": "983f8a6974d4",
           "text": "Harmony on the last line",
           "audio": null,
-          "visibility": "d551d118de2e"
+          "visibility": "d551d118de2e",
+          "author": {
+            "id": "c62f1fc099f4",
+            "name": "Ruby",
+            "role": "Drums"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -110,7 +146,13 @@
           "id": "132187657615",
           "text": "Octave line this time",
           "audio": null,
-          "visibility": "90a91d9d374a"
+          "visibility": "90a91d9d374a",
+          "author": {
+            "id": "c62f1fc099f4",
+            "name": "Ruby",
+            "role": "Drums"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -129,7 +171,13 @@
           "id": "f9ba9e2e533d",
           "text": "Fill into the chorus",
           "audio": "c4440ddaff17.wav",
-          "visibility": "c62f1fc099f4"
+          "visibility": "c62f1fc099f4",
+          "author": {
+            "id": "82d79b465f9b",
+            "name": "Jonas",
+            "role": "Keys"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -148,7 +196,13 @@
           "id": "fcfcd7ec1ebc",
           "text": "Everyone in, full volume",
           "audio": null,
-          "visibility": "all"
+          "visibility": "all",
+          "author": {
+            "id": "bd713934e53d",
+            "name": "Mia",
+            "role": "Vocals"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -167,13 +221,25 @@
           "id": "1f8ec41477d6",
           "text": "Half-time feel, watch Ruby",
           "audio": null,
-          "visibility": "all"
+          "visibility": "all",
+          "author": {
+            "id": "d551d118de2e",
+            "name": "Theo",
+            "role": "Guitar"
+          },
+          "updated_at": 1793836800.0
         },
         {
           "id": "95dcb78d8a0b",
           "text": "Brushes",
           "audio": null,
-          "visibility": "c62f1fc099f4"
+          "visibility": "c62f1fc099f4",
+          "author": {
+            "id": "90a91d9d374a",
+            "name": "Sam",
+            "role": "Bass"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -192,7 +258,13 @@
           "id": "45e6032e74f8",
           "text": "Last chorus: hold the final chord",
           "audio": null,
-          "visibility": "all"
+          "visibility": "all",
+          "author": {
+            "id": "90a91d9d374a",
+            "name": "Sam",
+            "role": "Bass"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     },
@@ -211,7 +283,13 @@
           "id": "5c26aa16a798",
           "text": "Mia cuts us off",
           "audio": null,
-          "visibility": "all"
+          "visibility": "all",
+          "author": {
+            "id": "c62f1fc099f4",
+            "name": "Ruby",
+            "role": "Drums"
+          },
+          "updated_at": 1793836800.0
         }
       ]
     }

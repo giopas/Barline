@@ -19,6 +19,13 @@
 const Timing = window.SSPTiming;
 const Sync = window.SSPSync;
 const api = (...args) => Sync.api(...args);
+const Files = window.BarlineFiles;
+const Pocket = window.BarlinePocket || null; // set only in Barline Pocket (no server)
+
+// Where a voice memo plays from: the server, or (Pocket) this device.
+function clipUrl(ref) {
+  return Pocket ? Pocket.clipUrl(ref) : `/api/audio/${ref}`;
+}
 
 // ---------------------------------------------------------------------
 // Small helpers
@@ -395,6 +402,8 @@ function songListItem(song, position) {
 }
 
 function renderSidebar() {
+  // Pocket's demo button is for an empty device only
+  document.getElementById("pocket-demo-btn").classList.toggle("hidden", state.songs.length > 0);
   renderSongOrder();
   renderTagFilter(els.tagFilter);
   els.songList.innerHTML = "";
@@ -729,6 +738,17 @@ els.songTagInput.addEventListener("blur", () => {
 
 document.getElementById("new-song-btn").addEventListener("click", () => openQuick());
 document.getElementById("empty-quick-btn").addEventListener("click", () => openQuick());
+document.getElementById("pocket-import-btn").addEventListener("click", () => document.getElementById("import-file").click());
+document.getElementById("pocket-demo-btn").addEventListener("click", async () => {
+  // Pocket's copy of the demo band (tools/build_pocket.py), imported like any file
+  try {
+    const res = await fetch("demo.ssp.json");
+    if (!res.ok) throw new Error("the demo isn't in this copy of Pocket");
+    await importFile(new File([await res.blob()], "The demo band", { type: "application/json" }));
+  } catch (err) {
+    toast("Couldn't load the demo: " + err.message, "error");
+  }
+});
 
 // -- tap tempo in the editor ----------------------------------------------------
 
@@ -972,10 +992,6 @@ document.getElementById("ck-test").addEventListener("click", () => {
   setTimeout(renderDiagnostics, tl.total_ms + 700);
 });
 
-document.getElementById("song-export-btn").addEventListener("click", () => {
-  if (!state.currentSong) return;
-  location.href = `/api/songs/${state.currentSong.id}/export`;
-});
 
 // Paper charts: a PDF made by the server (server/paper.py). Size, colour
 // and (for a set) what to print are remembered on this device.
@@ -1052,23 +1068,297 @@ document.getElementById("song-print-btn").addEventListener("click", () => {
   if (state.currentSong) openPrint("song", state.currentSong.id);
 });
 
-// -- import ---------------------------------------------------------------
+// -- files: export and import (0.18) -------------------------------------------
+//
+// Export: one song, a setlist with its songs and the band, or everything,
+// as a file to email, AirDrop or keep. Import: a file made here, on another
+// band's server, or on Pocket. A song this side already has is merged:
+// hints from both copies, structure from the one you choose when they
+// differ (web/static/files.js has the rules).
 
+function fileName(text, suffix) {
+  const base = (text || "barline").replace(/[\\/:*?"<>|\u0000-\u001f]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
+  return (base || "barline") + suffix;
+}
+
+function b64FromBuffer(buf) {
+  const bytes = new Uint8Array(buf);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+
+function blobFromB64(b64, ref) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  const ext = ref.split(".").pop();
+  const type = { webm: "audio/webm", ogg: "audio/ogg", m4a: "audio/mp4", mp4: "audio/mp4", mp3: "audio/mpeg", wav: "audio/wav", aac: "audio/aac" }[ext];
+  return new Blob([bytes], { type: type || "application/octet-stream" });
+}
+
+async function clipsFor(songs) {
+  const out = {};
+  for (const song of songs) {
+    for (const ref of Files.clipRefs(song)) {
+      if (out[ref]) continue;
+      try {
+        const res = await fetch(clipUrl(ref));
+        if (res.ok) out[ref] = b64FromBuffer(await res.arrayBuffer());
+      } catch (err) {
+        /* a missing clip: the hint keeps its text */
+      }
+    }
+  }
+  return out;
+}
+
+async function saveFile(name, payload) {
+  const file = new File([JSON.stringify(payload, null, 1)], name, { type: "application/json" });
+  // Pocket on a phone or tablet: the share sheet (Mail, AirDrop, Files...)
+  if (Pocket && navigator.canShare && navigator.canShare({ files: [file] }) && /Mobi|iPhone|iPad|Android|Tablet/i.test(navigator.userAgent)) {
+    try {
+      await navigator.share({ files: [file], title: name });
+      return;
+    } catch (err) {
+      if (err && err.name === "AbortError") return;
+    }
+  }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(file);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 30000);
+}
+
+// what: { song: id } | { setlist: id } | { all: true }
+async function exportFile(what) {
+  try {
+    const b = await api("GET", "/bundle");
+    let songs = b.songs;
+    let setlists = b.setlists;
+    let name = fileName(b.band.name + " everything", ".ssp.json");
+    if (what.song) {
+      songs = b.songs.filter((x) => x.id === what.song);
+      setlists = [];
+      if (!songs.length) throw new Error("that song isn't here any more");
+      name = fileName(songs[0].title, ".ssp.json");
+    } else if (what.setlist) {
+      const sl = b.setlists.find((x) => x.id === what.setlist);
+      if (!sl) throw new Error("that setlist isn't here any more");
+      setlists = [sl];
+      songs = sl.songs.map((id) => b.songs.find((x) => x.id === id)).filter(Boolean);
+      name = fileName(sl.name, ".ssp.json");
+    }
+    const band = what.song ? null : b.band;
+    await saveFile(name, Files.makeFile({ songs, setlists, band }, await clipsFor(songs)));
+  } catch (err) {
+    toast("Couldn't export: " + err.message, "error");
+  }
+}
+
+document.getElementById("song-export-btn").addEventListener("click", () => {
+  if (state.currentSong) exportFile({ song: state.currentSong.id });
+});
+
+// -- import -------------------------------------------------------------------
+
+async function readImportFile(file) {
+  const pdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+  if (pdf) {
+    if (Pocket) throw new Error("Pocket can't read a PDF: import the song's .ssp.json file instead");
+    // the PDF of a song's paper chart carries the song; the server unpacks it
+    return api("POST", "/import/read", undefined, { body: file, type: "application/pdf" });
+  }
+  try {
+    return JSON.parse(await file.text());
+  } catch (err) {
+    throw new Error("that isn't a Barline song file (.ssp.json, .json or a song's PDF)");
+  }
+}
+
+let pendingImport = null;
+
+async function importFile(file) {
+  const fileData = Files.normalize(await readImportFile(file));
+  const here = await api("GET", "/bundle");
+  const p = Files.plan(fileData, here);
+  // the everyday case, one new song: straight in, as before
+  if (p.items.length === 1 && p.items[0].kind === "new" && !p.setlists.length && !p.players.length) {
+    const song = await addImportedSong(p.items[0].incoming, fileData);
+    toast(`Imported "${song.title}"`);
+    await refreshLists();
+    go(`#/song/${song.id}`);
+    return;
+  }
+  if (p.items.length === 1 && p.items[0].kind === "same" && !p.setlists.length && !p.players.length) {
+    toast(`Nothing new: "${p.items[0].local.title}" is already the same here.`);
+    go(`#/song/${p.items[0].local.id}`);
+    return;
+  }
+  pendingImport = { name: file.name, file: fileData, plan: p, here, choices: {} };
+  renderImport();
+  openModal("import-modal");
+}
+
+function addImportedSong(song, fileData) {
+  const audio = {};
+  for (const ref of Files.clipRefs(song)) if (fileData.audio[ref]) audio[ref] = fileData.audio[ref];
+  const body = JSON.stringify({ ssp_export: 1, song, audio });
+  return api("POST", "/songs/import", undefined, { body: new Blob([body], { type: "application/json" }), type: "application/json" });
+}
+
+function renderImport() {
+  const { plan: p, choices, name } = pendingImport;
+  const here = Pocket ? "this device" : "the band's copy";
+  const counts = { new: 0, merge: 0, same: 0 };
+  p.items.forEach((it) => (counts[it.kind] += 1));
+  const bits = [];
+  if (counts.merge) bits.push(`${counts.merge} to merge`);
+  if (counts.new) bits.push(`${counts.new} new`);
+  if (counts.same) bits.push(`${counts.same} already the same`);
+  document.getElementById("import-summary").textContent =
+    `${name}: ${p.items.length} song${p.items.length === 1 ? "" : "s"}${bits.length ? " (" + bits.join(", ") + ")" : ""}.`;
+
+  const list = document.getElementById("import-list");
+  list.innerHTML = "";
+  const kindOrder = { merge: 0, new: 1, same: 2 };
+  const items = p.items.map((it, i) => ({ it, i })).sort((a, b) => kindOrder[a.it.kind] - kindOrder[b.it.kind]);
+  for (const { it, i } of items) {
+    const li = el("li", `import-item import-${it.kind}`);
+    const head = el("div", "import-head");
+    head.appendChild(el("span", "import-title", it.kind === "new" ? it.incoming.title : it.local.title));
+    head.appendChild(el("span", "import-kind", { new: "new song", same: "already the same", merge: "merge" }[it.kind]));
+    li.appendChild(head);
+    if (it.kind === "merge") {
+      const choice = it.sameStructure ? "local" : choices[i];
+      const shown = it.preview[choice || "local"].report;
+      li.appendChild(el("p", "import-detail", Files.describe(shown, state.band)));
+      if (!it.sameStructure) {
+        li.appendChild(el("p", "import-detail import-warn", `The structures differ (${it.diff}). Which one should the song keep?`));
+        const seg = el("div", "seg import-choice");
+        for (const [v, label] of [["local", `Keep ${here}'s`], ["incoming", "Keep the file's"]]) {
+          const b = el("button", choice === v ? "active" : "", label);
+          b.dataset.v = v;
+          b.addEventListener("click", () => {
+            pendingImport.choices[i] = v;
+            renderImport();
+          });
+          seg.appendChild(b);
+        }
+        li.appendChild(seg);
+      } else {
+        li.appendChild(el("p", "import-detail", "Same structure."));
+      }
+    } else if (it.kind === "new") {
+      const n = (it.incoming.sections || []).length;
+      li.appendChild(el("p", "import-detail", `${n} section${n === 1 ? "" : "s"}, ${it.incoming.default_bpm} BPM`));
+    }
+    list.appendChild(li);
+  }
+  const extra = [];
+  if (p.players.length) extra.push(`Players added to the band: ${p.players.map((x) => Files.authorLabel(x)).join(", ")}.`);
+  for (const sl of p.setlists) {
+    extra.push(sl.local ? `Setlist "${sl.incoming.name}" is already here: kept as it is.` : `New setlist: "${sl.incoming.name}".`);
+  }
+  document.getElementById("import-extra").textContent = extra.join(" ");
+  const missing = p.items.some((it, i) => it.kind === "merge" && !it.sameStructure && !choices[i]);
+  const applyBtn = document.getElementById("import-apply");
+  applyBtn.disabled = missing;
+  applyBtn.title = missing ? "Choose which structure to keep for every song marked above" : "";
+  document.getElementById("import-wait").textContent = missing ? "Choose a structure for every song whose structures differ." : "";
+}
+
+async function applyImport() {
+  const { file, plan: p, choices, here } = pendingImport;
+  const btn = document.getElementById("import-apply");
+  btn.disabled = true;
+  const done = { added: 0, merged: 0, setlists: 0 };
+  try {
+    // players first, so hints aimed at them have someone to point at
+    if (p.players.length) {
+      const band = { ...here.band, players: [...here.band.players, ...p.players] };
+      if (!here.band.players.length && p.bandName) band.name = p.bandName;
+      state.band = await api("PUT", "/band", band);
+    }
+    const haveClips = new Set();
+    here.songs.forEach((x) => Files.clipRefs(x).forEach((r) => haveClips.add(r)));
+    const ids = {}; // incoming song id -> the song's id here
+    for (let i = 0; i < p.items.length; i++) {
+      const it = p.items[i];
+      if (it.kind === "same") {
+        ids[it.incoming.id] = it.local.id;
+      } else if (it.kind === "new") {
+        ids[it.incoming.id] = (await addImportedSong(it.incoming, file)).id;
+        done.added += 1;
+      } else {
+        const choice = it.sameStructure ? "local" : choices[i];
+        const merged = JSON.parse(JSON.stringify(it.preview[choice].song));
+        // voice memos that came in with the file: stored here first
+        const renamed = {};
+        for (const ref of Files.clipRefs(merged)) {
+          if (haveClips.has(ref) || !file.audio[ref]) continue;
+          const blob = blobFromB64(file.audio[ref], ref);
+          renamed[ref] = (await api("POST", "/audio", undefined, { body: blob, type: blob.type })).ref;
+          haveClips.add(renamed[ref]);
+        }
+        for (const sec of merged.sections) {
+          for (const h of sec.hints) {
+            if (h.audio && renamed[h.audio]) h.audio = renamed[h.audio];
+            else if (h.audio && !haveClips.has(h.audio)) h.audio = null; // the file didn't carry it
+          }
+        }
+        await api("PUT", `/songs/${it.local.id}?merge=1`, merged);
+        ids[it.incoming.id] = it.local.id;
+        done.merged += 1;
+      }
+    }
+    for (const sl of p.setlists) {
+      if (sl.local) continue;
+      const songs = sl.incoming.songs.map((id) => ids[id]).filter(Boolean);
+      await api("POST", "/setlists", { id: sl.incoming.id, name: sl.incoming.name, songs });
+      done.setlists += 1;
+    }
+    closeModal("import-modal");
+    const bits = [];
+    if (done.merged) bits.push(`${done.merged} merged`);
+    if (done.added) bits.push(`${done.added} added`);
+    if (done.setlists) bits.push(`${done.setlists} setlist${done.setlists === 1 ? "" : "s"}`);
+    toast(bits.length ? `Imported: ${bits.join(", ")}` : "Nothing new to import");
+    pendingImport = null;
+    await refreshLists();
+    renderWho();
+    // a first import on Pocket brings the band: say who's holding this device
+    if (Pocket && p.players.length && !state.me && state.band.players.length) openWho();
+    if (state.currentSong) {
+      try {
+        state.currentSong = await api("GET", `/songs/${state.currentSong.id}`);
+        renderSongView();
+      } catch (err) {
+        /* gone */
+      }
+    }
+  } catch (err) {
+    toast("Couldn't import that file: " + err.message, "error");
+    btn.disabled = false;
+  }
+}
+
+document.getElementById("import-apply").addEventListener("click", applyImport);
+document.getElementById("export-all-btn").addEventListener("click", () => exportFile({ all: true }));
+document.getElementById("setlist-export-btn").addEventListener("click", () => {
+  if (state.currentSetlist) exportFile({ setlist: state.currentSetlist.id });
+});
+document.getElementById("band-import-btn").addEventListener("click", () => document.getElementById("import-file").click());
 document.getElementById("import-song-btn").addEventListener("click", () => document.getElementById("import-file").click());
 document.getElementById("import-file").addEventListener("change", async (ev) => {
   const file = ev.target.files[0];
   ev.target.value = "";
   if (!file) return;
   try {
-    // a song file, or a song's paper chart (its PDF carries the song)
-    const pdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
-    const song = await api("POST", "/songs/import", undefined, {
-      body: file,
-      type: pdf ? "application/pdf" : "application/json",
-    });
-    toast(`Imported "${song.title}"`);
-    await refreshLists();
-    go(`#/song/${song.id}`);
+    await importFile(file);
   } catch (err) {
     toast("Couldn't import that file: " + err.message, "error");
   }
@@ -1315,6 +1605,7 @@ function renderSections() {
 
     node.querySelector(".add-hint").addEventListener("click", () => {
       const hint = { id: newId(), text: "", audio: null, visibility: "all" };
+      touchHint(hint);
       section.hints.push(hint);
       renderHints(card.querySelector(".hint-list"), section);
       edited();
@@ -1359,6 +1650,21 @@ function renderBarGrid(container, section, song, color) {
 
 const canRecord = () => !!(window.isSecureContext && navigator.mediaDevices && window.MediaRecorder);
 
+// Who's writing: shown on the hint straight away (the server stamps it
+// for real when the edit is saved, from this device's "who's using this").
+function touchHint(hint) {
+  const p = playerById(state.me);
+  if (p) hint.author = { id: p.id, name: p.name, role: p.role };
+  hint.updated_at = Date.now() / 1000;
+}
+
+function drawAuthor(node, hint) {
+  const label = Files.authorLabel(hint.author, state.band);
+  node.textContent = label;
+  node.title = label ? `Last written by ${label}` : "";
+  node.classList.toggle("hidden", !label);
+}
+
 function renderHints(container, section) {
   const template = document.getElementById("hint-row-template");
   container.innerHTML = "";
@@ -1374,8 +1680,12 @@ function renderHints(container, section) {
     const textInput = node.querySelector(".hint-text");
     textInput.value = hint.text;
     textInput.dataset.focusKey = `${hint.id}:text`;
+    const authorTag = node.querySelector(".hint-author");
+    drawAuthor(authorTag, hint);
     textInput.addEventListener("input", () => {
       hint.text = textInput.value;
+      touchHint(hint);
+      drawAuthor(authorTag, hint);
       edited();
     });
 
@@ -1389,6 +1699,8 @@ function renderHints(container, section) {
     visSelect.value = playerById(hint.visibility) ? hint.visibility : "all";
     visSelect.addEventListener("change", () => {
       hint.visibility = visSelect.value;
+      touchHint(hint);
+      drawAuthor(authorTag, hint);
       row.classList.toggle("mine", hint.visibility !== "all" && hint.visibility === state.me);
       edited();
     });
@@ -1403,13 +1715,15 @@ function renderHints(container, section) {
       recBtn.classList.toggle("has-clip", !!hint.audio);
     };
     drawClip();
-    playBtn.addEventListener("click", () => metronome.playClip(`/api/audio/${hint.audio}`));
+    playBtn.addEventListener("click", () => metronome.playClip(clipUrl(hint.audio)));
 
     const attach = async (blob) => {
       try {
         const type = (blob.type || "audio/webm").split(";")[0];
         const res = await api("POST", "/audio", undefined, { body: blob, type });
         hint.audio = res.ref;
+        touchHint(hint);
+        drawAuthor(authorTag, hint);
         drawClip();
         edited();
         toast("Voice memo saved");
@@ -1421,6 +1735,7 @@ function renderHints(container, section) {
     recBtn.addEventListener("click", async () => {
       if (hint.audio) {
         hint.audio = null;
+        touchHint(hint);
         drawClip();
         edited();
         return;
@@ -2098,6 +2413,16 @@ async function loadState(again) {
 }
 
 async function boot() {
+  if (Pocket) {
+    await Pocket.ready;
+    document.body.classList.add("is-pocket");
+    const dot = document.getElementById("connection-status");
+    dot.className = "status-dot status-pocket";
+    dot.title = "Barline Pocket: everything stays on this device";
+    document.getElementById("connection-label").textContent = "Pocket: on this device";
+    document.querySelector(".sidebar-header .tagline").textContent = "Pocket";
+    document.querySelector(".mobile-title").textContent = "Barline Pocket";
+  }
   try {
     await loadState(false);
   } catch (err) {
@@ -2120,8 +2445,9 @@ window.addEventListener("hashchange", route);
 window.Barline = {
   state, els, api, prefs, toast, el, go, metronome, sectionColor, hexToRgba, playerById, playerName,
   nameForClient, soundForBar, openWho, renderPresence, openClickSettings, saveClick, openModal, closeModal,
-  bundleSong: (id) => bundle.songs[id] || null,
-  bundleSetlist: (id) => bundle.setlists[id] || null,
+  bundleSong: (id) => (Pocket ? Pocket.song(id) : bundle.songs[id] || null),
+  bundleSetlist: (id) => (Pocket ? Pocket.setlist(id) : bundle.setlists[id] || null),
+  clipUrl,
   refreshBundle,
 };
 

@@ -262,7 +262,7 @@
     loadVoice() {
       for (let i = 0; i < VOICE.length; i++) {
         if (this.voice[i + 1]) continue;
-        fetch(`/voice/${VOICE[i]}.wav`)
+        fetch(`voice/${VOICE[i]}.wav`)
           .then((r) => r.arrayBuffer())
           .then((data) => new Promise((ok, fail) => this.ctx.decodeAudioData(data, ok, fail)))
           .then((buf) => (this.voice[i + 1] = buf))
