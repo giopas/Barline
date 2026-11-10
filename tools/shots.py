@@ -490,6 +490,22 @@ class Shooter:
         self.browser.close()
 
 
+def grab_screen(x, y, w, h, path):
+    """Save part of the screen: Pillow if it's installed, else macOS's own
+    screencapture (Terminal may ask for Screen Recording permission the
+    first time), else ImageMagick's import (Linux)."""
+    try:
+        from PIL import ImageGrab
+        ImageGrab.grab(bbox=(x, y, x + w, y + h)).save(path)
+        return
+    except Exception:  # noqa: BLE001 - no Pillow, or no grab support here
+        pass
+    if sys.platform == "darwin":
+        subprocess.run(["screencapture", "-x", "-o", f"-R{x},{y},{w},{h}", path], check=True)
+    else:
+        subprocess.run(["import", "-window", "root", "-crop", f"{w}x{h}+{x}+{y}", path], check=True)
+
+
 def launcher_shot():
     """The Tk control panel, running the demo band. Needs Tk and a display."""
     sys.path[:0] = [os.path.join(ROOT, "launcher"), os.path.join(ROOT, "server")]
@@ -539,12 +555,7 @@ def launcher_shot():
         root.update()
         x, y = root.winfo_rootx(), root.winfo_rooty()
         w, h = root.winfo_width(), root.winfo_height()
-        path = os.path.join(OUT, "18-launcher-wifi.png")
-        try:
-            from PIL import ImageGrab
-            ImageGrab.grab(bbox=(x, y, x + w, y + h)).save(path)
-        except Exception:  # noqa: BLE001 - no grab support: fall back to ImageMagick
-            subprocess.run(["import", "-window", "root", "-crop", f"{w}x{h}+{x}+{y}", path], check=True)
+        grab_screen(x, y, w, h, os.path.join(OUT, "18-launcher-wifi.png"))
         print("  ✓ 18-launcher-wifi.png")
         panel.wifi = None  # never call the real hotspot.stop() on the way out
         server_app.Handler.wifi_ssid = server_app.Handler.wifi_password = None
