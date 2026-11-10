@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Draw SSP's app icon and write every file that uses it.
+Draw Barline's app icon and write every file that uses it.
 
 The icon is the bar square the editor draws for each bar (four beat dots
 in a 2x2 grid), on a dark tile, with beat 1 lit white -- the downbeat, the
@@ -32,7 +32,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 STATIC = os.path.join(ROOT, "web", "static")
 ICONS = os.path.join(ROOT, "packaging", "icons")
 
-# SSP's own colors (web/static/style.css)
+# Barline's own colors (web/static/style.css)
 TILE = "#16181d"
 BLUE = (91, 140, 255)
 WHITE = (255, 255, 255)

@@ -46,20 +46,20 @@ class Basics(unittest.TestCase):
         for _ in range(50):
             p = hotspot.make_password()
             self.assertRegex(p, r"^[a-z]{4}-[a-z]{4}-[2-9]{4}$")
-            self.assertIsNone(hotspot.check("SSP-Band", p))
+            self.assertIsNone(hotspot.check("Barline-Band", p))
             self.assertFalse(set(p) & set("0o1lI"))
             seen.add(p)
         self.assertGreater(len(seen), 45)
 
     def test_check(self):
-        self.assertIsNone(hotspot.check("SSP-Band", "12345678"))
+        self.assertIsNone(hotspot.check("Barline-Band", "12345678"))
         self.assertIn("name", hotspot.check("  ", "12345678"))
         self.assertIn("32", hotspot.check("x" * 33, "12345678"))
         self.assertIn("32", hotspot.check("é" * 17, "12345678"))  # 34 bytes
-        self.assertIn("8 to 63", hotspot.check("SSP", "short"))
-        self.assertIn("8 to 63", hotspot.check("SSP", "x" * 64))
-        self.assertIn("accents", hotspot.check("SSP", "passwörd1"))
-        self.assertIn("control", hotspot.check("SSP\n", "12345678"))
+        self.assertIn("8 to 63", hotspot.check("Barline", "short"))
+        self.assertIn("8 to 63", hotspot.check("Barline", "x" * 64))
+        self.assertIn("accents", hotspot.check("Barline", "passwörd1"))
+        self.assertIn("control", hotspot.check("Barline\n", "12345678"))
 
     def test_method_per_system(self):
         self.assertEqual(hotspot.method("Linux", which_all), "nmcli")
@@ -78,7 +78,7 @@ class Basics(unittest.TestCase):
 
     def test_bad_values_never_reach_a_command(self):
         run = FakeRun()
-        r = hotspot.start("SSP", "short", run=run, system="Linux", which=which_all)
+        r = hotspot.start("Barline", "short", run=run, system="Linux", which=which_all)
         self.assertFalse(r["ok"])
         self.assertEqual(run.calls, [])
 
@@ -103,10 +103,10 @@ class Linux(unittest.TestCase):
     def test_start_reports_networkmanager(self):
         run = FakeRun({("nmcli", "-t"): (0, NMCLI_DEVICES, ""),
                        ("nmcli", "device", "wifi"): (4, "", "Error: Device 'wlp2s0' does not support AP mode.\n")})
-        r = hotspot.start("SSP", "12345678", run=run, system="Linux", which=which_all)
+        r = hotspot.start("Barline", "12345678", run=run, system="Linux", which=which_all)
         self.assertFalse(r["ok"])
         self.assertIn("AP mode", r["message"])
-        r = hotspot.start("SSP", "12345678", run=FakeRun({("nmcli", "-t"): (0, "", "")}),
+        r = hotspot.start("Barline", "12345678", run=FakeRun({("nmcli", "-t"): (0, "", "")}),
                           system="Linux", which=which_all)
         self.assertIn("No Wi-Fi adapter", r["message"])
 
@@ -140,17 +140,17 @@ class Windows(unittest.TestCase):
 
     def test_no_connection_to_share_means_settings(self):
         run = FakeRun({("powershell",): (3, "SSP:NOCONNECTION\n", "")})
-        r = hotspot.start("SSP", "12345678", run=run, system="Windows", which=which_all)
+        r = hotspot.start("Barline", "12345678", run=run, system="Windows", which=which_all)
         self.assertFalse(r["ok"])
         self.assertTrue(r["manual"])
         self.assertIn("share", r["message"])
 
     def test_failure_detail(self):
         run = FakeRun({("powershell",): (4, "SSP:FAIL WiFiDeviceOff \n", "")})
-        r = hotspot.start("SSP", "12345678", run=run, system="Windows", which=which_all)
+        r = hotspot.start("Barline", "12345678", run=run, system="Windows", which=which_all)
         self.assertIn("WiFiDeviceOff", r["message"])
         run = FakeRun({("powershell",): (1, "", "Add-Type : Cannot add type\n")})
-        r = hotspot.start("SSP", "12345678", run=run, system="Windows", which=which_all)
+        r = hotspot.start("Barline", "12345678", run=run, system="Windows", which=which_all)
         self.assertIn("Cannot add type", r["message"])
 
     def test_stop(self):
@@ -171,15 +171,15 @@ class Windows(unittest.TestCase):
     def test_winrt_types_load(self):
         """The prelude (Add-Type, the AsTask lookup, the WinRT types, the
         profile list) runs for real; there's no Wi-Fi to start on a CI box."""
-        cmd = hotspot.powershell_command(hotspot._PS_PRELUDE + "\nWrite-Output ('SSP:LOADED ' + $profiles.Count)")
+        cmd = hotspot.powershell_command(hotspot._PS_PRELUDE + "\nWrite-Output ('Barline:LOADED ' + $profiles.Count)")
         res = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-        self.assertIn("SSP:LOADED", res.stdout, res.stdout + res.stderr)
+        self.assertIn("Barline:LOADED", res.stdout, res.stdout + res.stderr)
 
 
 class Mac(unittest.TestCase):
     def test_mac_is_by_hand(self):
         run = FakeRun()
-        r = hotspot.start("SSP", "12345678", run=run, system="Darwin", which=which_all)
+        r = hotspot.start("Barline", "12345678", run=run, system="Darwin", which=which_all)
         self.assertFalse(r["ok"])
         self.assertTrue(r["manual"])
         self.assertEqual(run.calls, [])

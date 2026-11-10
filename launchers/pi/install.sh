@@ -1,26 +1,26 @@
 #!/usr/bin/env bash
-# SSP on a Raspberry Pi, in one command: a box in the gig bag that boots
-# straight into SSP (and, if you like, its own Wi-Fi), so on stage nobody
+# Barline on a Raspberry Pi, in one command: a box in the gig bag that boots
+# straight into Barline (and, if you like, its own Wi-Fi), so on stage nobody
 # sets anything up -- join the Wi-Fi, open http://ssp.local/, play.
 #
-# Run it once, on the Pi, from the folder SSP was cloned into:
+# Run it once, on the Pi, from the folder Barline was cloned into:
 #
-#   sudo ./launchers/pi/install.sh                       # SSP on the Pi's current network
-#   sudo ./launchers/pi/install.sh --hotspot SSP-Band "a-password"   # ...and its own Wi-Fi when needed
+#   sudo ./launchers/pi/install.sh                       # Barline on the Pi's current network
+#   sudo ./launchers/pi/install.sh --hotspot Barline-Band "a-password"   # ...and its own Wi-Fi when needed
 #
 # Options:
 #   --hotspot NAME PASSWORD  the Pi's own Wi-Fi network (8+ character password),
 #                            started at boot only when the Pi finds no network
 #                            it knows (home, rehearsal room, a cable)
 #   --hotspot-always         with --hotspot: start it on every boot instead
-#   --user NAME              who SSP runs as (default: whoever ran sudo)
+#   --user NAME              who Barline runs as (default: whoever ran sudo)
 #   --data DIR               where the band's songs live (default: ~NAME/ssp-data)
 #   --port N                 web port (default 80, so the address needs no number)
 #   --hostname NAME          the Pi's network name (default: ssp -> http://ssp.local/)
 #   --dry-run                print what would be done, change nothing
 #
 # Safe to run again (e.g. to switch the hotspot on or off, or after moving
-# SSP): running it without --hotspot removes the Pi's own Wi-Fi.
+# Barline): running it without --hotspot removes the Pi's own Wi-Fi.
 # Undo: sudo systemctl disable --now ssp ssp-wifi
 #       sudo rm /etc/systemd/system/ssp.service /etc/systemd/system/ssp-wifi.service
 #       sudo nmcli connection delete SSP-Hotspot
@@ -75,7 +75,7 @@ fi
 HOME_DIR="$(getent passwd "$RUN_USER" | cut -d: -f6)"
 DATA="${DATA:-$HOME_DIR/ssp-data}"
 
-say "Installing what SSP needs (python3, and avahi so ssp.local works)"
+say "Installing what Barline needs (python3, and avahi so ssp.local works)"
 if command -v apt-get >/dev/null 2>&1; then
   if [ "$DRY" = 1 ]; then run apt-get install -y python3 avahi-daemon; else apt-get install -y python3 avahi-daemon >/dev/null; fi
 else
@@ -121,12 +121,12 @@ if [ -n "$HOTSPOT_NAME" ]; then
     # a one-shot at boot: wait for a known network, else start SSP-Hotspot
     # (launchers/pi/wifi-fallback.sh)
     WIFI_CONTENT="[Unit]
-Description=SSP - the Pi's own Wi-Fi when there's no known network
+Description=Barline - the Pi's own Wi-Fi when there's no known network
 After=NetworkManager.service
 Wants=NetworkManager.service
 
 [Service]
-# simple, not oneshot: the wait never holds up the rest of the boot (SSP
+# simple, not oneshot: the wait never holds up the rest of the boot (Barline
 # itself listens on every address, so it doesn't need to wait either)
 Type=simple
 Environment=SSP_WIFI_WAIT=$WIFI_WAIT
@@ -156,7 +156,7 @@ else
 fi
 
 # the Wi-Fi name/password go in a root-only file, read by the service
-# (so SSP can show a "join the Wi-Fi" QR code), never on its command line
+# (so Barline can show a "join the Wi-Fi" QR code), never on its command line
 ENV_FILE=/etc/ssp.env
 esc() { local v="${1//\\/\\\\}"; printf '%s' "${v//\"/\\\"}"; }
 ENV_CONTENT="SSP_WIFI_NAME=\"$(esc "$HOTSPOT_NAME")\"
@@ -168,10 +168,10 @@ else
   ( umask 077; printf '%s' "$ENV_CONTENT" > "$ENV_FILE" )
 fi
 
-say "Starting SSP on every boot (systemd service 'ssp')"
+say "Starting Barline on every boot (systemd service 'ssp')"
 UNIT=/etc/systemd/system/ssp.service
 CONTENT="[Unit]
-Description=SSP - Song and Setlist Planner server
+Description=Barline - Song and Setlist Planner server
 After=network-online.target avahi-daemon.service
 Wants=network-online.target
 
@@ -203,7 +203,7 @@ run systemctl restart avahi-daemon || true
 URL="http://$HOST_NAME.local/"
 [ "$PORT" = 80 ] || URL="http://$HOST_NAME.local:$PORT/"
 echo
-echo "SSP is installed."
+echo "Barline is installed."
 if [ -n "$HOTSPOT_NAME" ]; then
   if [ "$HOTSPOT_ALWAYS" = 1 ]; then
     echo "  The Pi's own Wi-Fi '$HOTSPOT_NAME' starts on every boot (reboot now, or: sudo nmcli connection up SSP-Hotspot)."
@@ -220,7 +220,7 @@ if [ -n "$HOTSPOT_NAME" ]; then
 else
   echo "  Open $URL on any phone or tablet on this network."
 fi
-echo "  'Connect a device' inside SSP shows QR codes (including one to join the Wi-Fi)."
+echo "  'Connect a device' inside Barline shows QR codes (including one to join the Wi-Fi)."
 if [ "$DRY" = 0 ]; then
   ( cd "$REPO/server" && python3 -c "import qr, sys; print(qr.terminal(sys.argv[1]))" "$URL" ) || true
 fi

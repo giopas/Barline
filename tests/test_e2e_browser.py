@@ -236,19 +236,19 @@ class BrowserSync(unittest.TestCase):
         pg.wait_for_selector("#live-chart .chart-row")
         pg.click("#click-toggle")  # the tap that allows sound
         pg.click("#live-start")
-        pg.wait_for_function("window.SSP.metronome.job !== null")
+        pg.wait_for_function("window.Barline.metronome.job !== null")
         hide = """(h) => { Object.defineProperty(document, 'hidden', {configurable: true, get: () => h});
                            document.dispatchEvent(new Event('visibilitychange')); }"""
         pg.evaluate(hide, True)
-        self.assertTrue(pg.evaluate("window.SSP.metronome.job === null"))
+        self.assertTrue(pg.evaluate("window.Barline.metronome.job === null"))
         pg.evaluate(hide, False)
-        pg.wait_for_function("window.SSP.metronome.job !== null", timeout=5000)
+        pg.wait_for_function("window.Barline.metronome.job !== null", timeout=5000)
         # stopped elsewhere while hidden: coming back doesn't restart it
         pg.evaluate(hide, True)
         self.s.httpd.ssp_transport.stop()
         pg.evaluate(hide, False)
         pg.wait_for_selector("#live-start:not(.hidden)")
-        self.assertTrue(pg.evaluate("window.SSP.metronome.job === null"))
+        self.assertTrue(pg.evaluate("window.Barline.metronome.job === null"))
 
     def test_sound_is_scheduled_before_the_engine_reports_running(self):
         """Safari starts its audio engine a moment after the tap; the click
@@ -256,7 +256,7 @@ class BrowserSync(unittest.TestCase):
         pg = self.page()
         pg.goto(f"{self.s.base}/#/live")
         pg.wait_for_selector("#live-view:not(.hidden)")
-        ok = pg.evaluate("""() => { const m = window.SSP.metronome; m.unlock();
+        ok = pg.evaluate("""() => { const m = window.Barline.metronome; m.unlock();
             const real = m.ctx; Object.defineProperty(real, 'state', {configurable: true, get: () => 'suspended'});
             return m.unlocked; }""")
         self.assertTrue(ok)
@@ -308,15 +308,15 @@ class BrowserSync(unittest.TestCase):
         opts = pg.evaluate("JSON.parse(localStorage.getItem('ssp.clickopts'))")
         self.assertEqual((opts["subdivision"], opts["voice"], opts["channel"]), ("16", True, "right"))
         pg.click("#ck-test")
-        pg.wait_for_function("window.SSP.metronome.job !== null")
-        kinds = pg.evaluate("window.SSP.metronome.job.events.map(e => e.kind)")
+        pg.wait_for_function("window.Barline.metronome.job !== null")
+        kinds = pg.evaluate("window.Barline.metronome.job.events.map(e => e.kind)")
         self.assertEqual(kinds[:4], ["voice"] * 4)           # spoken count-in
         self.assertEqual(kinds.count("sub"), 2 * 4 * 3)        # 2 bars of 16ths
         pg.wait_for_function("document.getElementById('ck-diag').textContent.includes('running')")
         pg.keyboard.press("Escape")
         pg.reload()
         pg.wait_for_selector(".section-card")
-        self.assertEqual(pg.evaluate("window.SSP.metronome.opts.subdivision"), "16")
+        self.assertEqual(pg.evaluate("window.Barline.metronome.opts.subdivision"), "16")
 
     def test_drummer_gets_the_big_view(self):
         band = self.s.store.get_band()
@@ -347,7 +347,7 @@ class BrowserSync(unittest.TestCase):
         pg.click("#click-toggle")
         pg.click("#live-start")
         pg.wait_for_selector("#live-stop:not(.hidden)")
-        pg.wait_for_function("window.SSP.metronome.job !== null")
+        pg.wait_for_function("window.Barline.metronome.job !== null")
         self.assertEqual(self.s.httpd.ssp_transport.snapshot()["state"], "stopped")  # the band isn't playing
         pg.click("#live-stop")
         pg.wait_for_selector("#live-start:not(.hidden)")
@@ -363,11 +363,11 @@ class BrowserSync(unittest.TestCase):
         pg.wait_for_timeout(1200)  # the device's own copy of the songs (solo needs it)
         pg.click("#click-toggle")
         pg.click("#live-start")
-        pg.wait_for_function("window.SSP.metronome.job !== null")
+        pg.wait_for_function("window.Barline.metronome.job !== null")
         # the Wi-Fi drops: the event stream goes quiet
         pg.evaluate("() => { const S = window.SSPSync; S.source.close(); S.connected = false; S.emit('status', {data: false}); }")
         pg.wait_for_function("document.body.classList.contains('is-solo')", timeout=15000)
-        self.assertTrue(pg.evaluate("window.SSP.metronome.job !== null"))
+        self.assertTrue(pg.evaluate("window.Barline.metronome.job !== null"))
         self.assertIn("out of reach", pg.inner_text("#live-solo-note"))
         pg.evaluate("window.SSPSync.connect()")  # ...and comes back mid-song: stays solo until stopped
         pg.wait_for_function("window.SSPSync.connected")

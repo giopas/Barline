@@ -1,7 +1,7 @@
 """
 Export (v0.7): a portable song file (`.ssp.json`) -- the song plus any
 recorded hint clips, base64-encoded, in one file you can email or put on a
-USB stick and import on another band's SSP. The plain `data/songs/<id>.json`
+USB stick and import on another band's Barline. The plain `data/songs/<id>.json`
 is still portable on its own; this is the version that keeps the clips.
 
 Paper charts are server/paper.py (0.13: real PDFs; they replaced v0.7's
@@ -42,10 +42,10 @@ def unbundle(payload: dict, storage, taken_ids) -> dict:
     song .json). Gets a fresh id when its own is already used here, and
     fresh clip names, so importing never overwrites anything."""
     if not isinstance(payload, dict):
-        raise models.ValidationError("that isn't an SSP song file")
+        raise models.ValidationError("that isn't a Barline song file")
     song = payload.get("song") if "ssp_export" in payload else payload
     if not isinstance(song, dict) or "sections" not in song:
-        raise models.ValidationError("that isn't an SSP song file")
+        raise models.ValidationError("that isn't a Barline song file")
     song = copy.deepcopy(song)
     if not song.get("id") or song["id"] in taken_ids or not models.ID_RE.match(str(song["id"])):
         song["id"] = models.new_id()
@@ -75,18 +75,18 @@ def unbundle(payload: dict, storage, taken_ids) -> dict:
 
 def payload_from_bytes(data: bytes) -> dict:
     """What an imported file holds, ready for `unbundle`: an `.ssp.json`, a
-    plain song `.json`, or a song chart PDF made by SSP 0.13 or later."""
+    plain song `.json`, or a song chart PDF made by Barline 0.13 or later."""
     if data[:5] == b"%PDF-":
         payload = paper.read_embedded(data)
         if payload is None:
             raise models.ValidationError(
-                "this PDF has no song inside it -- only a song's paper chart from SSP 0.13 "
+                "this PDF has no song inside it -- only a song's paper chart from Barline 0.13 "
                 "or later carries one (a set's PDF doesn't)")
         return payload
     try:
         payload = json.loads(data.decode("utf-8-sig"))
     except (ValueError, UnicodeDecodeError):
-        raise models.ValidationError("that isn't an SSP song file (.ssp.json, .json or a song's PDF)") from None
+        raise models.ValidationError("that isn't a Barline song file (.ssp.json, .json or a song's PDF)") from None
     if not isinstance(payload, dict):
-        raise models.ValidationError("that isn't an SSP song file")
+        raise models.ValidationError("that isn't a Barline song file")
     return payload

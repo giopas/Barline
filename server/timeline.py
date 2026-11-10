@@ -1,6 +1,6 @@
 """
 Tempo map: turns a song's ordered sections into a list of bars with exact
-start times. Everything time-based in SSP reads from this one function --
+start times. Everything time-based in Barline reads from this one function --
 the live transport (server/transport.py), the offline click track
 (server/click_track.py), and, mirrored line for line in
 web/static/timing.js, every browser's playhead and metronome.

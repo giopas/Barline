@@ -226,7 +226,7 @@ class Shooter:
         # 0.10: the drummer's click settings + click check, and quick add
         tab.goto(f"{self.srv.base}/#/live")
         tab.wait_for_selector("#live-view:not(.hidden)")
-        tab.evaluate("window.SSP.saveClick({subdivision: '8', voice: true, channel: 'left'})")
+        tab.evaluate("window.Barline.saveClick({subdivision: '8', voice: true, channel: 'left'})")
         tab.click("#live-click-settings")
         tab.wait_for_timeout(300)
         self.save(tab, "14-click-settings.png")
@@ -536,8 +536,8 @@ def launcher_shot():
             subprocess.run(["import", "-window", "root", "-crop", f"{w}x{h}+{x}+{y}", path], check=True)
         print("  ✓ 13-launcher.png")
         # the band Wi-Fi on (made up: no radio is touched), code 1 showing
-        panel._set_wifi({"ssid": "SSP-Band", "password": "kmrt-vhae-4827", "ours": True})
-        panel.footer_var.set('Band Wi-Fi "SSP-Band" is on: phones scan code 1, then 2.')
+        panel._set_wifi({"ssid": "Barline-Band", "password": "kmrt-vhae-4827", "ours": True})
+        panel.footer_var.set('Band Wi-Fi "Barline-Band" is on: phones scan code 1, then 2.')
         root.after(500, shoot_wifi)
 
     def shoot_wifi():

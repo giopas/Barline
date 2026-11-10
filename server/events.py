@@ -3,7 +3,7 @@ Live sync: every connected browser holds one long-lived HTTP response open
 (Server-Sent Events, `GET /api/events`) and the server pushes every change
 down all of them at once.
 
-Why SSE and not a WebSocket: the traffic SSP needs is one-way -- the
+Why SSE and not a WebSocket: the traffic Barline needs is one-way -- the
 server tells everyone "this song changed" or "the band is on bar 17".
 Edits still go up as ordinary REST calls. SSE does exactly that with the
 standard library alone (a WebSocket server would mean hand-writing the

@@ -9,7 +9,7 @@ A version's section starts with a heading like
     ## [0.10.0] -- 2026-11-07
 
 and the line after it (if it's a plain sentence) is used as the short title:
-"v0.10.0 · Making SSP easy for a drummer to switch to from a metronome app."
+"v0.10.0 · Making Barline easy for a drummer to switch to from a metronome app."
 The release workflow (.github/workflows/release.yml) runs this on a v* tag.
 """
 import argparse
@@ -18,7 +18,7 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-REPO = "giopas/SSP---Song-and-Setlist-Planner"
+REPO = "giopas/barline"
 _HEAD = re.compile(r"^## \[(?P<ver>[^\]]+)\]")
 
 DOWNLOADS = """
@@ -26,20 +26,20 @@ DOWNLOADS = """
 
 | | |
 |---|---|
-| **macOS** (Apple silicon: M1 and later) | `SSP-{v}-macos-arm64.dmg` |
-| **macOS** (Intel) | `SSP-{v}-macos-x86_64.dmg` |
-| **Windows** | `SSP-{v}-windows-x64-setup.exe` (installer) or `SSP-{v}-windows-x64.zip` (no install) |
-| **Linux** | `SSP-{v}-linux-x64.tar.gz` |
+| **macOS** (Apple silicon: M1 and later) | `Barline-{v}-macos-arm64.dmg` |
+| **macOS** (Intel) | `Barline-{v}-macos-x86_64.dmg` |
+| **Windows** | `Barline-{v}-windows-x64-setup.exe` (installer) or `Barline-{v}-windows-x64.zip` (no install) |
+| **Linux** | `Barline-{v}-linux-x64.tar.gz` |
 
-Open SSP, pick a folder for your songs, press **Start server**, and scan the QR
+Open Barline, pick a folder for your songs, press **Start server**, and scan the QR
 code with each phone and tablet. No Python needed. The apps aren't signed yet:
-on a Mac, the first time, right-click SSP -> **Open** (macOS 15+: System Settings ->
+on a Mac, the first time, right-click Barline -> **Open** (macOS 15+: System Settings ->
 Privacy & Security -> **Open Anyway**; "damaged"? run
-`xattr -dr com.apple.quarantine "/Applications/SSP.app"`); on Windows, "More info"
--> **Run anyway**. Allow SSP through the firewall when asked, or phones can't connect. `SHA256SUMS` lists every file's checksum. The macOS
+`xattr -dr com.apple.quarantine "/Applications/Barline.app"`); on Windows, "More info"
+-> **Run anyway**. Allow Barline through the firewall when asked, or phones can't connect. `SHA256SUMS` lists every file's checksum. The macOS
 `.tar.gz` files are for the app's own **Update and restart**; download the
-`.dmg` instead. Already have SSP 0.12 or later? It offers this update itself.
-A Raspberry Pi runs SSP from the source instead: see the wiki page
+`.dmg` instead. Already have Barline 0.12 or later? It offers this update itself.
+A Raspberry Pi runs Barline from the source instead: see the wiki page
 "Running on a Raspberry Pi". Full history: [CHANGELOG](https://github.com/{repo}/blob/main/CHANGELOG.md).
 """
 

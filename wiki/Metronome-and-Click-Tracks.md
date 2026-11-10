@@ -1,6 +1,6 @@
 # Metronome and Click Tracks
 
-SSP has a click in two places: live on each device, and as a sound file you can download to practise with.
+Barline has a click in two places: live on each device, and as a sound file you can download to practise with.
 
 ## The click on each device
 
@@ -10,15 +10,15 @@ In the live view, every phone and tablet can play its own click, in time with th
 - **Volume**, the slider next to it.
 - **⚙ Click** for the rest: the sound (wood, beep, tick, ride bell, cowbell, finger snap or side stick; beat 1 is always higher, so you know where "one" is), 8ths, 16ths or triplets between the beats, a spoken count-in ("one, two, three, four"), left or right ear only, a click for count-ins only, the loudness of each part, and a timing nudge. [[For Drummers]] goes through each one.
 
-![Click settings and the click check on a tablet](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/14-click-settings.png)
+![Click settings and the click check on a tablet](https://raw.githubusercontent.com/giopas/barline/main/screenshots/14-click-settings.png)
 
 ## Click check
 
-At the bottom of **⚙ Click**, **Test the click** plays a count-in and two bars with your settings, right there, no song needed. Plug in what you use on stage first (headphones, a Y-splitter into your in-ears) so you test the real thing. Under the button, SSP shows what the device reports: whether the sound engine is running, mono or stereo output (left/right only works in stereo), and on iPhone/iPad whether the silent switch can mute it.
+At the bottom of **⚙ Click**, **Test the click** plays a count-in and two bars with your settings, right there, no song needed. Plug in what you use on stage first (headphones, a Y-splitter into your in-ears) so you test the real thing. Under the button, Barline shows what the device reports: whether the sound engine is running, mono or stereo output (left/right only works in stereo), and on iPhone/iPad whether the silent switch can mute it.
 
 The drummer might want it in their in-ears while the singer leaves it off. Each device remembers its own choice.
 
-The click needs the screen on: when a phone or tablet goes to sleep it stops clicking (it can't hear "stop" any more), and starts again when you wake it, if the song is still going. SSP keeps the screen on in the live view by itself (switch that off in **⚙ Click**); setting the tablet's own auto-lock to "never" for the gig is the sure way.
+The click needs the screen on: when a phone or tablet goes to sleep it stops clicking (it can't hear "stop" any more), and starts again when you wake it, if the song is still going. Barline keeps the screen on in the live view by itself (switch that off in **⚙ Click**); setting the tablet's own auto-lock to "never" for the gig is the sure way.
 
 If the server drops off the Wi-Fi in the middle of a song, a device with the screen on keeps clicking to the end of the song on its own, and rejoins the band when you stop. Untick *keep playing* in **⚙ Click** to have it go quiet instead.
 

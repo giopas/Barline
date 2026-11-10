@@ -104,7 +104,7 @@ class InstallDryRunTests(unittest.TestCase):
         return res
 
     def test_hotspot_when_needed_is_the_default(self):
-        res = self.dry("--hotspot", "SSP-Band", "secret123")
+        res = self.dry("--hotspot", "Barline-Band", "secret123")
         self.assertEqual(res.returncode, 0, res.stderr)
         self.assertIn("autoconnect no", res.stdout)
         self.assertIn("ssp-wifi.service", res.stdout)
@@ -112,7 +112,7 @@ class InstallDryRunTests(unittest.TestCase):
         self.assertIn("finds no network it knows", res.stdout)
 
     def test_hotspot_always(self):
-        res = self.dry("--hotspot", "SSP-Band", "secret123", "--hotspot-always")
+        res = self.dry("--hotspot", "Barline-Band", "secret123", "--hotspot-always")
         self.assertEqual(res.returncode, 0, res.stderr)
         self.assertIn("autoconnect yes", res.stdout)
         self.assertNotIn("wifi-fallback.sh", res.stdout)
@@ -123,7 +123,7 @@ class InstallDryRunTests(unittest.TestCase):
         self.assertIn("goes with --hotspot", res.stderr)
 
     def test_short_password(self):
-        res = self.dry("--hotspot", "SSP-Band", "short")
+        res = self.dry("--hotspot", "Barline-Band", "short")
         self.assertNotEqual(res.returncode, 0)
 
 

@@ -3,7 +3,7 @@
 Ported from QLC+ Swiss Knife's ``core/update.py`` (same author, MIT), so both
 apps update the same way.
 
-The only request SSP makes to the internet, and only from the desktop control
+The only request Barline makes to the internet, and only from the desktop control
 panel (never the server the band's devices talk to): at start, one request to
 the GitHub Releases API for the latest release.  It can be switched off in the
 control panel, and nothing is sent about you, your band or your songs.  Offline
@@ -14,7 +14,7 @@ at a venue is normal: the check just stays quiet.
   x86_64, Windows x64, Linux x64/arm64).  The answer is cached for 12 hours.
 * **Packaged app** — ``install()`` downloads that file, checks its SHA-256
   against the release's ``SHA256SUMS``, unpacks it next to the install and
-  writes a small helper script that waits for SSP to quit, swaps the
+  writes a small helper script that waits for Barline to quit, swaps the
   folder (or the ``.app``) and starts it again.
 * **Run from sources** — the badge only says what to do (``git pull``).
 
@@ -49,7 +49,7 @@ from typing import Dict, List, Optional, Tuple
 import platform_dirs
 from version import VERSION
 
-REPO = "giopas/SSP---Song-and-Setlist-Planner"
+REPO = "giopas/barline"
 FEED = f"https://api.github.com/repos/{REPO}/releases/latest"
 CACHE_HOURS = 12
 # A release whose download for this computer is not built yet is asked again after this
@@ -58,14 +58,14 @@ CACHE_HOURS = 12
 CACHE_PENDING_MINUTES = 10
 TIMEOUT = 5
 MAX_DOWNLOAD = 400 * 1024 * 1024
-SOURCE_HINT = ("Running from the source code: update with  git pull  in the SSP folder "
+SOURCE_HINT = ("Running from the source code: update with  git pull  in the Barline folder "
                "(or download the new release).")
 MAX_UNPACKED = 2 * 1024 * 1024 * 1024         # an archive that unpacks to more than this is refused (a zip bomb)
 # a download starts on one of GitHub's own hosts (it may be redirected to the release storage).
 _GITHUB_HOSTS = ("github.com", "api.github.com", "objects.githubusercontent.com",
                  "release-assets.githubusercontent.com", "github-releases.githubusercontent.com",
                  "raw.githubusercontent.com")
-_ASSET_RE = re.compile(r"^SSP-(?P<ver>\d+\.\d+\.\d+)-(?P<os>macos|windows|linux)-(?P<arch>arm64|x86_64|x64)\.(?P<ext>zip|tar\.gz|dmg)$")
+_ASSET_RE = re.compile(r"^Barline-(?P<ver>\d+\.\d+\.\d+)-(?P<os>macos|windows|linux)-(?P<arch>arm64|x86_64|x64)\.(?P<ext>zip|tar\.gz|dmg)$")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -271,7 +271,7 @@ def _read(url: str, limit: int = 2_000_000) -> bytes:
     if not url.startswith("https://"):
         raise ValueError("only https:// or a local file")
     _check_host(url)
-    req = urllib.request.Request(url, headers={"User-Agent": f"SSP/{VERSION}",
+    req = urllib.request.Request(url, headers={"User-Agent": f"Barline/{VERSION}",
                                                "Accept": "application/vnd.github+json"})
     with urllib.request.urlopen(req, timeout=TIMEOUT, context=_ssl_context()) as r:
         return r.read(limit)
@@ -373,7 +373,7 @@ def _download(url: str, dest: str) -> None:
     if not url.startswith("https://"):
         raise ValueError("only https:// downloads")
     _check_host(url)
-    req = urllib.request.Request(url, headers={"User-Agent": f"SSP/{VERSION}"})
+    req = urllib.request.Request(url, headers={"User-Agent": f"Barline/{VERSION}"})
     got = 0
     with urllib.request.urlopen(req, timeout=30, context=_ssl_context()) as r, open(dest, "wb") as f:
         while True:
@@ -462,11 +462,11 @@ def helper_script(pid: int, old: str, new: str, system: str = None, exe: str = N
             f'if exist "{old}.old" rmdir /s /q "{old}.old"\r\n'
             f'move /y "{old}" "{old}.old" >NUL\r\n'
             f'move /y "{new}" "{old}" >NUL\r\n'
-            f'start "" "{pth.join(old, pth.basename(exe or "SSP.exe"))}"\r\n'
+            f'start "" "{pth.join(old, pth.basename(exe or "Barline.exe"))}"\r\n'
         )
         return "ssp-update.bat", text
     q = lambda s: "'" + str(s).replace("'", "'\\''") + "'"       # noqa: E731
-    start = f"open {q(old)}" if system == "Darwin" else q(pth.join(old, pth.basename(exe or "SSP")))
+    start = f"open {q(old)}" if system == "Darwin" else q(pth.join(old, pth.basename(exe or "Barline")))
     clear = (f"xattr -dr com.apple.quarantine {q(old)} 2>/dev/null\n" if system == "Darwin" else "")
     text = (
         "#!/bin/sh\n"
@@ -552,7 +552,7 @@ def install(info: dict = None) -> dict:
             subprocess.Popen(["/bin/sh", script], start_new_session=True, close_fds=True,
                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return {"ok": True, "restart": True,
-                "message": f"Version {info.get('latest')} is ready: SSP quits and starts again."}
+                "message": f"Version {info.get('latest')} is ready: Barline quits and starts again."}
     except Exception as e:  # noqa: BLE001
         shutil.rmtree(work, ignore_errors=True)
         return {"ok": False, "message": f"Couldn't update: {reason(e)}. ({type(e).__name__}: {e})"[:500]}

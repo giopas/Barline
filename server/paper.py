@@ -21,7 +21,7 @@ whose export engine solved the same problem for chord charts:
   * a section is never split across a page break;
   * a long title shrinks by itself instead of shrinking the whole chart;
   * the song travels inside its PDF (`song.ssp.json`, voice memos included),
-    so SSP's Import reads a printed song's PDF back.
+    so Barline's Import reads a printed song's PDF back.
 
 What a chart shows: the song's tempo, length and how it starts; its coloured
 shape; then each section with its starting bar, a box per bar to count along
@@ -616,7 +616,7 @@ def song_pages(song: dict, band: dict, player_id=None, size: str = "fit", ink: s
     _, content_h = _content(orient)
     w, h = _orient_size(orient)
     left = " · ".join(x for x in (band.get("name", ""), f"chart for {chart_for(band, player_id)}",
-                                       f"made with SSP {VERSION}") if x)
+                                       f"made with Barline {VERSION}") if x)
     out = []
     for n, placed in enumerate(laid):
         pg = Page(w, h)
@@ -705,7 +705,7 @@ def setlist_sheet(setlist: dict, present: list, band: dict) -> list:
                 pg.line(MARGIN, y + row_h - z * 0.1, w - MARGIN, y + row_h - z * 0.1, RULE, 0.5)
             y += row_h
         right = f"page {p + 1} of {len(chunks)}" if len(chunks) > 1 else ""
-        left = " \u00b7 ".join(x for x in (band.get("name", ""), "set list", f"made with SSP {VERSION}") if x)
+        left = " \u00b7 ".join(x for x in (band.get("name", ""), "set list", f"made with Barline {VERSION}") if x)
         _footer(pg, left, right)
         pages.append(pg)
     return pages
@@ -749,7 +749,7 @@ def _assemble_pdf(pages, title: str = "", attachment: bytes = None) -> bytes:
     if attachment is not None:
         so.append(sobj(cid, zlib.compress(attachment), " /Type /EmbeddedFile"))
         so.append(obj(cid + 1, f"<< /Type /Filespec /F ({EMBEDDED_NAME}) /UF ({EMBEDDED_NAME}) "
-                               f"/Desc (The song, to import back into SSP) /EF << /F {cid} 0 R >> >>"))
+                               f"/Desc (The song, to import back into Barline) /EF << /F {cid} 0 R >> >>"))
         names = f" /Names << /EmbeddedFiles << /Names [({EMBEDDED_NAME}) {cid + 1} 0 R] >> >>"
         cid += 2
 
@@ -758,7 +758,7 @@ def _assemble_pdf(pages, title: str = "", attachment: bytes = None) -> bytes:
     add(obj(3, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>"))
     add(obj(4, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>"))
     add(obj(5, "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding >>"))
-    add(obj(6, f"<< /Title ({_pdf_str(title)}) /Producer (SSP {VERSION}) /Creator (SSP - Song and Setlist Planner) >>"))
+    add(obj(6, f"<< /Title ({_pdf_str(title)}) /Producer (Barline {VERSION}) /Creator (Barline - Song and Setlist Planner) >>"))
     for p, s in zip(po, so):
         add(p)
         add(s)
@@ -807,7 +807,7 @@ def setlist_pdf(setlist: dict, songs: dict, band: dict, player_id=None, size: st
 
 
 def read_embedded(data: bytes):
-    """The song file attached to one of SSP's PDFs, as a dict, or None (a PDF
+    """The song file attached to one of Barline's PDFs, as a dict, or None (a PDF
     from another program, a setlist PDF, or one older than 0.13)."""
     m = re.search(rb"/EF << /F (\d+) 0 R >>", data)
     if not m:

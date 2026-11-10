@@ -1,6 +1,6 @@
 """
 Make this computer the band's Wi-Fi, for a rehearsal room or a venue with
-no network: the phones and tablets join it, then open SSP as usual.
+no network: the phones and tablets join it, then open Barline as usual.
 
 What each system allows (and so what the control panel offers):
 
@@ -10,9 +10,9 @@ What each system allows (and so what the control panel offers):
              one click when Windows agrees. Windows only hotspots a
              connection it can share, so with no network at all it usually
              says no (unless a Microsoft Loopback Adapter is set up, see
-             the wiki); then SSP opens the Mobile hotspot settings instead.
+             the wiki); then Barline opens the Mobile hotspot settings instead.
     macOS    No supported way for an app to turn on Internet Sharing (and
-             "Create Network" is gone since Big Sur), so SSP opens
+             "Create Network" is gone since Big Sur), so Barline opens
              System Settings > Sharing and shows the steps.
 
 Whatever made the network, the control panel and the web app's Connect
@@ -21,7 +21,7 @@ local_addresses() already puts the hotspot's address (10.42.0.x,
 192.168.137.x, 192.168.2.x) first.
 
 Nothing here reaches beyond this computer's own radio: the network has no
-internet unless this computer shares one, which is the point -- SSP stays
+internet unless this computer shares one, which is the point -- Barline stays
 on the band's own Wi-Fi (PROJECT_CHARTER.md).
 
 Every command is a list run without a shell; the name and password reach
@@ -38,7 +38,7 @@ import shutil
 import subprocess
 import webbrowser
 
-DEFAULT_SSID = "SSP-Band"
+DEFAULT_SSID = "Barline-Band"
 # The desktop panel's own NetworkManager profile; the Pi installer's is
 # "SSP-Hotspot", so the two never step on each other.
 NM_CONNECTION = "SSP-Desktop-Hotspot"
@@ -252,7 +252,7 @@ def start(ssid: str, password: str, run=_run, system: str = None, which=shutil.w
         return _win_start(ssid, password, run)
     if how == "macos":
         return _result(False, "A Mac turns this on in System Settings > Sharing.", manual=True)
-    return _result(False, "This computer can't make a Wi-Fi network from SSP.", manual=True)
+    return _result(False, "This computer can't make a Wi-Fi network from Barline.", manual=True)
 
 
 def stop(run=_run, system: str = None, which=shutil.which) -> dict:
@@ -299,6 +299,6 @@ WINDOWS_STEPS = (
 
 
 def steps(system: str = None) -> tuple:
-    """What to do by hand on this system (empty where SSP does it all)."""
+    """What to do by hand on this system (empty where Barline does it all)."""
     system = system or platform.system()
     return {"Darwin": MAC_STEPS, "Windows": WINDOWS_STEPS}.get(system, ())

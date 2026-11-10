@@ -1,10 +1,12 @@
-# SSP: Song and Setlist Planner Wiki
+# Barline: Song and Setlist Planner Wiki
 
-SSP helps a band plan how a song goes: which part comes next, how many bars it lasts, what tempo to play it at, and what to remind each other right before it happens. Then it puts that plan on every phone or tablet on stage, moving through the song in time, with a click for whoever wants one.
+*(Barline was called SSP up to version 0.16.)*
+
+Barline helps a band plan how a song goes: which part comes next, how many bars it lasts, what tempo to play it at, and what to remind each other right before it happens. Then it puts that plan on every phone or tablet on stage, moving through the song in time, with a click for whoever wants one.
 
 Think of it as a shared whiteboard for your set, except it's on everyone's phone instead of taped to an amp. One small program runs on a laptop (or a tiny computer like a Raspberry Pi) in the rehearsal room, and every band member just opens a web page. No app to install, no account, no internet needed.
 
-![Tablet and phone following the same song](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/live.gif)
+![Tablet and phone following the same song](https://raw.githubusercontent.com/giopas/barline/main/screenshots/live.gif)
 
 It builds on two things:
 
@@ -20,12 +22,12 @@ It builds on two things:
 - **[[For Drummers]]**: coming from a metronome app? Your set and click in five minutes, the big drummer view, and what happens if the Wi-Fi drops.
 - **[[Printing and Moving Songs]]**: paper charts as PDFs (whole band or one player, floor sheets, set lists), and taking a song to another setup.
 - **[[No Wi-Fi at the Venue]]**: one click makes the computer the band's Wi-Fi; or a phone hotspot, a travel router, a Pi.
-- **[[Running on a Raspberry Pi]]**: a small always-on box that runs SSP on its own, even with no Wi-Fi at the venue.
+- **[[Running on a Raspberry Pi]]**: a small always-on box that runs Barline on its own, even with no Wi-Fi at the venue.
 
 ## Elsewhere in the repo
 
 These are plain files in the repo, for someone looking at the code rather than a musician looking for help:
 
-- [README.md](https://github.com/giopas/SSP---Song-and-Setlist-Planner/blob/main/README.md): the short version of what SSP does and how to start it
-- [CHANGELOG.md](https://github.com/giopas/SSP---Song-and-Setlist-Planner/blob/main/CHANGELOG.md): what changed in each version
-- [screenshots/](https://github.com/giopas/SSP---Song-and-Setlist-Planner/blob/main/screenshots): every picture on these pages, retaken from the demo band by `tools/shots.py`
+- [README.md](https://github.com/giopas/barline/blob/main/README.md): the short version of what Barline does and how to start it
+- [CHANGELOG.md](https://github.com/giopas/barline/blob/main/CHANGELOG.md): what changed in each version
+- [screenshots/](https://github.com/giopas/barline/blob/main/screenshots): every picture on these pages, retaken from the demo band by `tools/shots.py`

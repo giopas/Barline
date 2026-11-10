@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build SSP.app and the .dmg on this Mac (PyInstaller doesn't cross-compile;
+# Build Barline.app and the .dmg on this Mac (PyInstaller doesn't cross-compile;
 # the app is for this Mac's chip, Apple silicon or Intel).
 # Pushing a version tag builds every OS on GitHub instead: .github/workflows/release.yml
 #
@@ -12,8 +12,8 @@ python3 -c "import tkinter" 2>/dev/null || {
   exit 1
 }
 pyinstaller --noconfirm packaging/ssp.spec
-dist/SSP.app/Contents/MacOS/SSP --smoke
+dist/Barline.app/Contents/MacOS/Barline --smoke
 python3 packaging/make_archive.py
 echo
-echo "Built: dist/SSP.app   (and the .dmg in release/)"
-echo "Not signed: the first time, right-click SSP.app -> Open (or System Settings -> Privacy & Security -> Open Anyway)."
+echo "Built: dist/Barline.app   (and the .dmg in release/)"
+echo "Not signed: the first time, right-click Barline.app -> Open (or System Settings -> Privacy & Security -> Open Anyway)."

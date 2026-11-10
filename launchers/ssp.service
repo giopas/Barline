@@ -1,4 +1,4 @@
-# systemd unit: runs SSP headless on a Raspberry Pi (or any always-on Linux
+# systemd unit: runs Barline headless on a Raspberry Pi (or any always-on Linux
 # box) and starts it again on every boot. Step-by-step setup, including
 # turning the Pi into its own Wi-Fi hotspot: see the wiki page
 # "Running on a Raspberry Pi".
@@ -13,7 +13,7 @@
 # Watch the log: journalctl -u ssp -f
 
 [Unit]
-Description=SSP - Song and Setlist Planner server
+Description=Barline - Song and Setlist Planner server
 After=network-online.target
 Wants=network-online.target
 

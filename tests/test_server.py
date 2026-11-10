@@ -38,7 +38,7 @@ import timeline  # noqa: E402
 
 
 def paper_text(pdf: bytes) -> str:
-    """Every string drawn on the pages of one of SSP's PDFs, in order."""
+    """Every string drawn on the pages of one of Barline's PDFs, in order."""
     import re
     import zlib
     out = []
@@ -253,13 +253,13 @@ class ApiTests(unittest.TestCase):
             self.assertTrue(r.headers["Content-Range"].startswith("bytes 0-9/"))
 
     def test_wifi_qr_and_terminal_qr(self):
-        self.assertEqual(qr.wifi_text("SSP;Band", "pa:ss"), "WIFI:T:WPA;S:SSP\\;Band;P:pa\\:ss;;")
-        status, body, _ = self.s.call("GET", "/api/qr.svg?text=" + urllib.request.quote(qr.wifi_text("SSP-Band", "secret123")))
+        self.assertEqual(qr.wifi_text("Barline;Band", "pa:ss"), "WIFI:T:WPA;S:Barline\\;Band;P:pa\\:ss;;")
+        status, body, _ = self.s.call("GET", "/api/qr.svg?text=" + urllib.request.quote(qr.wifi_text("Barline-Band", "secret123")))
         self.assertEqual(status, 200)
-        app.Handler.wifi_ssid, app.Handler.wifi_password = "SSP-Band", "secret123"
+        app.Handler.wifi_ssid, app.Handler.wifi_password = "Barline-Band", "secret123"
         try:
             _, info = self.s.json("GET", "/api/connect")
-            self.assertEqual(info["wifi"]["ssid"], "SSP-Band")
+            self.assertEqual(info["wifi"]["ssid"], "Barline-Band")
         finally:
             app.Handler.wifi_ssid = app.Handler.wifi_password = None
         self.assertIn("\u2588", qr.terminal("http://ssp.local/"))
@@ -267,7 +267,7 @@ class ApiTests(unittest.TestCase):
     def test_pi_wifi_code_only_while_on_its_hotspot(self):
         """--wifi-name (the Pi): the join code shows only while this computer
         is the hotspot; a Pi that found a known Wi-Fi shows just the address."""
-        app.Handler.wifi_ssid, app.Handler.wifi_password = "SSP-Band", "secret123"
+        app.Handler.wifi_ssid, app.Handler.wifi_password = "Barline-Band", "secret123"
         app.Handler.wifi_only_on_hotspot = True
         try:
             with mock.patch.object(app, "local_addresses", return_value=["192.168.1.30"]):
@@ -275,7 +275,7 @@ class ApiTests(unittest.TestCase):
             self.assertIsNone(info["wifi"])
             with mock.patch.object(app, "local_addresses", return_value=["10.42.0.1"]):
                 _, info = self.s.json("GET", "/api/connect")
-            self.assertEqual(info["wifi"]["ssid"], "SSP-Band")
+            self.assertEqual(info["wifi"]["ssid"], "Barline-Band")
         finally:
             app.Handler.wifi_ssid = app.Handler.wifi_password = None
             app.Handler.wifi_only_on_hotspot = False

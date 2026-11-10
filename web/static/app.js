@@ -1,7 +1,7 @@
 "use strict";
 
 /*
- * SSP - Song and Setlist Planner -- the one web app.
+ * Barline - Song and Setlist Planner -- the one web app.
  *
  * Drafting (this file) and the live, on-stage view (live.js) are the same
  * app against the same server, not separate ones (PROJECT_CHARTER.md
@@ -2117,7 +2117,7 @@ async function boot() {
 
 window.addEventListener("hashchange", route);
 
-window.SSP = {
+window.Barline = {
   state, els, api, prefs, toast, el, go, metronome, sectionColor, hexToRgba, playerById, playerName,
   nameForClient, soundForBar, openWho, renderPresence, openClickSettings, saveClick, openModal, closeModal,
   bundleSong: (id) => bundle.songs[id] || null,

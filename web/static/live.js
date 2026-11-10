@@ -15,7 +15,7 @@
  */
 
 (function () {
-  const S = window.SSP;
+  const S = window.Barline;
   const Sync = window.SSPSync;
   const Timing = window.SSPTiming;
   const $ = (id) => document.getElementById(id);

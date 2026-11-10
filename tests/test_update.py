@@ -76,13 +76,13 @@ class UpdateTests(unittest.TestCase):
         self.assertFalse(update.is_newer("nonsense", "0.11.0"))
 
     def test_pick_asset_by_platform(self):
-        a = [{"name": f"SSP-1.0.0-{o}-{r}.{e}"} for o, r, e in
+        a = [{"name": f"Barline-1.0.0-{o}-{r}.{e}"} for o, r, e in
              (("macos", "arm64", "tar.gz"), ("macos", "arm64", "dmg"), ("macos", "x86_64", "tar.gz"),
               ("windows", "x64", "zip"), ("linux", "x64", "tar.gz"))]
-        a += [{"name": "SSP-1.0.0-windows-x64-setup.exe"}, {"name": "SHA256SUMS"}]
+        a += [{"name": "Barline-1.0.0-windows-x64-setup.exe"}, {"name": "SHA256SUMS"}]
         self.assertTrue(update.pick_asset(a, "macos", "arm64")["name"].endswith("arm64.tar.gz"))  # not the .dmg
         self.assertTrue(update.pick_asset(a, "macos", "x86_64")["name"].endswith("x86_64.tar.gz"))
-        self.assertEqual(update.pick_asset(a, "windows", "x64")["name"], "SSP-1.0.0-windows-x64.zip")
+        self.assertEqual(update.pick_asset(a, "windows", "x64")["name"], "Barline-1.0.0-windows-x64.zip")
         self.assertTrue(update.pick_asset(a, "linux", "x64")["name"].endswith(".tar.gz"))
         self.assertIsNone(update.pick_asset(a, "linux", "arm64"))
 
@@ -130,7 +130,7 @@ class UpdateTests(unittest.TestCase):
             self.assertTrue(r["newer"] and r["asset"] is None and r["pending"])
             os_, arch = update.platform_key()
             ext = "zip" if os_ == "windows" else "tar.gz"
-            self.feed(assets=[{"name": f"SSP-99.0.0-{os_}-{arch}.{ext}",
+            self.feed(assets=[{"name": f"Barline-99.0.0-{os_}-{arch}.{ext}",
                                "browser_download_url": "https://github.com/x", "size": 1}], name="f2.json")
             self.assertTrue(update.check(now=1000.0 + 60)["pending"])  # still within 10 minutes
             r = update.check(now=1000.0 + 11 * 60)  # asked again: the package is there
@@ -141,8 +141,8 @@ class UpdateTests(unittest.TestCase):
 
     def test_parse_sums(self):
         h = "a" * 64
-        self.assertEqual(update.parse_sums(f"{h}  SSP-1.zip\n{h.upper()} *dir/x.tar.gz\njunk"),
-                         {"SSP-1.zip": h, "x.tar.gz": h})
+        self.assertEqual(update.parse_sums(f"{h}  Barline-1.zip\n{h.upper()} *dir/x.tar.gz\njunk"),
+                         {"Barline-1.zip": h, "x.tar.gz": h})
 
     def test_safe_extract_refuses_escape(self):
         out = os.path.join(self.tmp, "out")
@@ -159,14 +159,14 @@ class UpdateTests(unittest.TestCase):
 
     def test_install_verifies_and_stages(self):
         """A packaged install: download -> SHA-256 -> unpack -> swap script (not run here)."""
-        inst = os.path.join(self.tmp, "apps", "SSP")
+        inst = os.path.join(self.tmp, "apps", "Barline")
         os.makedirs(inst)
-        exe = os.path.join(inst, "SSP")
+        exe = os.path.join(inst, "Barline")
         with open(exe, "w") as f:
             f.write("old")
         ran = []
-        name = "SSP-99.0.0-linux-x64.tar.gz"
-        arc = _tar(os.path.join(self.tmp, name), {"SSP/SSP": b"new", "SSP/x.txt": b"1"})
+        name = "Barline-99.0.0-linux-x64.tar.gz"
+        arc = _tar(os.path.join(self.tmp, name), {"Barline/Barline": b"new", "Barline/x.txt": b"1"})
         with open(arc, "rb") as f:
             good = hashlib.sha256(f.read()).hexdigest()
         sums = os.path.join(self.tmp, "SHA256SUMS")
@@ -182,7 +182,7 @@ class UpdateTests(unittest.TestCase):
             r = update.install()
             self.assertTrue(r["ok"] and r["restart"], r)
             self.assertIn("ssp-update.sh", ran[0][0][-1])
-            staged = os.path.join(os.path.dirname(ran[0][0][-1]), "new", "SSP")
+            staged = os.path.join(os.path.dirname(ran[0][0][-1]), "new", "Barline")
             self.assertEqual(_text(staged), "new")
             # a wrong checksum is refused and nothing is started
             ran.clear()
@@ -203,19 +203,19 @@ class UpdateTests(unittest.TestCase):
         self.assertIn("git pull", r["message"])
 
     def test_helper_scripts(self):
-        _n, sh = update.helper_script(4242, "/opt/SSP", "/tmp/new", "Linux", "SSP")
+        _n, sh = update.helper_script(4242, "/opt/SSP", "/tmp/new", "Linux", "Barline")
         self.assertIn("kill -0 4242", sh)
         self.assertIn("mv '/opt/SSP' '/opt/SSP.old'", sh)
-        self.assertIn("'/opt/SSP/SSP' &", sh)
-        _n, mac = update.helper_script(7, "/Applications/SSP.app", "/tmp/n", "Darwin")
+        self.assertIn("'/opt/SSP/Barline' &", sh)
+        _n, mac = update.helper_script(7, "/Applications/Barline.app", "/tmp/n", "Darwin")
         self.assertIn("xattr -dr com.apple.quarantine", mac)
-        self.assertIn("open '/Applications/SSP.app'", mac)
-        n, bat = update.helper_script(9, r"C:\Apps\SSP", r"C:\tmp\new", "Windows", "SSP.exe")
+        self.assertIn("open '/Applications/Barline.app'", mac)
+        n, bat = update.helper_script(9, r"C:\Apps\Barline", r"C:\tmp\new", "Windows", "Barline.exe")
         self.assertTrue(n.endswith(".bat"))
         self.assertIn("tasklist", bat)
-        self.assertIn("SSP.exe", bat)
-        _n, q = update.helper_script(1, "/o'brien/SSP", "/n", "Linux", "SSP")
-        self.assertIn("'/o'\\''brien/SSP'", q)  # quoting survives an apostrophe
+        self.assertIn("Barline.exe", bat)
+        _n, q = update.helper_script(1, "/o'brien/Barline", "/n", "Linux", "Barline")
+        self.assertIn("'/o'\\''brien/Barline'", q)  # quoting survives an apostrophe
 
     def test_ssl_context_for_packaged_apps(self):
         import inspect
@@ -268,8 +268,8 @@ class UpdateTests(unittest.TestCase):
 
     def test_downloads_only_from_github(self):
         with self.assertRaises(ValueError):
-            update._check_host("https://evil.example/SSP.zip")
-        update._check_host("https://github.com/giopas/x/releases/download/v1/SSP.zip")
+            update._check_host("https://evil.example/Barline.zip")
+        update._check_host("https://github.com/giopas/x/releases/download/v1/Barline.zip")
 
     def test_zip_symlinks_are_kept(self):
         z = os.path.join(self.tmp, "a.zip")
@@ -289,7 +289,7 @@ class UpdateTests(unittest.TestCase):
         old, new = os.path.join(self.tmp, "old"), os.path.join(self.tmp, "new")
         os.mkdir(old)
         os.mkdir(new)
-        for n in ("unins000.exe", "unins000.dat", "SSP.exe"):
+        for n in ("unins000.exe", "unins000.dat", "Barline.exe"):
             with open(os.path.join(old, n), "w") as f:
                 f.write(n)
         update.keep_uninstaller(old, new)

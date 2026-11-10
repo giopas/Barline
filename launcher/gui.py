@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SSP - Song and Setlist Planner -- desktop launcher.
+Barline - Song and Setlist Planner -- desktop launcher.
 
 A small Tkinter control panel for the server (same spirit as QLC+ Swiss
 Knife being a desktop app, and dressed like it: a dark window, a top bar
@@ -45,9 +45,9 @@ import qr  # server/qr.py
 import settings as launcher_settings  # launcher/settings.py
 import update  # server/update.py
 
-TITLE = "SSP - Song and Setlist Planner"
+TITLE = "Barline - Song and Setlist Planner"
 
-# SSP's own colors (web/static/style.css), laid out the way Swiss Knife's
+# Barline's own colors (web/static/style.css), laid out the way Swiss Knife's
 # tokens.css does it: a dark window, slightly lighter cards, one accent.
 C = {
     "bg": "#121418",
@@ -189,7 +189,7 @@ class LauncherApp:
         self._ips = []  # this computer's addresses, best first (polled while running)
         self._port = None
         self.wifi = None  # the band Wi-Fi when there is one: {"ssid", "password", "ours"}
-        self.qr_mode = "open"  # which QR the Connect card shows: "join" (Wi-Fi) or "open" (SSP)
+        self.qr_mode = "open"  # which QR the Connect card shows: "join" (Wi-Fi) or "open" (Barline)
         self._wifi_busy = False
         self._wifi_dialog = None
 
@@ -287,7 +287,7 @@ class LauncherApp:
             tk.Label(inner, image=self.logo, bg=C["bar"]).pack(side="left", padx=(0, 12))
         except tk.TclError:
             pass
-        tk.Label(inner, text="SSP", bg=C["bar"], fg=C["text"], font=f["brand"]).pack(side="left")
+        tk.Label(inner, text="Barline", bg=C["bar"], fg=C["text"], font=f["brand"]).pack(side="left")
         tk.Label(inner, text="Song and Setlist Planner", bg=C["bar"], fg=C["dim"],
                  font=f["title"]).pack(side="left", padx=(10, 10), pady=(3, 0))
         tk.Label(inner, text=f" v{server_app.VERSION} ", bg=C["btn"], fg=C["dim"],
@@ -407,12 +407,12 @@ class LauncherApp:
         card3 = Card(right, 3, "Connect phones & tablets", "Same Wi-Fi as this computer, then scan.", f)
         card3.pack(fill="both", expand=True)
         self.connect_card = card3
-        # with a band Wi-Fi: two codes, join the Wi-Fi first, then open SSP
+        # with a band Wi-Fi: two codes, join the Wi-Fi first, then open Barline
         self.qr_tabs = tk.Frame(card3.body, bg=C["card"])
         self.tab_join = FlatButton(self.qr_tabs, "1 · Join Wi-Fi", lambda: self._set_qr_mode("join"),
                                    font=f["small"], padx=10, pady=3)
         self.tab_join.pack(side="left", padx=(0, 6))
-        self.tab_open = FlatButton(self.qr_tabs, "2 · Open SSP", lambda: self._set_qr_mode("open"),
+        self.tab_open = FlatButton(self.qr_tabs, "2 · Open Barline", lambda: self._set_qr_mode("open"),
                                    font=f["small"], padx=10, pady=3)
         self.tab_open.pack(side="left")
         self.qr_canvas = tk.Canvas(card3.body, width=196, height=196, highlightthickness=0, bg=C["card"])
@@ -514,7 +514,7 @@ class LauncherApp:
     def _show_update(self, info: dict, quiet: bool) -> None:
         self.update_info = info
         if info.get("newer"):
-            self.update_text.configure(text=f"SSP {info.get('latest')} is out")
+            self.update_text.configure(text=f"Barline {info.get('latest')} is out")
             if info.get("can_install") and info.get("asset"):
                 size = (info["asset"].get("size") or 0) / 1e6
                 sub = f"you have {info['current']} · {size:.0f} MB, checked before it's installed" if size \
@@ -526,14 +526,14 @@ class LauncherApp:
                       "try again in a few minutes"
                 self.update_btn.pack_forget()
             else:  # running from the source code
-                sub = f"you have {info['current']} · update with  git pull  in the SSP folder"
+                sub = f"you have {info['current']} · update with  git pull  in the Barline folder"
                 self.update_btn.pack_forget()
             self.update_sub.configure(text=sub)
             self.update_banner.pack(fill="x", after=self._top_line)
-            self._enqueue_log(f"Update: SSP {info.get('latest')} is available (this is {info['current']}).")
+            self._enqueue_log(f"Update: Barline {info.get('latest')} is available (this is {info['current']}).")
         elif not quiet:
             if info.get("error"):
-                msg = info["error"] + " SSP works without it."
+                msg = info["error"] + " Barline works without it."
                 if info.get("error_detail"):
                     self._enqueue_log("Update check: " + info["error_detail"])
             else:
@@ -557,8 +557,8 @@ class LauncherApp:
         running = self.httpd is not None
         if not messagebox.askyesno(
                 TITLE,
-                f"Update SSP to {info.get('latest')}?\n\n"
-                "SSP downloads it from GitHub, checks it against the release's SHA-256 list, "
+                f"Update Barline to {info.get('latest')}?\n\n"
+                "Barline downloads it from GitHub, checks it against the release's SHA-256 list, "
                 "then closes and starts again."
                 + ("\n\nThe server stops for a moment: phones and tablets reconnect on their own "
                    "once you press Start again." if running else "")
@@ -566,7 +566,7 @@ class LauncherApp:
             return
         self._update_busy = True
         self.update_btn.set(text="Downloading…", enabled=False)
-        self.footer_var.set(f"Downloading SSP {info.get('latest')}…")
+        self.footer_var.set(f"Downloading Barline {info.get('latest')}…")
         box = {}
         threading.Thread(target=lambda: box.update(res=update.install(info)), daemon=True).start()
 
@@ -775,7 +775,7 @@ class LauncherApp:
         if wifi and self.qr_mode == "join":
             self.url_label.configure(text=wifi["ssid"], cursor="arrow")
             self.other_urls.configure(text=f"password  {wifi['password']}\n"
-                                           "joined? tap 2 · Open SSP")
+                                           "joined? tap 2 · Open Barline")
             self._draw_qr(qr.wifi_text(wifi["ssid"], wifi["password"]))
             self._paint_wifi()
             return
@@ -861,7 +861,7 @@ class LauncherApp:
         box = tk.Frame(d, bg=C["card"])
         box.pack(fill="both", expand=True, padx=22, pady=18)
         self._label(box, "Make this computer the band's Wi-Fi", font="h").pack(anchor="w")
-        intro = ("For a room with no network: phones and tablets join this Wi-Fi, then scan SSP's code. "
+        intro = ("For a room with no network: phones and tablets join this Wi-Fi, then scan Barline's code. "
                  "It has no internet, and it's only for the band.")
         if one_click and self._ips:
             intro += " While it's on, this computer leaves the network it's on now."
@@ -964,7 +964,7 @@ class LauncherApp:
             self._wifi_msg.configure(text="Couldn't open the settings: open them by hand.", fg=C["danger"])
 
     def _wifi_manual_done(self) -> None:
-        """Turned on in the system's settings: SSP only shows the join code."""
+        """Turned on in the system's settings: Barline only shows the join code."""
         values = self._wifi_entered()
         if not values:
             return
@@ -1079,7 +1079,7 @@ class LauncherApp:
         for w in self.devices_frame.winfo_children():
             w.destroy()
         if snap is None:
-            self.live_song.configure(text="Nothing yet: start the server, then open SSP on each device.",
+            self.live_song.configure(text="Nothing yet: start the server, then open Barline on each device.",
                                      fg=C["dim"], font=self.fonts["body"])
             return
         store = self.store
@@ -1156,7 +1156,7 @@ class LauncherApp:
     # -- shutdown -------------------------------------------------------
 
     def _on_close(self) -> None:
-        if self.wifi and self.wifi.get("ours"):  # SSP turned it on: SSP turns it off
+        if self.wifi and self.wifi.get("ours"):  # Barline turned it on: Barline turns it off
             try:
                 hotspot.stop()
             except Exception:  # noqa: BLE001 - closing on the way out
@@ -1210,7 +1210,7 @@ def smoke() -> int:
         print(f"{'ok ' if good else 'BAD'} update check trusts {'the system store' if native else 'certifi + system files'}")
     finally:
         server_app.stop_server(httpd)
-    print(f"SSP {server_app.VERSION}: {'smoke test passed' if ok else 'smoke test FAILED'}")
+    print(f"Barline {server_app.VERSION}: {'smoke test passed' if ok else 'smoke test FAILED'}")
     return 0 if ok else 1
 
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build the standalone Linux app of SSP here (PyInstaller doesn't cross-compile).
+# Build the standalone Linux app of Barline here (PyInstaller doesn't cross-compile).
 # Pushing a version tag builds every OS on GitHub instead: .github/workflows/release.yml
 #
 # Needs python3 with tkinter (Debian/Ubuntu: sudo apt install python3-tk) and
@@ -11,7 +11,7 @@ python3 -c "import tkinter" 2>/dev/null || {
   exit 1
 }
 pyinstaller --noconfirm packaging/ssp.spec
-dist/SSP/SSP --smoke
+dist/Barline/Barline --smoke
 python3 packaging/make_archive.py
 echo
-echo "Built: dist/SSP/SSP   (download file in release/)"
+echo "Built: dist/Barline/Barline   (download file in release/)"

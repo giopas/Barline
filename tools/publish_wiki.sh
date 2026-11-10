@@ -11,7 +11,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-WIKI_URL="https://github.com/giopas/SSP---Song-and-Setlist-Planner.wiki.git"
+WIKI_URL="https://github.com/giopas/barline.wiki.git"
 VERSION=$(python3 -c "import sys; sys.path.insert(0, 'server'); from version import VERSION; print(VERSION)")
 
 if [ -n "$(git status --porcelain -- wiki)" ]; then
@@ -41,4 +41,4 @@ fi
 git -c user.name="giopas" -c user.email="giopas@users.noreply.github.com" \
   commit -q -m "Wiki for $VERSION"
 git push -q origin HEAD
-echo "Published: https://github.com/giopas/SSP---Song-and-Setlist-Planner/wiki"
+echo "Published: https://github.com/giopas/barline/wiki"

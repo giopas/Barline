@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# SSP on a Raspberry Pi: its own Wi-Fi, only when it's needed.
+# Barline on a Raspberry Pi: its own Wi-Fi, only when it's needed.
 #
 # Run once at boot by the ssp-wifi service (install.sh --hotspot sets it up).
 # Waits for the Pi to get on a network it knows (your home Wi-Fi, the
 # rehearsal room's, a cable). If it does, nothing changes. If nothing is
 # connected after the wait (a venue with no network, or an unknown one),
 # it starts the Pi's own Wi-Fi, the "SSP-Hotspot" connection, so phones can
-# join it and open SSP.
+# join it and open Barline.
 #
 #   SSP_WIFI_WAIT      seconds to wait for a known network (default 40)
 #   SSP_HOTSPOT_CON    the connection to start (default SSP-Hotspot)
@@ -60,7 +60,7 @@ done
 
 log "no known network after ${WAIT}s: starting '$CON'"
 if nmcli connection up "$CON"; then
-  log "'$CON' is up: join it and open SSP"
+  log "'$CON' is up: join it and open Barline"
   exit 0
 fi
 log "couldn't start '$CON' (see: journalctl -u ssp-wifi)"

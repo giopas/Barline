@@ -5,7 +5,7 @@
 
 "The Paper Lanterns" and every title here are made up (PROJECT_CHARTER.md
 section 3: no real band, venue or bandmate data in the repo). The songs
-are chosen to show off what SSP does: tempo changes between sections,
+are chosen to show off what Barline does: tempo changes between sections,
 count-ins in every style (including one mid-song after a stop), hints for
 the whole band and hints aimed at one player, a recorded hint clip, two
 setlists, and one unfinished song.

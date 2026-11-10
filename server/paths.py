@@ -1,5 +1,5 @@
 """
-Resolves the two paths SSP needs at startup -- where the (read-only, bundled)
+Resolves the two paths Barline needs at startup -- where the (read-only, bundled)
 web app lives, and where the (user-writable) data/ folder defaults to --
 whether running from source (`python3 app.py`) or from a packaged
 PyInstaller build (see packaging/).
@@ -51,6 +51,6 @@ def default_data_dir() -> str:
 
 
 def demo_data_dir() -> str:
-    """The fictional demo band shipped with SSP (read-only; app.py's
+    """The fictional demo band shipped with Barline (read-only; app.py's
     prepare_demo() always serves a copy of it)."""
     return os.path.join(bundle_dir(), "demo")

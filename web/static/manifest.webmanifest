@@ -1,6 +1,6 @@
 {
-  "name": "SSP - Song and Setlist Planner",
-  "short_name": "SSP",
+  "name": "Barline - Song and Setlist Planner",
+  "short_name": "Barline",
   "description": "Song structures, setlists and a shared click for the band, on your own Wi-Fi.",
   "start_url": "/#/live",
   "scope": "/",

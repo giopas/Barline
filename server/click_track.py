@@ -5,7 +5,7 @@ Adapted from QLC+ Swiss Knife's core/click_track.py (same three sounds,
 same synthesis, byte for byte: beep, wood block, tick, with a louder,
 higher first beat of each bar). 0.16 adds four drum-kit sounds built the
 same way (a few sines and seeded noise, no samples): ride bell, cowbell,
-finger snap and side stick. Two changes for SSP:
+finger snap and side stick. Two changes for Barline:
 
   * a song here can change tempo between sections and has count-ins, so
     the clicks are placed from the tempo map (server/timeline.py) instead

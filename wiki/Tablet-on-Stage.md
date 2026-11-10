@@ -1,6 +1,6 @@
 # Tablet on Stage
 
-This is what every musician sees once a song's planned and you're playing it. It's SSP's take on [QLC+ Swiss Knife](https://github.com/giopas/qlc-plus-swiss-knife-tool-script)'s "tablet on stage" idea: instead of one shared monitor everyone cranes their neck at, every player gets their own screen, following along.
+This is what every musician sees once a song's planned and you're playing it. It's Barline's take on [QLC+ Swiss Knife](https://github.com/giopas/qlc-plus-swiss-knife-tool-script)'s "tablet on stage" idea: instead of one shared monitor everyone cranes their neck at, every player gets their own screen, following along.
 
 ## Getting a song up on every screen
 
@@ -11,11 +11,11 @@ Open **Live view** on each device (the green button in the sidebar, or one of th
 
 That song now sits ready on every live screen in the room, and the sidebar's Live view follows it. In a setlist, the ◀ ▶ arrows at the top move to the previous or next song, on everyone's screen at once.
 
-![Ready to start, on the drummer's tablet](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/05-live-ready-tablet.png)
+![Ready to start, on the drummer's tablet](https://raw.githubusercontent.com/giopas/barline/main/screenshots/05-live-ready-tablet.png)
 
 ## Start
 
-Anyone can press **▶ Start**. Usually it's the drummer, but it doesn't have to be. SSP waits a moment so every device is ready, plays the count-in, and from then on every screen follows the song on its own: the current section in big letters, which bar you're on, the beat lighting up, and what's coming next ("Next: Verse 2 in 2 bars", in yellow when it's close). The screens stay in step because they share one clock; nobody has to press "next".
+Anyone can press **▶ Start**. Usually it's the drummer, but it doesn't have to be. Barline waits a moment so every device is ready, plays the count-in, and from then on every screen follows the song on its own: the current section in big letters, which bar you're on, the beat lighting up, and what's coming next ("Next: Verse 2 in 2 bars", in yellow when it's close). The screens stay in step because they share one clock; nobody has to press "next".
 
 To start somewhere other than the top, tap a section in the list (or in the colored strip) before pressing Start. That's handy for running just the bridge at rehearsal.
 
@@ -27,13 +27,13 @@ While the band plays, **⤵ Jump** (next to Stop) lists the song's sections: tap
 
 Started the click a little late, and the band is already ahead of it? Under **Jump**, **Nudge the click** moves it for everyone: +20 ms / −20 ms, a beat, or a bar, ahead (+) or back (−). On a keyboard: **[** and **]** move a beat, **,** and **.** move 20 ms. (The *timing nudge* in ⚙ Click is different: it moves only your own click, for Bluetooth delay.)
 
-![The Jump sheet mid-song](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/20-live-jump.png)
+![The Jump sheet mid-song](https://raw.githubusercontent.com/giopas/barline/main/screenshots/20-live-jump.png)
 
 **Stop** works from any device and stops everyone. At the end of a song in a setlist, the next song comes up ready, so the band is one tap from carrying on.
 
 | Drummer's tablet | Bass player's phone |
 |---|---|
-| ![Tablet during a song](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/07-live-tablet-drums.png) | ![Phone during a song](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/08-live-phone-bass.png) |
+| ![Tablet during a song](https://raw.githubusercontent.com/giopas/barline/main/screenshots/07-live-tablet-drums.png) | ![Phone during a song](https://raw.githubusercontent.com/giopas/barline/main/screenshots/08-live-phone-bass.png) |
 
 ## Big view (drummers)
 
@@ -47,7 +47,7 @@ Started the click a little late, and the band is already ahead of it? Under **Ju
 
 During a count-in the screen turns yellow and says which section it's counting into, with the beat lit up. A count-in in the middle of a song (after a stop, say) shows the same way.
 
-![A count-in back into the last chorus](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/09-live-count-in.png)
+![A count-in back into the last chorus](https://raw.githubusercontent.com/giopas/barline/main/screenshots/09-live-count-in.png)
 
 ## Your hints, up front
 
@@ -57,13 +57,13 @@ The full song is listed below, and scrolls along with the band. On a phone, ther
 
 On a laptop or a shared screen set to "Whole band", every hint shows, each labelled with who it's for:
 
-![The live view on a laptop](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/06-live-laptop.png)
+![The live view on a laptop](https://raw.githubusercontent.com/giopas/barline/main/screenshots/06-live-laptop.png)
 
 ## The click
 
 Each device can play its own metronome click, in time with everyone else. Tap **Click: tap to enable** once (browsers only allow sound after a tap), pick a sound and a volume. Nobody else hears your click unless you want them to. More in [[Metronome and Click Tracks]].
 
-The click only plays while the device's screen is on and SSP is in front. Phones cut the connection to the server when the screen goes off, and a click that can't hear "stop" shouldn't keep going. Turn the screen back on and it picks the song up again.
+The click only plays while the device's screen is on and Barline is in front. Phones cut the connection to the server when the screen goes off, and a click that can't hear "stop" shouldn't keep going. Turn the screen back on and it picks the song up again.
 
 ## Foot pedals and keyboards
 
@@ -71,14 +71,14 @@ In the live view, the space bar starts and stops, and the arrow keys (or Page Up
 
 ## Make it an app
 
-On iPad/iPhone: Safari's Share → **Add to Home Screen**. On Android: Chrome's menu → **Add to Home screen**. SSP gets its own icon and opens full-screen, straight into the live view.
+On iPad/iPhone: Safari's Share → **Add to Home Screen**. On Android: Chrome's menu → **Add to Home screen**. Barline gets its own icon and opens full-screen, straight into the live view.
 
 ## Before the show
 
-- Set each tablet's auto-lock to "never" (or a long time) for the gig. SSP can't keep a screen awake by itself over plain Wi-Fi.
+- Set each tablet's auto-lock to "never" (or a long time) for the gig. Barline can't keep a screen awake by itself over plain Wi-Fi.
 - If the Wi-Fi drops for a moment, the device says "reconnecting" and catches up by itself when it's back. If it drops mid-song for more than a couple of bars, that device's click goes quiet ("Lost touch with the server") rather than clicking on blind.
 - Plug the server in. A laptop going to sleep takes everyone's screens with it; a Raspberry Pi doesn't have that problem.
 
 ## Why not just a PDF on a tablet?
 
-A PDF doesn't know what bar you're on, doesn't remind you of anything at the right moment, and doesn't update when the band changes the arrangement two minutes before the show. SSP is the band's one shared, live copy of the song. That's also why it never leaves your own Wi-Fi: a show is the worst moment for a laggy internet connection to get in the way of something this time-sensitive.
+A PDF doesn't know what bar you're on, doesn't remind you of anything at the right moment, and doesn't update when the band changes the arrangement two minutes before the show. Barline is the band's one shared, live copy of the song. That's also why it never leaves your own Wi-Fi: a show is the worst moment for a laggy internet connection to get in the way of something this time-sensitive.

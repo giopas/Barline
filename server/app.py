@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-SSP -- Song and Setlist Planner -- the one server.
+Barline -- Song and Setlist Planner -- the one server.
 
 A small, plain, stdlib-only Python app (same spirit as QLC+ Swiss Knife):
 holds the in-memory data model (backed by the one-JSON-per-song storage in
@@ -71,7 +71,7 @@ MAX_IMPORT_BYTES = 40 * 1024 * 1024
 # ---------------------------------------------------------------------------
 
 _IPV4 = re.compile(r"(?<![\d.])(\d{1,3}(?:\.\d{1,3}){3})(?![\d.])")
-# Hotspot ranges: macOS Internet Sharing, NetworkManager (the Pi's "SSP-Band"
+# Hotspot ranges: macOS Internet Sharing, NetworkManager (the Pi's "Barline-Band"
 # hotspot), Windows Mobile Hotspot. When this computer *is* the band's Wi-Fi,
 # that's the address phones can reach, so it goes first.
 _HOTSPOT = ("192.168.2.", "10.42.0.", "192.168.137.")
@@ -440,7 +440,7 @@ def _filename(text: str, suffix: str) -> str:
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = f"SSP/{VERSION}"
+    server_version = f"Barline/{VERSION}"
     store: Store = None  # set by build_server() before the server starts
     hub: events.Hub = None
     transport: transport.Transport = None
@@ -908,7 +908,7 @@ def prepare_demo(target: str = None) -> str:
 def startup_banner(httpd, store: Store, data_dir: str, static_root: str) -> str:
     port = httpd.server_address[1]
     lines = [
-        f"SSP -- Song and Setlist Planner -- v{VERSION}",
+        f"Barline -- Song and Setlist Planner -- v{VERSION}",
         f"  data dir:   {os.path.abspath(data_dir)}",
         f"  static dir: {os.path.abspath(static_root)}",
         f"  songs loaded: {len(store.songs)}  setlists loaded: {len(store.setlists)}",
@@ -924,7 +924,7 @@ def startup_banner(httpd, store: Store, data_dir: str, static_root: str) -> str:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="SSP - Song and Setlist Planner server")
+    parser = argparse.ArgumentParser(description="Barline - Song and Setlist Planner server")
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--data", default=None)
     parser.add_argument("--static", default=paths.default_static_dir())

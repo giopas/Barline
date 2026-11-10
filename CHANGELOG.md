@@ -5,6 +5,33 @@ follows semver (MAJOR.MINOR.PATCH).
 
 ## [Unreleased]
 
+## [0.17.0] -- 2026-11-10
+
+SSP is now called **Barline**. Same app, new name.
+
+### Changed
+
+- The name everywhere you see it: the app (Barline.app, Barline.exe), the
+  downloads (`Barline-<version>-...`), the control panel, the web app and
+  its home-screen name, the paper charts' footer, the README and the wiki.
+- The GitHub repository moved to `giopas/barline` (the old address
+  redirects).
+- The default band Wi-Fi name is `Barline-Band`.
+
+### Kept on purpose
+
+- Your data and settings: the data folder, each device's saved settings,
+  and song files (`.ssp.json` and song PDFs from SSP import as before;
+  exports keep the `.ssp.json` ending).
+- On a Raspberry Pi: the `ssp` service, the `SSP-Hotspot` profile and
+  `http://ssp.local/`, so an existing Pi keeps working after `git pull`.
+- `SSP_...` environment variables.
+
+### Note
+
+- SSP 0.16 can't update itself to Barline (it looks for files named
+  `SSP-...`): install 0.17.0 by hand once and delete the old SSP app.
+
 ## [0.16.0] -- 2026-11-10
 
 Count-ins in one go, jumping around a song mid-run, and more click sounds.

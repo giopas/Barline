@@ -1,4 +1,4 @@
-**SSP: Song and Setlist Planner**
+**Barline: Song and Setlist Planner**
 
 - [[Home]]
 - [[Getting Started]]

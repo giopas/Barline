@@ -1,15 +1,18 @@
 <p align="center">
-  <img src="packaging/icons/icon-256.png" width="128" height="128" alt="SSP app icon: a bar of four beats, the first one lit">
+  <img src="packaging/icons/icon-256.png" width="128" height="128" alt="Barline app icon: a bar of four beats, the first one lit">
 </p>
 
-<h1 align="center">SSP -- Song and Setlist Planner</h1>
+<h1 align="center">Barline -- Song and Setlist Planner</h1>
 
 <p align="center">Plan your set, and keep everyone in sync on stage.</p>
 
-SSP is a tool for bands and other music groups to work out a song's
+Barline is a tool for bands and other music groups to work out a song's
 structure together -- sections, tempo, count-ins, and reminders for each
 player -- and then put it on every musician's own tablet or phone, all
 moving through the song together, each with its own click.
+
+*Called SSP until version 0.17.0; nothing changes for your songs. Coming
+from SSP? See [Renamed from SSP](#renamed-from-ssp).*
 
 ![The editor: a song's sections, bars, tempo, count-ins and hints](screenshots/01-editor.png)
 
@@ -49,7 +52,7 @@ moving through the song together, each with its own click.
 - **Take it with you.** Download a practice click track (`.wav`) that follows
   the song's tempo changes (or a `.zip` of them for a whole setlist), or
   export a song (voice memos included) as a single file for another band. A
-  song's PDF carries the song too, so another SSP can import the printout's file.
+  song's PDF carries the song too, so another Barline can import the printout's file.
 
 | A bass player's chart | The set's running order, and a floor sheet |
 |---|---|
@@ -61,7 +64,7 @@ moving through the song together, each with its own click.
 
 ![One tap on the tablet: tablet and phone follow the song together](screenshots/live.gif)
 
-Coming from a metronome app? See [For Drummers](https://github.com/giopas/SSP---Song-and-Setlist-Planner/wiki/For-Drummers).
+Coming from a metronome app? See [For Drummers](https://github.com/giopas/barline/wiki/For-Drummers).
 
 ## How it works
 
@@ -73,7 +76,7 @@ internet connection involved at all.
 
 ![Edits on the laptop show up on the phone](screenshots/sync.gif)
 
-**Local network only, on purpose.** SSP is never meant to be reachable over
+**Local network only, on purpose.** Barline is never meant to be reachable over
 the internet: a remote server is exactly the kind of lag and dropped
 connection a rehearsal or a live set can't afford. The server makes no
 outbound connections, sends no telemetry, and only reads and writes its own
@@ -86,18 +89,18 @@ you'd treat a whiteboard in your rehearsal room.
 
 ## Install
 
-**Download, open, start.** From the [latest release](https://github.com/giopas/SSP---Song-and-Setlist-Planner/releases/latest),
+**Download, open, start.** From the [latest release](https://github.com/giopas/barline/releases/latest),
 take the file for your computer. Nothing else to install: Python comes inside.
 
 | Computer | File | Then |
 |---|---|---|
-| macOS, Apple silicon (M1 and later) | `SSP-<version>-macos-arm64.dmg` | open it, drag **SSP** to Applications |
-| macOS, Intel | `SSP-<version>-macos-x86_64.dmg` | the same |
-| Windows 10/11 | `SSP-<version>-windows-x64-setup.exe` | run the installer (no administrator needed; Start menu entry, uninstaller). Or the `…-windows-x64.zip`: unzip, run `SSP.exe` |
-| Linux (x64) | `SSP-<version>-linux-x64.tar.gz` | `tar xzf SSP-*-linux-x64.tar.gz`, then `./SSP/SSP` |
+| macOS, Apple silicon (M1 and later) | `Barline-<version>-macos-arm64.dmg` | open it, drag **Barline** to Applications |
+| macOS, Intel | `Barline-<version>-macos-x86_64.dmg` | the same |
+| Windows 10/11 | `Barline-<version>-windows-x64-setup.exe` | run the installer (no administrator needed; Start menu entry, uninstaller). Or the `…-windows-x64.zip`: unzip, run `Barline.exe` |
+| Linux (x64) | `Barline-<version>-linux-x64.tar.gz` | `tar xzf Barline-*-linux-x64.tar.gz`, then `./Barline/Barline` |
 
-The macOS `.tar.gz` files in the release are for SSP's own updater: take the
-`.dmg`. Only one computer in the band needs SSP; everyone else just opens the
+The macOS `.tar.gz` files in the release are for Barline's own updater: take the
+`.dmg`. Only one computer in the band needs Barline; everyone else just opens the
 address in a browser.
 
 ### The first time you open it
@@ -105,26 +108,26 @@ address in a browser.
 The apps aren't signed (that costs a yearly fee to Apple and Microsoft), so the
 system asks once.
 
-**macOS.** If it says SSP "can't be opened" or "is damaged", it's the download
+**macOS.** If it says Barline "can't be opened" or "is damaged", it's the download
 quarantine, not a broken app. Any one of these fixes it:
 
-- right-click (or Control-click) **SSP** in Applications and choose **Open**,
+- right-click (or Control-click) **Barline** in Applications and choose **Open**,
   then **Open** again;
 - on macOS 15 Sequoia and later: try to open it once, then **System Settings ›
   Privacy & Security**, scroll down and click **Open Anyway**;
 - or in Terminal:
 
   ```bash
-  xattr -dr com.apple.quarantine "/Applications/SSP.app"
+  xattr -dr com.apple.quarantine "/Applications/Barline.app"
   ```
 
 **Windows.** SmartScreen shows "Windows protected your PC": click **More info ›
 Run anyway**.
 
 **Let phones and tablets in.** The first time you press **Start server**, the
-system may ask whether SSP can accept incoming connections or find devices on
+system may ask whether Barline can accept incoming connections or find devices on
 your local network (macOS), or show a Windows Defender Firewall prompt. Click
-**Allow** (on Windows, tick **Private networks**). Say no and SSP runs, but no
+**Allow** (on Windows, tick **Private networks**). Say no and Barline runs, but no
 phone can reach it. To change it later: macOS **System Settings › Network ›
 Firewall** and **Privacy & Security › Local Network**; Windows **Allow an app
 through Windows Firewall**.
@@ -137,15 +140,15 @@ shasum -a 256 -c SHA256SUMS --ignore-missing     # macOS
 sha256sum -c SHA256SUMS --ignore-missing         # Linux
 ```
 
-On Windows: `certutil -hashfile SSP-<version>-windows-x64-setup.exe SHA256`, and
+On Windows: `certutil -hashfile Barline-<version>-windows-x64-setup.exe SHA256`, and
 compare with the line in `SHA256SUMS`.
 
 ### Updating
 
 When a new version is out, a blue bar appears at the top of the control panel.
 **Update and restart** downloads it, checks it against the release's
-checksums, swaps it in and starts SSP again; your songs and settings stay as
-they are. The same way QLC+ Swiss Knife does it. SSP asks GitHub once when the
+checksums, swaps it in and starts Barline again; your songs and settings stay as
+they are. The same way QLC+ Swiss Knife does it. Barline asks GitHub once when the
 control panel opens (nothing about you or your band is sent, and with no
 internet it stays quiet). **Auto-check updates** at the bottom switches that
 off; **Check for updates** asks on demand. Coming from 0.12.0 or older, download
@@ -153,9 +156,9 @@ the new version by hand once.
 
 ### Uninstalling
 
-Delete the app (macOS: drag SSP from Applications to the Bin; Windows:
-**Settings › Apps › SSP › Uninstall**, or delete the unzipped folder; Linux:
-delete the `SSP` folder). Your songs stay in the folder you picked for them.
+Delete the app (macOS: drag Barline from Applications to the Bin; Windows:
+**Settings › Apps › Barline › Uninstall**, or delete the unzipped folder; Linux:
+delete the `Barline` folder). Your songs stay in the folder you picked for them.
 The control panel's settings are in:
 
 | | |
@@ -163,6 +166,19 @@ The control panel's settings are in:
 | macOS | `~/Library/Application Support/SingleSongPlanner/` |
 | Windows | `%APPDATA%\SingleSongPlanner\` |
 | Linux | `~/.config/single-song-planner/` |
+
+### Renamed from SSP
+
+Up to 0.16 the app was called **SSP**. 0.17.0 is the same app under its new
+name: your songs, setlists and settings stay where they are (the data
+folder and each device's saved settings are untouched), and song files
+exported by SSP (`.ssp.json`) still import, as do the song PDFs. The one
+step by hand: SSP 0.16 looks for files named `SSP-...` and so can't update
+itself to Barline. Install 0.17.0 once from the release page, then
+delete the old **SSP** app. From then on it updates itself again. On a
+Raspberry Pi: `git remote set-url origin https://github.com/giopas/barline.git`,
+`git pull`, and run `install.sh` again as before (its service is still
+called `ssp`, its address still `ssp.local`).
 
 ## Run from the source code
 
@@ -178,8 +194,8 @@ Raspberry Pi.
 **First time:**
 
 ```bash
-git clone https://github.com/giopas/SSP---Song-and-Setlist-Planner.git
-cd SSP---Song-and-Setlist-Planner
+git clone https://github.com/giopas/barline.git
+cd barline
 python3 launcher/gui.py          # Windows: python launcher\gui.py
 ```
 
@@ -207,8 +223,8 @@ command: see the wiki page *Running on a Raspberry Pi*.
 4. Start planning. Everything is saved as you go.
 
 **No Wi-Fi in the room?** The Connect card's **Make a Wi-Fi** button makes
-this computer the band's Wi-Fi (`SSP-Band`, with a password SSP makes up)
-and shows two codes: one joins the Wi-Fi, one opens SSP. One click on Linux
+this computer the band's Wi-Fi (`Barline-Band`, with a password Barline makes up)
+and shows two codes: one joins the Wi-Fi, one opens Barline. One click on Linux
 (NetworkManager) and on Windows when Windows allows it (Mobile hotspot;
 with no network at all it needs a one-time Loopback Adapter setup); on a
 Mac it opens System Settings › Sharing and shows the steps, since macOS
@@ -217,7 +233,7 @@ Venue* has the details and the other ways (a phone's hotspot, a travel
 router, a Raspberry Pi, which makes its own Wi-Fi by itself at boot when it
 finds no network it knows).
 
-![The band Wi-Fi on: code 1 joins it, code 2 opens SSP](screenshots/18-launcher-wifi.png)
+![The band Wi-Fi on: code 1 joins it, code 2 opens Barline](screenshots/18-launcher-wifi.png)
 
 Want to look around first? **Try the demo band** (in the control panel, or
 at the bottom of the sidebar in the app itself, where it switches every
@@ -228,7 +244,7 @@ copy, so nothing you do there sticks. From a terminal:
 
 **Nobody can connect?** Check that the phone is on the same Wi-Fi as the
 computer (not on mobile data, not on a guest network that keeps devices
-apart), that you allowed SSP through the firewall (above), and that you typed
+apart), that you allowed Barline through the firewall (above), and that you typed
 `http://`, not `https://`. The wiki page *Getting Started* (step 4) has more.
 
 ## Supported platforms
@@ -256,9 +272,9 @@ updates**.
 
 ## More
 
-The [wiki](https://github.com/giopas/SSP---Song-and-Setlist-Planner/wiki)
+The [wiki](https://github.com/giopas/barline/wiki)
 walks through planning a song, using it on stage, the metronome, printing,
-moving songs between setups, and running SSP on a Raspberry Pi.
+moving songs between setups, and running Barline on a Raspberry Pi.
 
 | Setlists | The band | Connect a device |
 |---|---|---|
@@ -294,11 +310,11 @@ To build one yourself, on its own OS (PyInstaller doesn't cross-compile):
 `packaging/build-macos.sh`, `packaging\build-windows.bat` or
 `packaging/build-linux.sh`. Any build checks itself with `--smoke`, and
 `--headless [server options]` runs it as a plain server with no window
-(on Windows, use `SSP Server.exe` for both).
+(on Windows, use `Barline Server.exe` for both).
 
 ## Credit
 
-SSP's song-structure focus takes its cue from
+Barline's song-structure focus takes its cue from
 [song-map.com](https://song-map.com/). The "one local server, every device a
 synced client" pattern, the per-player "tablet on stage" idea, the QR code
 encoder, the click-track sounds, the updater and the look of the control panel are adapted from

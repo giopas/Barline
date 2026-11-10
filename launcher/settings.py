@@ -1,5 +1,5 @@
 """
-Launcher settings: where SSP's desktop control panel remembers what you
+Launcher settings: where Barline's desktop control panel remembers what you
 told it last time -- which data folder, which port, and the handful of
 data folders you've used recently ("sessions", in the sense QLC+ Swiss
 Knife uses the term for its recent-workspace list).

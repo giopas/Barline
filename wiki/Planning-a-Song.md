@@ -2,31 +2,31 @@
 
 This is where the band agrees, in writing, how a song actually goes, so nobody's guessing on stage whether the bridge repeats twice or three times.
 
-![Adding a section, setting its bars and tempo, aiming a hint, duplicating it](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/planning.gif)
+![Adding a section, setting its bars and tempo, aiming a hint, duplicating it](https://raw.githubusercontent.com/giopas/barline/main/screenshots/planning.gif)
 
 ## The quick way: just a title and a tempo
 
-The **+** next to *Songs* opens **Add songs**. A title and a tempo is enough for the click: SSP makes one section long enough for the length you give (four minutes if you don't). **Tap** sets the tempo by tapping along. **Add and plan sections** takes you straight to the full editor; **Add song** clears the form for the next one.
+The **+** next to *Songs* opens **Add songs**. A title and a tempo is enough for the click: Barline makes one section long enough for the length you give (four minutes if you don't). **Tap** sets the tempo by tapping along. **Add and plan sections** takes you straight to the full editor; **Add song** clears the form for the next one.
 
 **Paste a list** takes a whole set at once, one song per line: `Harbour Lights - 124`, `Paper Boats, 96, 3:45`, or two or three columns pasted from a spreadsheet. It shows what it understood before adding anything, reuses songs you already have, and can make the setlist in the same order. The editor has a **Tap** button next to *Default BPM* too.
 
-![Pasting a set](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/15-quick-add.png)
+![Pasting a set](https://raw.githubusercontent.com/giopas/barline/main/screenshots/15-quick-add.png)
 
 ## Sections
 
 A song is a list of sections, in order: intro, verse, chorus, bridge, outro, whatever your song has. Click **+ Add section** and give it a name. The sections show up as a row of colored blocks along the top, one color each, so you can see the shape of the song at a glance. Click a block to jump to that section.
 
-Use the arrows on a section to move it up or down. If a section repeats exactly (the second chorus is the same as the first), click the duplicate button: SSP copies its bars, tempo, count-in and hints and puts the copy right after it.
+Use the arrows on a section to move it up or down. If a section repeats exactly (the second chorus is the same as the first), click the duplicate button: Barline copies its bars, tempo, count-in and hints and puts the copy right after it.
 
 ## Bars
 
-Every section needs a bar count: how many bars it lasts. If your verse is 16 bars, type 16. This number is what makes everything else work: it's how SSP knows when one section ends and the next begins. Each section shows its starting bar ("bar 17") so you can check the arrangement against a recording.
+Every section needs a bar count: how many bars it lasts. If your verse is 16 bars, type 16. This number is what makes everything else work: it's how Barline knows when one section ends and the next begins. Each section shows its starting bar ("bar 17") so you can check the arrangement against a recording.
 
 The bars are drawn as little squares, four dots in each for the four beats.
 
 ## Tempo (BPM)
 
-Every song has a default BPM. Most sections just use it. If one section is deliberately slower or faster, a half-time bridge say, give that section its own BPM and SSP uses it just for those bars. The live view and the metronome both follow the change.
+Every song has a default BPM. Most sections just use it. If one section is deliberately slower or faster, a half-time bridge say, give that section its own BPM and Barline uses it just for those bars. The live view and the metronome both follow the change.
 
 ## Count-ins
 
@@ -54,7 +54,7 @@ When you start a song from the live view, there's always a count-in first, even 
 
 Every device sees the change straight away. "No count-in" takes them out again.
 
-![Count-ins in one go](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/19-count-ins.png)
+![Count-ins in one go](https://raw.githubusercontent.com/giopas/barline/main/screenshots/19-count-ins.png)
 
 Press the ♫ button on a section to hear its count-in and first two bars on this device, or **Preview click** at the top for the whole song.
 
@@ -66,7 +66,7 @@ Every section has a **+ Add hint** button. Type the note, then use the menu next
 
 Players are set up on the **Band** page: a name and an instrument each.
 
-![The band](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/03-band.png)
+![The band](https://raw.githubusercontent.com/giopas/barline/main/screenshots/03-band.png)
 
 ### Voice memos
 
@@ -76,9 +76,9 @@ On the computer running the server, the button records straight from the microph
 
 ## Everyone at once
 
-Everybody connected sees the same song, and changes show up on every screen within a moment. If two people change the same song at the same moment, the last one saved wins. SSP tells you when someone else changed the song you're looking at.
+Everybody connected sees the same song, and changes show up on every screen within a moment. If two people change the same song at the same moment, the last one saved wins. Barline tells you when someone else changed the song you're looking at.
 
-![The laptop edits, the phone follows](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/sync.gif)
+![The laptop edits, the phone follows](https://raw.githubusercontent.com/giopas/barline/main/screenshots/sync.gif)
 
 ## Building a setlist
 
@@ -94,7 +94,7 @@ Give a song tags under its title: type one and press Enter (or pick one already 
 
 Click a tag in the sidebar (or above the setlist) to show only songs with it; pick more than one to see songs with **any** of them. **× all songs** clears the filter.
 
-![A setlist](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/02-setlist.png)
+![A setlist](https://raw.githubusercontent.com/giopas/barline/main/screenshots/02-setlist.png)
 
 ## Next
 

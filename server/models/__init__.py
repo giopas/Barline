@@ -1,5 +1,5 @@
 """
-Data model for SSP - Song and Setlist Planner.
+Data model for Barline - Song and Setlist Planner.
 
 Deliberately plain: every entity is a dict that round-trips straight to/from
 JSON (see server/storage.py). These helpers exist to keep "what a fresh
