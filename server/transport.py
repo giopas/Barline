@@ -19,7 +19,14 @@ State, as broadcast (`transport` event):
 
     {state: "stopped"|"running", song_id, setlist_id, start_section_id,
      started_at (server clock, ms), timeline, driver {client_id, name},
-     run (counter, bumps on every start)}
+     run (counter, bumps on every start), rev (bumps on every jump or
+     nudge within a run), moved {kind: "jump"|"nudge", by, label, ms}}
+
+Within a run (0.16) the band can jump to another section -- it lands on
+the next bar line at least JUMP_LEAD_MS away, straight onto bar 1 of that
+section, so the beat never breaks -- or nudge the click earlier/later (the
+drummer started the click late). Both just move `started_at` and/or swap
+the timeline; every device re-reads them, nothing else changes.
 """
 
 from __future__ import annotations
@@ -30,6 +37,8 @@ import time
 import timeline as tl
 
 LEAD_MS = 1500  # time between pressing Start and the first count-in beat
+JUMP_LEAD_MS = 450  # a jump lands on a bar line at least this far ahead
+MAX_NUDGE_MS = 10000
 
 
 def now_ms() -> float:
@@ -52,6 +61,8 @@ class Transport:
             "timeline": None,
             "driver": None,
             "run": 0,
+            "rev": 0,
+            "moved": None,
         }
         self._thread = None
 
@@ -95,6 +106,8 @@ class Transport:
                 "timeline": timeline,
                 "driver": {"client_id": origin, "name": self.hub.player_name(self.store.get_band(), origin)},
                 "run": self.run_counter,
+                "rev": 0,
+                "moved": None,
             }
             snap = dict(self.state)
             self.wake.set()
@@ -109,6 +122,56 @@ class Transport:
             snap = dict(self.state)
         self.hub.publish("transport", snap, origin)
         return snap
+
+    def jump(self, section_id, origin=None, lead_ms=JUMP_LEAD_MS) -> dict:
+        """Mid-run: carry on from `section_id`, from the next bar line. Before
+        the first beat has sounded it's simply a fresh start from there
+        (count-in included). Stopped: an error -- use start."""
+        with self.lock:
+            if self.state["state"] != "running":
+                raise ValueError("nothing is playing: start from that section instead")
+            song = self.store.get_song(self.state["song_id"])
+            if not any(s.get("id") == section_id for s in song.get("sections", [])):
+                raise KeyError(section_id)
+            if now_ms() < self.state["started_at"] + lead_ms:
+                fresh = True
+            else:
+                fresh = False
+                new = tl.build(song, section_id, lead_in=False, first_count_in=False)
+                if not new["bars"]:
+                    raise ValueError("that section has no bars")
+                old_start = self.state["started_at"]
+                land = old_start + tl.next_boundary(self.state["timeline"], now_ms() - old_start + lead_ms)
+                self.state.update(timeline=new, started_at=land, start_section_id=section_id)
+                self._moved_locked("jump", origin, label=new["bars"][0]["label"])
+                snap = dict(self.state)
+                self.wake.set()
+        if fresh:
+            snap = self.start(self.state["song_id"], self.state["setlist_id"], section_id, origin)
+            return snap
+        self.hub.publish("transport", snap, origin)
+        return snap
+
+    def nudge(self, ms, origin=None) -> dict:
+        """Move the running click by `ms`: positive = ahead (the click
+        started late and the band is in front of it), negative = back."""
+        if isinstance(ms, bool) or not isinstance(ms, (int, float)) or ms != ms:
+            raise ValueError("ms must be a number")
+        ms = max(-MAX_NUDGE_MS, min(MAX_NUDGE_MS, float(ms)))
+        with self.lock:
+            if self.state["state"] != "running":
+                raise ValueError("nothing is playing")
+            self.state["started_at"] -= ms
+            self._moved_locked("nudge", origin, ms=ms)
+            snap = dict(self.state)
+            self.wake.set()
+        self.hub.publish("transport", snap, origin)
+        return snap
+
+    def _moved_locked(self, kind, origin, label=None, ms=None) -> None:
+        self.state["rev"] = self.state.get("rev", 0) + 1
+        self.state["moved"] = {"kind": kind, "by": self.hub.player_name(self.store.get_band(), origin),
+                               "client_id": origin, "label": label, "ms": ms}
 
     def step(self, direction: int, origin=None) -> dict:
         """Cue the previous/next song in the cued setlist."""
@@ -137,16 +200,19 @@ class Transport:
 
     # -- internals ------------------------------------------------------
     def _stop_locked(self) -> None:
-        self.state.update(state="stopped", started_at=None, timeline=None, driver=None)
+        self.state.update(state="stopped", started_at=None, timeline=None, driver=None, moved=None)
         self.wake.set()
 
     def _run(self, run: int) -> None:
         """Announce each bar as it starts; finish the run at the end."""
         last = None
+        rev = 0
         while True:
             with self.lock:
                 if self.state["run"] != run or self.state["state"] != "running":
                     return
+                if self.state.get("rev", 0) != rev:
+                    rev, last = self.state.get("rev", 0), None
                 started = self.state["started_at"]
                 timeline = self.state["timeline"]
                 song_id = self.state["song_id"]

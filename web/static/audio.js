@@ -3,9 +3,10 @@
 /*
  * The metronome every device plays for itself (v0.2, driven live in v0.5).
  *
- * Sounds: the same three as server/click_track.py (and QLC+ Swiss Knife's
- * click track) -- beep, wood, tick -- built from the very same formulas at
- * the same 22050 Hz, so the practice .wav and the stage click sound alike.
+ * Sounds: the same as server/click_track.py -- beep, wood, tick (from
+ * QLC+ Swiss Knife's click track) and, since 0.16, ride bell, cowbell,
+ * finger snap and side stick -- built from the very same formulas, so the
+ * practice .wav and the stage click sound alike.
  *
  * Timing: clicks are never fired from a JS timer (timers jitter by tens of
  * milliseconds). A short look-ahead loop instead hands each beat to the Web
@@ -17,7 +18,7 @@
 
 (function (root) {
   const RATE = 22050;
-  const SOUNDS = ["beep", "wood", "tick"];
+  const SOUNDS = ["beep", "wood", "tick", "bell", "cowbell", "snap", "rim"];
   const LOOKAHEAD_MS = 160;
   const TICK_MS = 25;
 
@@ -53,12 +54,115 @@
     return out;
   }
 
+  // -- 0.16: drum-kit sounds (mirrors click_track.py line for line) ---------
+
+  function noise(n, seed) {
+    const out = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      seed = (Math.imul(seed, 1103515245) + 12345) & 0x7fffffff;
+      out[i] = seed / 0x3fffffff - 1.0;
+    }
+    return out;
+  }
+
+  function resonate(x, freq, r, RATE) {
+    const c = 2.0 * r * Math.cos((2 * Math.PI * freq) / RATE);
+    const r2 = r * r;
+    let y1 = 0;
+    let y2 = 0;
+    const out = new Float64Array(x.length);
+    for (let i = 0; i < x.length; i++) {
+      const y = x[i] + c * y1 - r2 * y2;
+      out[i] = y;
+      y2 = y1;
+      y1 = y;
+    }
+    return out;
+  }
+
+  function finish(x, amp, RATE) {
+    let peak = 0;
+    for (const v of x) peak = Math.max(peak, Math.abs(v));
+    peak = peak || 1;
+    const n = x.length;
+    const fade = Math.floor((RATE * 3) / 1000);
+    const out = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      const f = i >= n - fade ? Math.min(1, (n - 1 - i) / fade) : 1;
+      out[i] = (amp * x[i] / peak) * f;
+    }
+    return out;
+  }
+
+  function bellSamples(accent, RATE) {
+    const [f, amp, ms] = accent ? [760, 0.9, 240] : [640, 0.7, 200];
+    const n = Math.floor((RATE * ms) / 1000);
+    const partials = [[1.0, 1.0, 5.0], [1.47, 0.7, 6.5], [2.09, 0.55, 8.0], [2.56, 0.4, 9.5], [3.42, 0.3, 12.0]];
+    const nz = noise(n, 777);
+    const x = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      const t = i / RATE;
+      let v = 0;
+      for (const [k, a, d] of partials) v += a * Math.sin(2 * Math.PI * f * k * t) * Math.exp((-d * i) / n);
+      x[i] = v + 0.8 * nz[i] * Math.exp(-i / (RATE * 0.002));
+    }
+    return finish(x, amp, RATE);
+  }
+
+  function cowbellSamples(accent, RATE) {
+    const [k, amp] = accent ? [1.12, 0.9] : [1.0, 0.7];
+    const n = Math.floor((RATE * 150) / 1000);
+    const x = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      const t = i / RATE;
+      let v = 0;
+      for (const f of [540 * k, 800 * k]) {
+        const w = 2 * Math.PI * f * t;
+        v += Math.sin(w) + 0.33 * Math.sin(3 * w) + 0.2 * Math.sin(5 * w);
+      }
+      x[i] = v * (0.65 * Math.exp(-i / (RATE * 0.008)) + 0.35 * Math.exp(-i / (RATE * 0.045)));
+    }
+    return finish(x, amp, RATE);
+  }
+
+  function snapSamples(accent, RATE) {
+    const [f, amp] = accent ? [2600, 0.9] : [2100, 0.7];
+    const n = Math.floor((RATE * 60) / 1000);
+    const band = resonate(noise(n, 4242), f, 0.93, RATE);
+    const x = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      const env = Math.min(1, i / (RATE * 0.0005)) * Math.exp(-i / (RATE * 0.009));
+      x[i] = band[i] * env;
+    }
+    return finish(x, amp, RATE);
+  }
+
+  function rimSamples(accent, RATE) {
+    const [f, amp] = accent ? [1750, 0.9] : [1450, 0.7];
+    const n = Math.floor((RATE * 50) / 1000);
+    const body = resonate(noise(n, 999), 420, 0.96, RATE);
+    let peak = 0;
+    for (const v of body) peak = Math.max(peak, Math.abs(v));
+    peak = peak || 1;
+    const x = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      const t = i / RATE;
+      const tone = Math.sin(2 * Math.PI * f * t) * Math.exp(-i / (RATE * 0.006));
+      x[i] = 0.65 * tone + (0.35 * body[i]) / peak * Math.exp(-i / (RATE * 0.01));
+    }
+    return finish(x, amp, RATE);
+  }
+
   // `rate` defaults to the click track's 22050 Hz; the live metronome
   // builds them at the device's own rate (same formulas, so same sound).
   function samplesFor(sound, accent, rate) {
     const r = rate || RATE;
     if (sound === "wood") return woodSamples(accent, r);
     if (sound === "tick") return tickSamples(accent, r);
+    if (sound === "bell") return bellSamples(accent, r);
+    if (sound === "cowbell") return cowbellSamples(accent, r);
+    if (sound === "snap") return snapSamples(accent, r);
+    if (sound === "rim") return rimSamples(accent, r);
     return accent ? clickSamples(1600, 0.9, r) : clickSamples(1000, 0.6, r);
   }
 

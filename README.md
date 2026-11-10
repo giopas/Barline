@@ -17,7 +17,8 @@ moving through the song together, each with its own click.
 
 - **Draft a song's structure as a band.** Verses, choruses, bridges, however
   you think about your songs. Bars and tempo per section (a half-time bridge
-  can have its own BPM), a count-in, and hints: a note for the whole band,
+  can have its own BPM), a count-in (or set them for every song in one
+  go: at the start, at every section change, or where the tempo changes), and hints: a note for the whole band,
   or one aimed at a single player ("Bass: root notes only here"). A hint can
   carry a short voice memo too.
 - **Everyone edits the same copy.** Change a bar count on the laptop and the
@@ -32,10 +33,13 @@ moving through the song together, each with its own click.
 - **Play it live.** Anyone can press Start -- usually the drummer. Every
   screen follows the song bar by bar, shows what's coming next, and puts
   *your* hints up front. Each device plays its own metronome click in time,
-  set up its own way: subdivisions, a spoken count-in, one ear only for a
+  set up its own way (wood, beep, tick, ride bell, cowbell, finger snap,
+  side stick): subdivisions, a spoken count-in, one ear only for a
   Y-splitter into in-ears, a click for count-ins only. Drummers get a big
   view (tempo, bar, bars to the next part), and a device keeps playing on
-  its own if the server drops mid-song.
+  its own if the server drops mid-song. Mid-song, jump to any section from
+  the next bar line (the singer went to the chorus early), or nudge the
+  click ahead if it started late.
 - **Put it on paper.** A song's chart as a PDF, for the whole band or one
   player: tempo, how it starts, the song's shape, each section's first bar,
   a box per bar to count along on, tempo changes, count-ins and hints. It

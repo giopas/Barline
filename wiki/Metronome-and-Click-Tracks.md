@@ -8,7 +8,7 @@ In the live view, every phone and tablet can play its own click, in time with th
 
 - **Click on/off**: the first tap turns sound on (browsers only allow sound after a tap); after that it toggles.
 - **Volume**, the slider next to it.
-- **⚙ Click** for the rest: the sound (wood, beep or tick; beat 1 is always higher, so you know where "one" is), 8ths, 16ths or triplets between the beats, a spoken count-in ("one, two, three, four"), left or right ear only, a click for count-ins only, the loudness of each part, and a timing nudge. [[For Drummers]] goes through each one.
+- **⚙ Click** for the rest: the sound (wood, beep, tick, ride bell, cowbell, finger snap or side stick; beat 1 is always higher, so you know where "one" is), 8ths, 16ths or triplets between the beats, a spoken count-in ("one, two, three, four"), left or right ear only, a click for count-ins only, the loudness of each part, and a timing nudge. [[For Drummers]] goes through each one.
 
 ![Click settings and the click check on a tablet](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/14-click-settings.png)
 

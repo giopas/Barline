@@ -43,6 +43,19 @@ Count-ins aren't just for the top of a song. After a dead stop in the middle, gi
 
 When you start a song from the live view, there's always a count-in first, even if the first section has none set: one bar of click, so nobody's surprised by bar 1.
 
+### Count-ins in one go
+
+**⏱ Count-ins** (next to **+ Add section**, and on a setlist's toolbar) sets them across a whole song, or every song at once:
+
+- **Songs**: this song, every song in a setlist it's in, or every song.
+- **Start of the song**: the first section's count-in (leave it, none, 1, 2 or 4 bars; click, sticks or verbal).
+- **Every section change**: every later section's, or with **only where the tempo changes**, just the sections that change tempo.
+- **Keep the count-ins already set** (on by default) only fills in sections that have none, so the ones you set by hand stay.
+
+Every device sees the change straight away. "No count-in" takes them out again.
+
+![Count-ins in one go](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/19-count-ins.png)
+
 Press the ♫ button on a section to hear its count-in and first two bars on this device, or **Preview click** at the top for the whole song.
 
 ## Hints

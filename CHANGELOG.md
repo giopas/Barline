@@ -5,6 +5,32 @@ follows semver (MAJOR.MINOR.PATCH).
 
 ## [Unreleased]
 
+## [0.16.0] -- 2026-11-10
+
+Count-ins in one go, jumping around a song mid-run, and more click sounds.
+
+### Added
+
+- **Count-ins in one go.** **⏱ Count-ins** on a song (next to + Add
+  section) or a setlist sets the count-in at the start of the song and/or
+  before every section change -- or only where the tempo changes -- for
+  one song, every song in a setlist, or every song. "Keep the count-ins
+  already set" fills in only the empty ones; "no count-in" removes them.
+  New API: `POST /api/count-ins`.
+- **Jump to a section mid-song.** While a song plays, **⤵ Jump** (or
+  tapping a section in the live song list, then **Jump here**) carries the
+  whole band on from that section. It lands on the next bar line, straight
+  on bar 1, so the beat never breaks. Before the first beat it simply
+  restarts from that section with its count-in. Works in solo mode too.
+- **Nudge the click.** Under Jump, move the running click for everyone by
+  ±20 ms, a beat or a bar -- for when it was started late. Keys: `[` `]`
+  (a beat), `,` `.` (20 ms).
+- **Four more click sounds:** ride bell, cowbell, finger snap and side
+  stick, synthesised like the others (no samples) and identical in the
+  live click and the `.wav` click tracks.
+- Transport actions `jump` (`section_id`) and `nudge` (`ms`); the transport
+  state gains `rev` (bumps on each jump/nudge within a run) and `moved`.
+
 ## [0.15.0] -- 2026-11-08
 
 Setlists you can drag, a song list that follows them, and tags.

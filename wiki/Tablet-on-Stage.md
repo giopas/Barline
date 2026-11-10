@@ -19,6 +19,16 @@ Anyone can press **▶ Start**. Usually it's the drummer, but it doesn't have to
 
 To start somewhere other than the top, tap a section in the list (or in the colored strip) before pressing Start. That's handy for running just the bridge at rehearsal.
 
+## Jump to another section
+
+While the band plays, **⤵ Jump** (next to Stop) lists the song's sections: tap one and everyone carries on from there. It lands on the next bar line, straight onto the section's first bar with no count-in, so the beat never breaks: skip to the chorus when the singer does. On a tablet you can also tap a section in the song list: it gets a dashed outline and a **Jump here** button (two taps on purpose, so a stray touch on stage moves nobody). Tapped before the first beat has sounded, it simply starts from that section, count-in included.
+
+### Nudge the click
+
+Started the click a little late, and the band is already ahead of it? Under **Jump**, **Nudge the click** moves it for everyone: +20 ms / −20 ms, a beat, or a bar, ahead (+) or back (−). On a keyboard: **[** and **]** move a beat, **,** and **.** move 20 ms. (The *timing nudge* in ⚙ Click is different: it moves only your own click, for Bluetooth delay.)
+
+![The Jump sheet mid-song](https://raw.githubusercontent.com/giopas/SSP---Song-and-Setlist-Planner/main/screenshots/20-live-jump.png)
+
 **Stop** works from any device and stops everyone. At the end of a song in a setlist, the next song comes up ready, so the band is one tap from carrying on.
 
 | Drummer's tablet | Bass player's phone |
@@ -57,7 +67,7 @@ The click only plays while the device's screen is on and SSP is in front. Phones
 
 ## Foot pedals and keyboards
 
-In the live view, the space bar starts and stops, and the arrow keys (or Page Up/Page Down) move through a setlist. That's what most Bluetooth page-turner pedals send, so a pedal works as a hands-free start button.
+In the live view, the space bar starts and stops, and the arrow keys (or Page Up/Page Down) move through a setlist. While a song plays, **[** **]** and **,** **.** nudge the click (see above). That's what most Bluetooth page-turner pedals send, so a pedal works as a hands-free start button.
 
 ## Make it an app
 

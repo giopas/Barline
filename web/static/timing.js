@@ -16,8 +16,11 @@
     return [...(song.sections || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
   }
 
-  function build(song, startSectionId, leadIn) {
+  // firstCountIn === false: a jump mid-run (0.16) lands straight on bar 1
+  // of the section -- no count-in, no lead-in (see server/timeline.py)
+  function build(song, startSectionId, leadIn, firstCountIn) {
     if (leadIn === undefined) leadIn = true;
+    if (firstCountIn === undefined) firstCountIn = true;
     const sections = sortedSections(song);
     const defaultBpm = song.default_bpm || 120;
     let startIndex = 0;
@@ -39,7 +42,9 @@
       let ciBars = ci.bars | 0;
       let ciStyle = ci.style || "none";
       if (ciStyle === "none") ciBars = 0;
-      if (idx === startIndex && ciBars === 0 && leadIn) {
+      if (idx === startIndex && !firstCountIn) {
+        ciBars = 0;
+      } else if (idx === startIndex && ciBars === 0 && leadIn) {
         ciBars = LEAD_IN_BARS;
         ciStyle = "lead-in";
       }
@@ -62,6 +67,12 @@
       }
     }
     return { bars, total_ms: t, song_bars: sections.reduce((n, s) => n + (s.bars | 0), 0) };
+  }
+
+  // the first bar line at or after earliestMs: where a jump can land
+  function nextBoundary(timeline, earliestMs) {
+    for (const bar of timeline.bars) if (bar.start_ms >= earliestMs) return bar.start_ms;
+    return Math.max(timeline.total_ms, earliestMs);
   }
 
   function barAt(timeline, elapsedMs) {
@@ -137,7 +148,7 @@
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   }
 
-  const api = { BEATS_PER_BAR, SUBDIVISIONS, build, clickOptions, clickEvents, barAt, sectionStartBar, songTotalBars, durationMs, fmtDuration, sortedSections };
+  const api = { BEATS_PER_BAR, SUBDIVISIONS, build, nextBoundary, clickOptions, clickEvents, barAt, sectionStartBar, songTotalBars, durationMs, fmtDuration, sortedSections };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.SSPTiming = api;
 })(typeof window !== "undefined" ? window : globalThis);

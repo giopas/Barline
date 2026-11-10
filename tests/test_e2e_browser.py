@@ -117,6 +117,89 @@ class BrowserSync(unittest.TestCase):
         a.wait_for_timeout(800)
         self.assertEqual(self.s.store.songs[song["id"]]["tags"], ["Jam", "Encore", "Own song"])
 
+    def test_count_ins_in_one_go(self):
+        song = demo_song(self.s, "Paper Boats")
+        a, b = self.page(), self.page()
+        for pg in (a, b):
+            pg.goto(f"{self.s.base}/#/song/{song['id']}")
+            pg.wait_for_selector(".section-card")
+        a.click("#song-countins-btn")
+        a.wait_for_selector("#countin-modal:not(.hidden)")
+        self.assertIn("This song", a.locator("#ci-scope option").first.inner_text())
+        a.select_option("#ci-start-bars", "2")
+        a.select_option("#ci-start-style", "sticks")
+        a.select_option("#ci-chg-bars", "1")
+        a.select_option("#ci-chg-style", "click")
+        a.uncheck("#ci-keep")
+        a.click("#ci-apply")
+        a.wait_for_function("document.getElementById('ci-result').textContent.startsWith('Done')")
+        n = len(song["sections"])
+        want = [2] + [1] * (n - 1)
+        # this device's editor, the other device's editor and the server agree
+        js = "[...document.querySelectorAll('.count-in-bars')].map(i => +i.value).join()"
+        a.wait_for_function(f"{js} === {','.join(map(str, want))!r}")
+        b.wait_for_function(f"{js} === {','.join(map(str, want))!r}", timeout=5000)
+        got = sorted(self.s.store.songs[song["id"]]["sections"], key=lambda x: x["order"])
+        self.assertEqual([x["count_in"]["bars"] for x in got], want)
+        self.assertEqual(got[0]["count_in"]["style"], "sticks")
+        # and from a setlist, for every song in it
+        sl = next(x for x in self.s.store.setlists.values())
+        a.keyboard.press("Escape")
+        a.goto(f"{self.s.base}/#/setlist/{sl['id']}")
+        a.click("#setlist-countins-btn")
+        self.assertIn(sl["name"], a.locator("#ci-scope option").first.inner_text())
+        a.select_option("#ci-start-bars", "0")
+        a.select_option("#ci-chg-bars", "")
+        a.click("#ci-apply")
+        a.wait_for_function("document.getElementById('ci-result').textContent !== ''")
+        for sid in sl["songs"]:
+            first = min(self.s.store.songs[sid]["sections"], key=lambda x: x["order"])
+            self.assertEqual(first["count_in"]["style"], "none")
+
+    def test_jump_to_a_section_and_nudge(self):
+        song = demo_song(self.s, "Lantern Parade")
+        secs = sorted(song["sections"], key=lambda x: x["order"])
+        target = secs[2]
+        self.s.httpd.ssp_transport.cue(song["id"])
+        tab = self.page(**self.pw.devices["iPad (gen 7) landscape"])
+        phone = self.page(**self.pw.devices["iPhone 13"])
+        for pg in (tab, phone):
+            pg.goto(f"{self.s.base}/#/live")
+            pg.wait_for_function(f"document.getElementById('live-song-title').textContent === {song['title']!r}")
+        tab.click("#live-start")
+        phone.wait_for_selector("#live-jump-btn:not(.hidden)")
+        tab.wait_for_timeout(2200)  # past the lead time
+        run = self.s.httpd.ssp_transport.snapshot()["run"]
+        # tablet: tap the row (arms it), then "Jump here"
+        row = tab.locator(f"#live-chart .chart-row[data-section-id='{target['id']}']")
+        row.click()
+        self.assertIn("jump-armed", row.get_attribute("class"))
+        row.locator(".chart-jump").click()
+        for pg in (tab, phone):
+            pg.wait_for_function(f"document.getElementById('now-label').textContent === {target['label']!r}", timeout=8000)
+        snap = self.s.httpd.ssp_transport.snapshot()
+        self.assertEqual((snap["run"], snap["rev"]), (run, 1))
+        # phone: the Jump sheet, back to the first section
+        phone.click("#live-jump-btn")
+        phone.locator("#live-jump-list .jump-to").first.click()
+        for pg in (tab, phone):
+            pg.wait_for_function(f"document.getElementById('now-label').textContent === {secs[0]['label']!r}", timeout=8000)
+        # nudge from the sheet and from the keyboard
+        before = self.s.httpd.ssp_transport.snapshot()["started_at"]
+        phone.click("#live-jump-btn")
+        phone.click("#live-nudge summary")
+        phone.click("#live-nudge [data-nudge='20']")
+        tab.keyboard.press("]")
+        for _ in range(50):
+            snap = self.s.httpd.ssp_transport.snapshot()
+            if snap["rev"] >= 4:
+                break
+            tab.wait_for_timeout(100)
+        beat = snap["timeline"]["bars"][0]["beat_ms"]
+        self.assertAlmostEqual(before - snap["started_at"], 20 + beat, delta=1)
+        tab.click("#live-stop")
+        phone.wait_for_selector("#live-jump-btn.hidden", state="attached")
+
     def test_three_devices_follow_one_run(self):
         song = demo_song(self.s, "Night Bus to Nowhere")
         band = self.s.store.get_band()

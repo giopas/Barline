@@ -191,7 +191,7 @@ class ApiTests(unittest.TestCase):
         with wave.open(io.BytesIO(body)) as w:
             seconds = w.getnframes() / w.getframerate()
         self.assertAlmostEqual(seconds, timeline.duration_ms(song) / 1000, delta=0.01)
-        self.assertEqual(self.s.call("GET", f"/api/songs/{song['id']}/click.wav?sound=cowbell")[0], 400)
+        self.assertEqual(self.s.call("GET", f"/api/songs/{song['id']}/click.wav?sound=gong")[0], 400)
 
     def test_click_track_with_device_options(self):
         """0.10: the .wav follows the device's click choices."""

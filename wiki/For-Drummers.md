@@ -17,7 +17,7 @@ Everything in **⚙ Click** belongs to your device only. The singer can have no 
 
 | Setting | What it does |
 |---|---|
-| Sound | wood, beep or tick. Beat 1 is always higher. |
+| Sound | wood, beep, tick, ride bell, cowbell, finger snap or side stick. Beat 1 is always higher. |
 | Subdivision | quarters only, 8ths, 16ths or triplets, played quieter between the beats. |
 | Ear | both, left only or right only. With a Y-splitter into in-ears, a click in one ear can sit next to the band mix in the other. |
 | Click plays | the whole song, or **count-ins only**: the band gets counted in, then it's your groove. |

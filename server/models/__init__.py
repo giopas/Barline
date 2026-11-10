@@ -216,6 +216,63 @@ def song_total_bars(song: dict) -> int:
     return sum(s["bars"] for s in song.get("sections", []))
 
 
+def _count_in_choice(raw, what: str):
+    """One side of a bulk count-in change: None (leave as is) or
+    {"bars": 0..8, "style": ...}. Zero bars or style "none" means "no
+    count-in"; a style with no bars gets one bar, bars with no style click."""
+    if raw is None:
+        return None
+    if not isinstance(raw, dict):
+        raise ValidationError(f"{what}: give bars and a style, or leave it out")
+    bars, style = raw.get("bars", 1), raw.get("style", "click")
+    if style not in VALID_COUNT_IN_STYLES:
+        raise ValidationError(f"{what}: the style is sticks, click, verbal or none")
+    if not isinstance(bars, int) or isinstance(bars, bool) or not (0 <= bars <= 8):
+        raise ValidationError(f"{what}: a count-in is 0 to 8 bars")
+    if style == "none" or bars == 0:
+        return {"bars": 0, "style": "none"}
+    return {"bars": bars, "style": style}
+
+
+def apply_count_ins(song: dict, start=None, changes=None, tempo_only: bool = False,
+                    keep_existing: bool = False) -> int:
+    """Set count-ins across a song in one go (0.16), in place.
+
+      * `start`: the first section's count-in (the start of the song);
+      * `changes`: every later section's -- or, with `tempo_only`, only
+        the sections whose tempo differs from the one before;
+      * each is None (leave alone) or {"bars", "style"} (see
+        _count_in_choice; bars 0 / style "none" removes it);
+      * `keep_existing`: only fill in sections that have no count-in yet.
+
+    Returns how many sections changed."""
+    start = _count_in_choice(start, "start of the song")
+    changes = _count_in_choice(changes, "section changes")
+    changed = 0
+    ordered = sorted(song.get("sections", []), key=lambda s: s.get("order", 0))
+    prev_bpm = None
+    for i, s in enumerate(ordered):
+        bpm = s.get("bpm") or song.get("default_bpm")
+        want = start if i == 0 else changes
+        if i > 0 and tempo_only and bpm == prev_bpm:
+            want = None
+        prev_bpm = bpm
+        if want is None:
+            continue
+        cur = s.get("count_in") or {"bars": 0, "style": "none"}
+        has = cur.get("style", "none") != "none" and (cur.get("bars") or 0) > 0
+        if keep_existing and has:
+            continue
+        if not has and want["bars"] == 0:
+            if cur != {"bars": 0, "style": "none"}:
+                s["count_in"] = {"bars": 0, "style": "none"}
+            continue
+        if cur.get("bars") != want["bars"] or cur.get("style") != want["style"]:
+            s["count_in"] = dict(want)
+            changed += 1
+    return changed
+
+
 # ---------------------------------------------------------------------------
 # Setlist
 # ---------------------------------------------------------------------------

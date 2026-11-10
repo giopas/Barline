@@ -1737,6 +1737,114 @@ document.getElementById("setlist-print-btn").addEventListener("click", () => {
   if (state.currentSetlist) openPrint("setlist", state.currentSetlist.id);
 });
 
+// -- 0.16: count-ins in one go ---------------------------------------------------
+// One dialog, opened from a song (this song, a setlist it's in, or every
+// song) or from a setlist. The server does the work (POST /api/count-ins)
+// so every device gets the changed songs like any other edit.
+
+const CI_STYLES = [["click", "click"], ["sticks", "sticks"], ["verbal", "verbal (someone counts)"]];
+
+function fillCountInSelects() {
+  for (const sel of document.querySelectorAll("#countin-modal .ci-bars")) {
+    if (sel.options.length) continue;
+    sel.appendChild(new Option("leave as it is", ""));
+    sel.appendChild(new Option("no count-in", "0"));
+    for (const n of [1, 2, 4]) sel.appendChild(new Option(`${n} bar${n === 1 ? "" : "s"}`, String(n)));
+  }
+  for (const sel of document.querySelectorAll("#countin-modal .ci-style")) {
+    if (sel.options.length) continue;
+    for (const [v, label] of CI_STYLES) sel.appendChild(new Option(label, v));
+  }
+}
+
+function syncCountInStyles() {
+  for (const side of ["start", "chg"]) {
+    const bars = document.getElementById(`ci-${side}-bars`).value;
+    document.getElementById(`ci-${side}-style`).disabled = bars === "" || bars === "0";
+  }
+  const chg = document.getElementById("ci-chg-bars").value;
+  document.getElementById("ci-tempo").disabled = chg === "";
+}
+
+function openCountIns(from) {
+  fillCountInSelects();
+  const scope = document.getElementById("ci-scope");
+  scope.innerHTML = "";
+  const add = (label, value) => scope.appendChild(new Option(label, value));
+  if (from.songId) {
+    const title = (state.currentSong && state.currentSong.title) || "this song";
+    add(`This song: ${title}`, `song:${from.songId}`);
+  }
+  const lists = from.setlistId
+    ? state.setlists.filter((sl) => sl.id === from.setlistId)
+    : state.setlists.filter((sl) => (sl.songs || []).includes(from.songId));
+  for (const sl of lists) {
+    const n = (sl.songs || []).filter((id) => state.songs.some((x) => x.id === id)).length;
+    add(`Every song in ${sl.name} (${n})`, `setlist:${sl.id}`);
+  }
+  add(`Every song (${state.songs.length})`, "all");
+  const last = prefs.get("countinBulk", { start: "1", startStyle: "click", chg: "", chgStyle: "click", tempo: false, keep: true });
+  document.getElementById("ci-start-bars").value = last.start;
+  document.getElementById("ci-start-style").value = last.startStyle;
+  document.getElementById("ci-chg-bars").value = last.chg;
+  document.getElementById("ci-chg-style").value = last.chgStyle;
+  document.getElementById("ci-tempo").checked = !!last.tempo;
+  document.getElementById("ci-keep").checked = last.keep !== false;
+  document.getElementById("ci-result").textContent = "";
+  syncCountInStyles();
+  openModal("countin-modal");
+}
+
+for (const id of ["ci-start-bars", "ci-chg-bars"]) document.getElementById(id).addEventListener("change", syncCountInStyles);
+
+async function applyCountIns() {
+  const v = (id) => document.getElementById(id).value;
+  const choice = (bars, style) => (bars === "" ? null : { bars: Number(bars), style: bars === "0" ? "none" : style });
+  const body = {
+    start: choice(v("ci-start-bars"), v("ci-start-style")),
+    changes: choice(v("ci-chg-bars"), v("ci-chg-style")),
+    tempo_only: document.getElementById("ci-tempo").checked,
+    keep_existing: document.getElementById("ci-keep").checked,
+  };
+  const out = document.getElementById("ci-result");
+  if (!body.start && !body.changes) {
+    out.textContent = "Nothing to do: choose the start, the section changes, or both.";
+    return;
+  }
+  prefs.set("countinBulk", {
+    start: v("ci-start-bars"), startStyle: v("ci-start-style"), chg: v("ci-chg-bars"), chgStyle: v("ci-chg-style"),
+    tempo: body.tempo_only, keep: body.keep_existing,
+  });
+  const scope = v("ci-scope");
+  if (scope === "all" && state.songs.length > 1 && !confirm(`Change the count-ins of all ${state.songs.length} songs?`)) return;
+  body.scope = scope === "all" ? { all: true } : scope.startsWith("song:") ? { song_id: scope.slice(5) } : { setlist_id: scope.slice(8) };
+  // a typed change to the open song saves first, so it isn't overwritten
+  for (let i = 0; i < 60 && songIsDirty(); i++) await new Promise((r) => setTimeout(r, 50));
+  try {
+    const res = await api("POST", "/count-ins", body);
+    const cur = state.currentSong && res.songs.find((x) => x.id === state.currentSong.id);
+    if (cur) {
+      state.currentSong = cur;
+      preserveFocus(renderSongView);
+      renderSummary();
+    }
+    out.textContent = res.sections
+      ? `Done: ${res.sections} count-in${res.sections === 1 ? "" : "s"} changed in ${res.songs.length} of ${res.checked} song${res.checked === 1 ? "" : "s"}.`
+      : `Nothing needed changing in ${res.checked === 1 ? "this song" : `these ${res.checked} songs`}.`;
+    refreshListsSoon();
+  } catch (err) {
+    out.textContent = "Couldn't change them: " + err.message;
+  }
+}
+
+document.getElementById("ci-apply").addEventListener("click", applyCountIns);
+document.getElementById("song-countins-btn").addEventListener("click", () => {
+  if (state.currentSong) openCountIns({ songId: state.currentSong.id });
+});
+document.getElementById("setlist-countins-btn").addEventListener("click", () => {
+  if (state.currentSetlist) openCountIns({ setlistId: state.currentSetlist.id });
+});
+
 // ---------------------------------------------------------------------
 // Band & players
 // ---------------------------------------------------------------------

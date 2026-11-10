@@ -119,7 +119,10 @@
 
         <div class="sections-head">
           <h2>Sections</h2>
-          <button id="add-section-btn" class="btn">+ Add section</button>
+          <span class="tool-group">
+            <button id="song-countins-btn" class="btn" title="Count-ins at the start and/or at every section change, in one go (this song, a setlist, or every song)">&#9201; Count-ins</button>
+            <button id="add-section-btn" class="btn">+ Add section</button>
+          </span>
         </div>
 
         <div id="sections-list" class="sections-list"></div>
@@ -132,6 +135,7 @@
         <div class="toolbar">
           <button class="btn btn-go" id="setlist-live-btn" title="Put this setlist on every live screen">&#9654; Go live with this setlist</button>
           <button class="btn" id="setlist-print-btn" title="A PDF to print: the running order, then every song's chart">&#9113; Print set</button>
+          <button class="btn" id="setlist-countins-btn" title="Count-ins at the start and/or at every section change, for every song in this setlist">&#9201; Count-ins</button>
           <button class="btn" id="setlist-zip-btn" title="One click track per song, in a .zip, with this device's click settings: practise anywhere, no server needed">&#8615; Practice tracks</button>
           <button id="delete-setlist-btn" class="btn-danger">Delete</button>
         </div>
@@ -204,9 +208,31 @@
       <div class="live-hints" id="live-hints"></div>
       <div class="live-chart" id="live-chart"></div>
 
+      <div class="live-sheet hidden" id="live-jump" role="dialog" aria-label="Jump to a section">
+        <div class="sheet-head">
+          <h3>Jump to</h3>
+          <span class="dim-note">lands on the next bar line, beat kept</span>
+          <button class="btn-icon" id="live-jump-close" title="Close">&times;</button>
+        </div>
+        <div class="jump-list" id="live-jump-list"></div>
+        <details class="nudge" id="live-nudge">
+          <summary>Nudge the click</summary>
+          <p class="dim-note">Started the click late? Move it ahead (+) until it sits with the band. Every device moves with it. Keys: <kbd>[</kbd> <kbd>]</kbd> a beat, <kbd>,</kbd> <kbd>.</kbd> 20 ms.</p>
+          <div class="nudge-row">
+            <button class="btn-small" data-nudge="-bar">&minus;1 bar</button>
+            <button class="btn-small" data-nudge="-beat">&minus;1 beat</button>
+            <button class="btn-small" data-nudge="-20">&minus;20 ms</button>
+            <button class="btn-small" data-nudge="20">+20 ms</button>
+            <button class="btn-small" data-nudge="beat">+1 beat</button>
+            <button class="btn-small" data-nudge="bar">+1 bar</button>
+          </div>
+        </details>
+      </div>
+
       <footer class="live-controls">
         <button class="big-go" id="live-start">&#9654; Start</button>
         <button class="big-stop hidden" id="live-stop">&#9632; Stop</button>
+        <button class="chip hidden" id="live-jump-btn" title="Jump to another section (from the next bar line), or nudge the click">&#10549; Jump</button>
         <span class="live-driver" id="live-driver"></span>
         <span class="click-controls">
           <button class="chip" id="click-toggle" title="Metronome click on this device">&#128264; Click: tap to enable</button>
@@ -280,6 +306,40 @@
     </div>
   </div>
 
+  <!-- 0.16: count-ins in one go -->
+  <div class="modal hidden" id="countin-modal">
+    <div class="modal-card click-card">
+      <div class="modal-head">
+        <h2>Count-ins in one go</h2>
+        <button class="btn-icon" data-close>&times;</button>
+      </div>
+      <p class="modal-note">A count-in at the start of each song, before every section change, or both. You can still change any section by hand afterwards.</p>
+      <div class="click-grid">
+        <label class="ck-wide">Songs
+          <select id="ci-scope"></select>
+        </label>
+        <label>Start of the song
+          <select id="ci-start-bars" class="ci-bars"></select>
+        </label>
+        <label>Style
+          <select id="ci-start-style" class="ci-style"></select>
+        </label>
+        <label>Every section change
+          <select id="ci-chg-bars" class="ci-bars"></select>
+        </label>
+        <label>Style
+          <select id="ci-chg-style" class="ci-style"></select>
+        </label>
+        <label class="ck-check ck-wide"><input type="checkbox" id="ci-tempo" /> Section changes: only where the tempo changes</label>
+        <label class="ck-check ck-wide"><input type="checkbox" id="ci-keep" checked /> Keep the count-ins already set (only fill in the empty ones)</label>
+      </div>
+      <div class="ck-actions">
+        <button class="btn btn-go" id="ci-apply">Apply</button>
+      </div>
+      <p class="modal-note" id="ci-result" role="status"></p>
+    </div>
+  </div>
+
   <!-- Quick add: a song in seconds, or a whole pasted list -->
   <div class="modal hidden" id="quick-modal">
     <div class="modal-card quick-card">
@@ -328,7 +388,11 @@
       <p class="modal-note">Only this device changes. Every device keeps its own click; the beat is shared.</p>
       <div class="click-grid">
         <label>Sound
-          <select id="ck-sound"><option value="wood">wood</option><option value="beep">beep</option><option value="tick">tick</option></select>
+          <select id="ck-sound">
+            <option value="wood">wood</option><option value="beep">beep</option><option value="tick">tick</option>
+            <option value="bell">ride bell</option><option value="cowbell">cowbell</option>
+            <option value="snap">finger snap</option><option value="rim">side stick</option>
+          </select>
         </label>
         <label>Subdivision
           <select id="ck-subdivision">

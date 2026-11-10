@@ -317,6 +317,48 @@ class Store:
         for setlist in touched:
             self.hub.publish("setlist", setlist, origin)
 
+    def bulk_count_ins(self, payload: dict, origin=None) -> dict:
+        """Count-ins on many sections at once (0.16): the start of the song
+        and/or every section change (or only tempo changes), for one song,
+        every song of a setlist, or every song. See models.apply_count_ins.
+        Each song that changes is saved and broadcast like any other edit."""
+        import copy
+
+        scope = payload.get("scope")
+        if not isinstance(scope, dict):
+            raise ValidationError("scope is {song_id}, {setlist_id} or {all: true}")
+        if payload.get("start") is None and payload.get("changes") is None:
+            raise ValidationError("nothing to change: choose the start, the section changes, or both")
+        changed_songs, sections = [], 0
+        with self.lock:
+            if scope.get("song_id"):
+                if scope["song_id"] not in self.songs:
+                    raise KeyError(scope["song_id"])
+                ids = [scope["song_id"]]
+            elif scope.get("setlist_id"):
+                if scope["setlist_id"] not in self.setlists:
+                    raise KeyError(scope["setlist_id"])
+                ids = [i for i in self.setlists[scope["setlist_id"]]["songs"] if i in self.songs]
+            elif scope.get("all") is True:
+                ids = list(self.songs)
+            else:
+                raise ValidationError("scope is {song_id}, {setlist_id} or {all: true}")
+            for song_id in dict.fromkeys(ids):
+                song = copy.deepcopy(self.songs[song_id])
+                n = models.apply_count_ins(song, payload.get("start"), payload.get("changes"),
+                                           bool(payload.get("tempo_only")), bool(payload.get("keep_existing")))
+                if not n:
+                    continue
+                song["updated_at"] = models.now()
+                models.validate_song(song)
+                self.songs[song_id] = song
+                self.storage.save_song(song)
+                changed_songs.append(song)
+                sections += n
+        for song in changed_songs:
+            self.hub.publish("song", song, origin)
+        return {"songs": changed_songs, "sections": sections, "checked": len(set(ids))}
+
     def _collect_audio(self, refs: set) -> None:
         """Delete clips no song points at any more (a duplicated section
         shares its clip with the original, so count across all songs)."""
@@ -562,7 +604,11 @@ class Handler(BaseHTTPRequestHandler):
                     return self._send_json(200, tr.stop(origin))
                 if action in ("next", "prev"):
                     return self._send_json(200, tr.step(1 if action == "next" else -1, origin))
-                raise ValidationError("action is cue, start, stop, next or prev")
+                if action == "jump":
+                    return self._send_json(200, tr.jump(body.get("section_id"), origin))
+                if action == "nudge":
+                    return self._send_json(200, tr.nudge(body.get("ms"), origin))
+                raise ValidationError("action is cue, start, stop, next, prev, jump or nudge")
 
             # -- band ------------------------------------------------------
             if route == ["band"] and method == "GET":
@@ -575,6 +621,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(200, store.list_songs())
             if route == ["songs"] and method == "POST":
                 return self._send_json(201, store.create_song(self._read_json_body(), origin))
+            if route == ["count-ins"] and method == "POST":
+                return self._send_json(200, store.bulk_count_ins(self._read_json_body(), origin))
             if route == ["songs", "import"] and method == "POST":
                 payload = export.payload_from_bytes(self._read_body(MAX_IMPORT_BYTES))
                 return self._send_json(201, store.import_song(payload, origin))

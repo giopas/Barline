@@ -95,6 +95,8 @@
   // but on this device's clock only. Used when the drummer practises alone,
   // or automatically when the server drops off mid-song.
 
+  const JUMP_LEAD_MS = 450; // server/transport.py JUMP_LEAD_MS
+
   const solo = {
     run: 0,
     timer: null,
@@ -127,7 +129,7 @@
       this.state = {
         state: "running", song_id: songId, setlist_id: body.setlist_id !== undefined ? body.setlist_id : this.state.setlist_id,
         start_section_id: body.start_section_id || null, started_at: Sync.serverNow() + 1500, timeline: tl,
-        driver: { client_id: Sync.clientId, name: "you" }, run: "solo-" + this.run,
+        driver: { client_id: Sync.clientId, name: "you" }, run: "solo-" + this.run, rev: 0, moved: null,
       };
       this.arm();
       this.publish();
@@ -150,6 +152,35 @@
       this.state.start_section_id = null;
       this.publish({ finished: true });
     },
+    // same rules as Transport.jump / .nudge in server/transport.py
+    jump(body) {
+      const t = this.state;
+      if (t.state !== "running") throw new Error("nothing is playing");
+      const song = S.bundleSong(t.song_id) || live.song;
+      const now = Sync.serverNow();
+      if (now < t.started_at + JUMP_LEAD_MS) {
+        return this.start({ song_id: t.song_id, setlist_id: t.setlist_id, start_section_id: body.section_id });
+      }
+      const tl = Timing.build(song, body.section_id, false, false);
+      if (!tl.bars.length) throw new Error("that section has no bars");
+      const land = t.started_at + Timing.nextBoundary(t.timeline, now - t.started_at + JUMP_LEAD_MS);
+      Object.assign(t, {
+        timeline: tl, started_at: land, start_section_id: body.section_id, rev: (t.rev || 0) + 1,
+        moved: { kind: "jump", by: "you", client_id: Sync.clientId, label: tl.bars[0].label, ms: null },
+      });
+      this.arm();
+      this.publish();
+    },
+    nudge(body) {
+      const t = this.state;
+      if (t.state !== "running") throw new Error("nothing is playing");
+      const ms = Math.max(-10000, Math.min(10000, Number(body.ms) || 0));
+      t.started_at -= ms;
+      t.rev = (t.rev || 0) + 1;
+      t.moved = { kind: "nudge", by: "you", client_id: Sync.clientId, label: null, ms };
+      this.arm();
+      this.publish();
+    },
     step(dir) {
       const ids = this.songsOf(this.state.setlist_id);
       if (!ids.length) return;
@@ -164,6 +195,8 @@
         return this.publish();
       }
       if (body.action === "next" || body.action === "prev") return this.step(body.action === "next" ? 1 : -1);
+      if (body.action === "jump") return this.jump(body);
+      if (body.action === "nudge") return this.nudge(body);
       return null;
     },
   };
@@ -187,7 +220,7 @@
       solo.stopLocked();
       solo.state = { ...solo.state, song_id: t.song_id || null, setlist_id: t.setlist_id || null, start_section_id: t.start_section_id || null };
       if (t.state === "running" && t.timeline) {
-        Object.assign(solo.state, { state: "running", started_at: t.started_at, timeline: t.timeline, driver: t.driver, run: t.run });
+        Object.assign(solo.state, { state: "running", started_at: t.started_at, timeline: t.timeline, driver: t.driver, run: t.run, rev: t.rev || 0 });
         solo.arm();
       }
       live.lostClock = false;
@@ -340,6 +373,13 @@
       const ci = s.count_in && s.count_in.style !== "none" && s.count_in.bars ? ` · count-in ${s.count_in.bars} (${s.count_in.style})` : "";
       top.appendChild(S.el("span", "chart-meta", `bar ${bar} · ${s.bars} bar${s.bars === 1 ? "" : "s"} · ${bpm} BPM${s.bpm ? " (change)" : ""}${ci}`));
       top.appendChild(S.el("span", "chart-start-tag", "start here"));
+      const jb = S.el("button", "btn-small chart-jump", "\u2935 Jump here");
+      jb.title = "Carry on from this section, from the next bar line";
+      jb.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        jumpTo(s.id);
+      });
+      top.appendChild(jb);
       row.appendChild(top);
       row.appendChild(hintList(s));
       row.addEventListener("click", () => chooseStart(s.id));
@@ -373,11 +413,111 @@
   }
 
   function chooseStart(sectionId) {
-    if (live.transport.state === "running") return;
+    if (live.transport.state === "running") return armJump(sectionId);
     const first = sections()[0];
     live.startSection = first && first.id === sectionId ? null : sectionId;
     renderChart();
     renderIdle();
+  }
+
+  // -- 0.16: jump to a section while playing, nudge the click ----------------
+  // Tapping a section of the chart while the band plays arms it (a "Jump
+  // here" button shows on that row for a few seconds) -- two taps, so a
+  // stray touch on stage never moves anybody. The Jump button opens the
+  // same choice as a sheet, which also works on phones and in big view.
+
+  function armJump(sectionId) {
+    live.armed = live.armed === sectionId ? null : sectionId;
+    clearTimeout(live.armTimer);
+    if (live.armed) live.armTimer = setTimeout(() => armJump(null), 4000);
+    if (!sectionId) live.armed = null;
+    for (const row of document.querySelectorAll("#live-chart .chart-row")) {
+      row.classList.toggle("jump-armed", row.dataset.sectionId === live.armed);
+    }
+  }
+
+  async function jumpTo(sectionId) {
+    armJump(null);
+    closeJump();
+    try {
+      await command({ action: "jump", section_id: sectionId });
+    } catch (err) {
+      S.toast("Couldn't jump: " + err.message, "error");
+    }
+  }
+
+  // the current bar's beat and bar length, for "1 beat"/"1 bar" nudges
+  function currentBar() {
+    const t = live.transport;
+    if (!t.timeline || !t.timeline.bars.length) return null;
+    const idx = Timing.barAt(t.timeline, Sync.serverNow() - t.started_at);
+    return t.timeline.bars[Math.max(0, Math.min(t.timeline.bars.length - 1, idx))];
+  }
+
+  async function nudge(kind) {
+    if (live.transport.state !== "running") return;
+    const bar = currentBar();
+    if (!bar) return;
+    const sign = String(kind).startsWith("-") ? -1 : 1;
+    const k = String(kind).replace(/^-/, "");
+    const ms = k === "beat" ? bar.beat_ms : k === "bar" ? bar.beat_ms * bar.beats : Number(k);
+    try {
+      await command({ action: "nudge", ms: sign * ms });
+    } catch (err) {
+      S.toast("Couldn't move the click: " + err.message, "error");
+    }
+  }
+
+  function renderJump() {
+    const box = $("live-jump-list");
+    box.innerHTML = "";
+    const song = live.song;
+    if (!song) return;
+    const cur = currentBar();
+    let bar = 1;
+    sections().forEach((s, i) => {
+      const b = S.el("button", "jump-to", s.label);
+      b.style.borderLeftColor = S.sectionColor(i);
+      b.appendChild(S.el("small", "", `bar ${bar} · ${s.bars} bar${s.bars === 1 ? "" : "s"}`));
+      if (cur && cur.section_id === s.id) b.classList.add("now");
+      b.addEventListener("click", () => jumpTo(s.id));
+      box.appendChild(b);
+      bar += s.bars;
+    });
+  }
+
+  function openJump() {
+    renderJump();
+    $("live-jump").classList.remove("hidden");
+  }
+
+  function closeJump() {
+    $("live-jump").classList.add("hidden");
+  }
+
+  $("live-jump-btn").addEventListener("click", () => {
+    if ($("live-jump").classList.contains("hidden")) openJump();
+    else closeJump();
+  });
+  $("live-jump-close").addEventListener("click", closeJump);
+  for (const b of document.querySelectorAll("#live-nudge [data-nudge]")) {
+    b.addEventListener("click", () => nudge(b.dataset.nudge));
+  }
+
+  // someone (maybe us) jumped or nudged: same run, new clock or timeline
+  function moved() {
+    const t = live.transport;
+    live.lastBar = -2;
+    live.lastBeat = -1;
+    live.lastSection = null;
+    renderChart();
+    if (!$("live-jump").classList.contains("hidden")) renderJump();
+    clickOn();
+    const m = t.moved;
+    if (!m) return;
+    const who = m.client_id === Sync.clientId ? "" : `${m.by || "Someone"}: `;
+    if (m.kind === "jump") S.toast(`${who}jump to ${m.label}`);
+    else if (m.kind === "nudge") S.toast(`${who}click ${m.ms > 0 ? "ahead" : "back"} ${Math.round(Math.abs(m.ms))} ms`);
   }
 
   // -- drummer ("big") view ------------------------------------------------------
@@ -766,6 +906,7 @@
     const running = live.transport.state === "running";
     $("live-start").classList.toggle("hidden", running);
     $("live-stop").classList.toggle("hidden", !running);
+    $("live-jump-btn").classList.toggle("hidden", !running);
     $("live-start").disabled = !live.song;
     const d = live.transport.driver;
     $("live-driver").textContent = running && d ? `Started by ${d.client_id === Sync.clientId ? "you" : d.name}` : "";
@@ -840,6 +981,8 @@
       ev.preventDefault();
       if (live.transport.state === "running") stop();
       else start();
+    } else if (live.transport.state === "running" && ["[", "]", ",", "."].includes(ev.key)) {
+      nudge({ "[": "-beat", "]": "beat", ",": "-20", ".": "20" }[ev.key]);
     } else if ((ev.key === "ArrowRight" || ev.key === "PageDown") && live.setlist && live.transport.state !== "running") {
       command({ action: "next" });
     } else if ((ev.key === "ArrowLeft" || ev.key === "PageUp") && live.setlist && live.transport.state !== "running") {
@@ -909,6 +1052,7 @@
     }
     const prevSong = live.transport.song_id;
     const prevRun = live.transport.run;
+    const prevRev = live.transport.rev || 0;
     const wasRunning = live.transport.state === "running";
     live.transport = t || { state: "stopped" };
     if (live.transport.song_id !== prevSong || !live.song) {
@@ -929,8 +1073,12 @@
       if (!wasRunning || live.transport.run !== prevRun) {
         renderChart();
         startRunning();
+      } else if ((live.transport.rev || 0) !== prevRev) {
+        moved();
       }
     } else {
+      closeJump();
+      armJump(null);
       stopRunning();
       if (wasRunning) renderChart();
       renderIdle();
@@ -971,7 +1119,7 @@
       const t = await S.api("GET", "/transport");
       live.lastHeard = performance.now();
       live.lostClock = false;
-      if (t.run === live.transport.run && t.state === live.transport.state) {
+      if (t.run === live.transport.run && t.state === live.transport.state && (t.rev || 0) === (live.transport.rev || 0)) {
         clickOn(); // same run still going: just bring the click back
         renderControls();
       } else {

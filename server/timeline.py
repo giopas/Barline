@@ -28,8 +28,12 @@ def _sorted_sections(song: dict) -> list:
     return sorted(song.get("sections", []), key=lambda s: s.get("order", 0))
 
 
-def build(song: dict, start_section_id: str = None, lead_in: bool = True) -> dict:
+def build(song: dict, start_section_id: str = None, lead_in: bool = True, first_count_in: bool = True) -> dict:
     """The song's bars from `start_section_id` (or the top) to the end.
+
+    `first_count_in=False` drops the first section's count-in (and the
+    lead-in): a jump mid-run (0.16) lands straight on the section's bar 1,
+    since the band is already playing.
 
     Returns {"bars": [...], "total_ms": float, "song_bars": int}. Each bar:
 
@@ -63,7 +67,9 @@ def build(song: dict, start_section_id: str = None, lead_in: bool = True) -> dic
         ci_style = count_in.get("style") or "none"
         if ci_style == "none":
             ci_bars = 0
-        if idx == start_index and ci_bars == 0 and lead_in:
+        if idx == start_index and not first_count_in:
+            ci_bars = 0
+        elif idx == start_index and ci_bars == 0 and lead_in:
             ci_bars, ci_style = LEAD_IN_BARS, "lead-in"
         for n in range(ci_bars):
             bars.append({
@@ -119,6 +125,16 @@ def bar_at(timeline: dict, elapsed_ms: float) -> int:
         else:
             hi = mid - 1
     return lo
+
+
+def next_boundary(timeline: dict, earliest_ms: float) -> float:
+    """The first bar line at or after `earliest_ms` (run time, ms): where a
+    jump to another section can land without breaking the beat (0.16).
+    Past the last bar, the end of the song; before the first, the first."""
+    for bar in timeline["bars"]:
+        if bar["start_ms"] >= earliest_ms:
+            return bar["start_ms"]
+    return max(timeline["total_ms"], earliest_ms)
 
 
 # -- click options (0.10) ------------------------------------------------------

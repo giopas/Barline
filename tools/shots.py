@@ -240,6 +240,30 @@ class Shooter:
         lap.wait_for_timeout(300)
         self.save(lap, "15-quick-add.png")
         lap.keyboard.press("Escape")
+
+        # 0.16: count-ins in one go, and the Jump sheet mid-song
+        lap.goto(f"{self.srv.base}/#/song/{hl}")
+        lap.wait_for_selector(".section-card")
+        lap.click("#song-countins-btn")
+        lap.select_option("#ci-start-bars", "1")
+        lap.select_option("#ci-start-style", "sticks")
+        lap.select_option("#ci-chg-bars", "1")
+        lap.check("#ci-tempo")
+        lap.wait_for_timeout(300)
+        self.save(lap, "19-count-ins.png")
+        lap.keyboard.press("Escape")
+
+        self.cue("Harbour Lights", "Friday at the Harbour Bar")
+        tab.goto(f"{self.srv.base}/#/live")
+        tab.wait_for_selector("#live-chart .chart-row", state="attached")
+        t = self.start("Harbour Lights", "Verse 1", "Friday at the Harbour Bar", by=tab)
+        first = t["timeline"]["bars"][0]
+        time.sleep(max(0, (t["started_at"] + first["beat_ms"] * 4 * 2.4 - time.time() * 1000) / 1000))
+        tab.click("#live-jump-btn")
+        tab.click("#live-nudge summary")
+        tab.wait_for_timeout(300)
+        self.save(tab, "20-live-jump.png")
+        self.stop()
         for pg in (lap, tab, phone, p2):
             pg.context.close()
 
