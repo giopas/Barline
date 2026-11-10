@@ -121,6 +121,11 @@
     return out;
   }
 
+  // the song's beat pattern, as models.clean_click_pattern
+  function cleanClickPattern(raw) {
+    return root.SSPTiming.clickPattern(raw);
+  }
+
   function validateSong(song) {
     if (!String(song.title || "").trim()) throw new Invalid("song title cannot be empty");
     const bpm = song.default_bpm;
@@ -400,6 +405,7 @@
           id: newId(), title: String(p.title || "Untitled Song").slice(0, 120), default_bpm: p.default_bpm ?? 120,
           tags: cleanTags(p.tags), sections: Array.isArray(p.sections) ? p.sections : [], created_at: now(), updated_at: now(),
         };
+        if (cleanClickPattern(p.click_pattern)) song.click_pattern = cleanClickPattern(p.click_pattern);
         validateSong(song);
         stamp(null, song);
         return saveSong(song);
@@ -414,6 +420,8 @@
         song.title = song.title || "Imported song";
         song.default_bpm = song.default_bpm ?? 120;
         song.tags = cleanTags(song.tags);
+        if (cleanClickPattern(song.click_pattern)) song.click_pattern = cleanClickPattern(song.click_pattern);
+        else delete song.click_pattern;
         const renamed = {};
         for (const [ref, b64] of Object.entries((payload.ssp_export !== undefined && payload.audio) || {})) {
           if (!/^[0-9a-f]{12}\.(webm|ogg|m4a|mp4|mp3|wav|aac)$/.test(ref)) continue;
@@ -440,6 +448,8 @@
           tags: cleanTags(p.tags ?? existing.tags), sections: clone(p.sections ?? existing.sections),
           created_at: existing.created_at || now(), updated_at: now(),
         };
+        const pattern = cleanClickPattern(p.click_pattern !== undefined ? p.click_pattern : existing.click_pattern);
+        if (pattern) song.click_pattern = pattern;
         validateSong(song);
         if (query.get("merge") === "1") tidyStamps(song);
         else stamp(existing, song);

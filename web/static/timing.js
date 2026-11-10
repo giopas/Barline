@@ -12,6 +12,22 @@
   const BEATS_PER_BAR = 4;
   const LEAD_IN_BARS = 1;
 
+  // A song can mix sounds and accents across the beats of a bar (0.19),
+  // mirrored from server/timeline.py: four slots {sound, accent}, sound
+  // null (this device's), "off" or a sound name; null = the default.
+  const PATTERN_SOUNDS = ["off", "beep", "wood", "tick", "bell", "cowbell", "snap", "rim"];
+
+  function clickPattern(raw) {
+    if (!Array.isArray(raw) || raw.length !== BEATS_PER_BAR) return null;
+    const out = [];
+    for (const slot of raw) {
+      if (!slot || typeof slot !== "object" || Array.isArray(slot)) return null;
+      out.push({ sound: PATTERN_SOUNDS.includes(slot.sound) ? slot.sound : null, accent: !!slot.accent });
+    }
+    const plain = out.every((s, i) => s.sound === null && s.accent === (i === 0));
+    return plain ? null : out;
+  }
+
   function sortedSections(song) {
     return [...(song.sections || [])].sort((a, b) => (a.order || 0) - (b.order || 0));
   }
@@ -66,7 +82,7 @@
         songBar += 1;
       }
     }
-    return { bars, total_ms: t, song_bars: sections.reduce((n, s) => n + (s.bars | 0), 0) };
+    return { bars, total_ms: t, song_bars: sections.reduce((n, s) => n + (s.bars | 0), 0), pattern: clickPattern(song.click_pattern) };
   }
 
   // the first bar line at or after earliestMs: where a jump can land
@@ -119,6 +135,7 @@
     const o = clickOptions(options);
     const subs = SUBDIVISIONS[o.subdivision];
     const bars = timeline.bars;
+    const pattern = timeline.pattern || null;
     const out = [];
     for (let i = 0; i < bars.length; i++) {
       const bar = bars[i];
@@ -132,7 +149,13 @@
           else if (b % 2 === 0) out.push({ t, kind: "voice", n: b / 2 + 1, bar: i });
           continue;
         }
-        out.push({ t, kind: b === 0 ? "accent" : "beat", n: b + 1, bar: i });
+        const slot = pattern && !ci && b < pattern.length ? pattern[b] : null;
+        if (!slot) out.push({ t, kind: b === 0 ? "accent" : "beat", n: b + 1, bar: i });
+        else if (slot.sound !== "off") {
+          const ev = { t, kind: slot.accent ? "accent" : "beat", n: b + 1, bar: i };
+          if (slot.sound) ev.sound = slot.sound;
+          out.push(ev);
+        }
         if (!ci) for (const f of subs) out.push({ t: t + f * bar.beat_ms, kind: "sub", n: b + 1, bar: i });
       }
     }
@@ -148,7 +171,7 @@
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   }
 
-  const api = { BEATS_PER_BAR, SUBDIVISIONS, build, nextBoundary, clickOptions, clickEvents, barAt, sectionStartBar, songTotalBars, durationMs, fmtDuration, sortedSections };
+  const api = { BEATS_PER_BAR, SUBDIVISIONS, PATTERN_SOUNDS, clickPattern, build, nextBoundary, clickOptions, clickEvents, barAt, sectionStartBar, songTotalBars, durationMs, fmtDuration, sortedSections };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.SSPTiming = api;
 })(typeof window !== "undefined" ? window : globalThis);

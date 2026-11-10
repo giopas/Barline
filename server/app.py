@@ -261,6 +261,11 @@ class Store:
     def _add_song(self, song: dict, origin=None) -> dict:
         with self.lock:
             song["tags"] = models.clean_tags(song.get("tags"))
+            pattern = models.clean_click_pattern(song.get("click_pattern"))
+            if pattern:
+                song["click_pattern"] = pattern
+            else:
+                song.pop("click_pattern", None)
             models.validate_song(song)
             self.songs[song["id"]] = song
             self.storage.save_song(song)
@@ -275,6 +280,8 @@ class Store:
         if isinstance(payload.get("sections"), list):
             song["sections"] = payload["sections"]
         song["tags"] = payload.get("tags", [])
+        if payload.get("click_pattern") is not None:
+            song["click_pattern"] = payload["click_pattern"]
         with self.lock:
             models.stamp_changes(None, song, self.author_of(origin))
         return self._add_song(song, origin)
@@ -302,6 +309,9 @@ class Store:
                 "created_at": existing.get("created_at", models.now()),
                 "updated_at": models.now(),
             }
+            pattern = models.clean_click_pattern(payload.get("click_pattern", existing.get("click_pattern")))
+            if pattern:
+                song["click_pattern"] = pattern
             models.validate_song(song)
             if merge:
                 models.tidy_stamps(song)

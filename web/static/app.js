@@ -607,6 +607,7 @@ function renderSongView() {
   if (document.activeElement !== els.songTitle) els.songTitle.value = song.title;
   if (document.activeElement !== els.songBpm) els.songBpm.value = song.default_bpm;
   renderSongTags();
+  renderClickPattern();
   renderSongShape();
   renderSections();
 }
@@ -982,14 +983,158 @@ document.getElementById("ck-reset").addEventListener("click", () => {
 
 // A count-in and two bars, right here: the check for "do I hear it, in
 // the right ear, through my splitter?" -- no server run needed.
+// While it plays the button turns into Stop, the four dots follow the beat
+// and a line says where it is; at the end it says what to check if nothing
+// was heard. Not while the song itself is playing: its click would be
+// replaced by the test (and the test lost under it).
+let ckTimers = [];
+
+function resetClickTest() {
+  ckTimers.forEach(clearTimeout);
+  ckTimers = [];
+  const btn = document.getElementById("ck-test");
+  if (!btn) return;
+  btn.textContent = "\u25B6 Test the click";
+  btn.classList.remove("playing");
+  for (const d of document.querySelectorAll("#ck-test-dots span")) d.className = "";
+}
+
+function ckStatus(text, bad) {
+  const p = document.getElementById("ck-test-status");
+  p.textContent = text;
+  p.classList.toggle("bad", !!bad);
+}
+
 document.getElementById("ck-test").addEventListener("click", () => {
+  if (state.previewing) {
+    stopPreview();
+    ckStatus("Stopped.");
+    return;
+  }
+  if (window.SSPLive && window.SSPLive.running()) {
+    ckStatus("The song is playing, so what you hear is its click. Stop the song, then test.", true);
+    return;
+  }
   const song = state.currentSong || (window.SSPLive && window.SSPLive.song());
   const bpm = song ? song.default_bpm : 120;
   const tl = Timing.build({ default_bpm: bpm, sections: [{ id: "test", label: "Test", order: 0, bars: 2, count_in: { bars: 1, style: "click" } }] });
   startPreview(tl);
+  if (!state.previewing) return; // no sound in this browser: startPreview said so
+  const btn = document.getElementById("ck-test");
+  btn.textContent = "\u25A0 Stop test";
+  btn.classList.add("playing");
+  ckStatus("Playing\u2026");
+  const dots = document.querySelectorAll("#ck-test-dots span");
+  for (const ev of Timing.clickEvents(tl, metronome.opts)) {
+    if (ev.kind === "sub") continue;
+    const bar = tl.bars[ev.bar];
+    ckTimers.push(setTimeout(() => {
+      dots.forEach((d, i) => (d.className = i === ev.n - 1 ? (bar.count_in ? "on count-in" : "on") : ""));
+      ckStatus(bar.count_in ? `Count-in \u00B7 ${ev.n}` : `Bar ${bar.bar_in_section} of ${bar.section_bars} \u00B7 beat ${ev.n}`);
+    }, 250 + ev.t));
+  }
+  ckTimers.push(setTimeout(() => {
+    const d = metronome.diagnostics();
+    if (d.engine !== "running") ckStatus(`The sound engine is ${d.engine}: tap Test again. Silent switch or the tab muted?`, true);
+  }, 600));
+  ckTimers.push(setTimeout(() => {
+    dots.forEach((d) => (d.className = ""));
+    ckStatus("Done. Heard nothing? Check the sound engine below, the volume, the ear, and that this tab isn't muted.");
+  }, tl.total_ms + 350));
   renderDiagnostics();
   setTimeout(renderDiagnostics, 300);
   setTimeout(renderDiagnostics, tl.total_ms + 700);
+});
+
+// -- the song's click pattern (per song, under Advanced) --------------------
+// Four slots, one per beat: a sound of its own (or this device's, or
+// silence) and whether it is an accent. Stored on the song as
+// click_pattern; no field at all means accent on beat 1.
+
+const PATTERN_CHOICES = [
+  ["", "device sound"], ["wood", "wood"], ["beep", "beep"], ["tick", "tick"], ["bell", "ride bell"],
+  ["cowbell", "cowbell"], ["snap", "finger snap"], ["rim", "side stick"], ["off", "silent"],
+];
+const slot = (sound, accent) => ({ sound, accent });
+const PATTERN_PRESETS = {
+  default: [slot(null, true), slot(null, false), slot(null, false), slot(null, false)],
+  backbeat: [slot(null, false), slot(null, true), slot(null, false), slot(null, true)],
+  woodbeep: [slot("wood", true), slot("beep", false), slot("beep", false), slot("beep", false)],
+  none: [slot(null, false), slot(null, false), slot(null, false), slot(null, false)],
+};
+
+function songPattern(song) {
+  const p = Timing.clickPattern(song.click_pattern);
+  return (p || PATTERN_PRESETS.default).map((s) => ({ ...s }));
+}
+
+function commitPattern(slots, redraw) {
+  const song = state.currentSong;
+  if (!song) return;
+  const clean = Timing.clickPattern(slots);
+  if (clean) song.click_pattern = clean;
+  else delete song.click_pattern;
+  if (redraw) renderClickPattern();
+  else renderPatternSummary();
+  edited();
+}
+
+function renderPatternSummary() {
+  const song = state.currentSong;
+  const custom = !!(song && Timing.clickPattern(song.click_pattern));
+  document.getElementById("adv-summary").textContent = custom ? "\u00B7 click pattern: custom" : "";
+}
+
+function renderClickPattern() {
+  const song = state.currentSong;
+  const grid = document.getElementById("pattern-grid");
+  if (!song || !grid) return;
+  renderPatternSummary();
+  grid.innerHTML = "";
+  const slots = songPattern(song);
+  const read = () => slots.map((_, i) => ({
+    sound: grid.querySelector(`[data-pat-sound="${i}"]`).value || null,
+    accent: grid.querySelector(`[data-pat-accent="${i}"]`).checked,
+  }));
+  slots.forEach((sl, i) => {
+    const col = el("div", "pattern-col");
+    col.appendChild(el("div", "pattern-beat", String(i + 1)));
+    const sel = el("select");
+    sel.dataset.patSound = String(i);
+    sel.title = `Sound on beat ${i + 1}`;
+    for (const [v, t] of PATTERN_CHOICES) sel.appendChild(new Option(t, v));
+    sel.value = sl.sound || "";
+    const lab = el("label", "pattern-accent");
+    const cb = el("input");
+    cb.type = "checkbox";
+    cb.dataset.patAccent = String(i);
+    cb.checked = !!sl.accent;
+    lab.append(cb, " accent");
+    sel.addEventListener("change", () => commitPattern(read(), false));
+    cb.addEventListener("change", () => commitPattern(read(), false));
+    col.append(sel, lab);
+    grid.appendChild(col);
+  });
+}
+
+for (const b of document.querySelectorAll("#song-advanced [data-pattern]")) {
+  b.addEventListener("click", () => commitPattern(PATTERN_PRESETS[b.dataset.pattern].map((s) => ({ ...s })), true));
+}
+
+document.getElementById("pattern-listen").addEventListener("click", (ev) => {
+  if (state.previewing) return stopPreview();
+  const song = state.currentSong;
+  if (!song) return;
+  if (metronome.opts.mode === "countin") return toast("This device plays count-ins only: set \u201CClick plays\u201D to the whole song to hear the pattern.", "warn");
+  const tl = Timing.build(song);
+  const real = tl.bars.filter((b) => !b.count_in).slice(0, 2);
+  if (!real.length) return toast("Add a section with some bars first.", "warn");
+  const shift = real[0].start_ms;
+  const bars = real.map((b) => ({ ...b, start_ms: b.start_ms - shift }));
+  const last = bars[bars.length - 1];
+  const btn = ev.currentTarget;
+  startPreview({ bars, total_ms: last.start_ms + last.beat_ms * last.beats, pattern: tl.pattern }, btn);
+  if (state.previewing) btn.textContent = "\u25A0 Stop";
 });
 
 
@@ -1396,6 +1541,15 @@ function stopPreview() {
   clearTimeout(state.previewTimer);
   document.getElementById("song-preview-btn").textContent = "♫ Preview click";
   for (const b of document.querySelectorAll(".preview-section.playing")) b.classList.remove("playing");
+  resetClickTest();
+  for (const b of document.querySelectorAll(".pattern-listen.playing")) {
+    b.classList.remove("playing");
+    b.textContent = "\u25B6 Hear 2 bars";
+  }
+  for (const b of document.querySelectorAll(".countin-listen.playing")) {
+    b.classList.remove("playing");
+    b.textContent = "\u25B6 Listen";
+  }
 }
 
 function startPreview(timeline, button) {
@@ -1478,6 +1632,17 @@ function renderSongShape() {
   const sorted = Timing.sortedSections(song);
   sorted.forEach((section, index) => {
     const color = sectionColor(index);
+    if (countInOn(section)) {
+      const ci = el("div", "song-shape-block shape-countin", section.count_in.bars >= 3 ? "count-in" : "");
+      ci.style.flexGrow = String(section.count_in.bars);
+      ci.style.flexBasis = "0";
+      ci.title = `Count-in: ${section.count_in.bars} bar${section.count_in.bars === 1 ? "" : "s"} (${section.count_in.style}) before ${section.label}`;
+      ci.addEventListener("click", () => {
+        const row = els.sectionsList.querySelector(`.countin-row[data-countin-for="${section.id}"]`);
+        if (row) row.scrollIntoView({ behavior: "smooth", block: "center" });
+      });
+      els.songShape.appendChild(ci);
+    }
     const block = el("div", "song-shape-block");
     block.style.flexGrow = String(section.bars);
     block.style.flexBasis = "0";
@@ -1499,6 +1664,118 @@ function renderSongShape() {
   renderSummary();
 }
 
+// -- count-in: its own block above the section it counts into ------------------
+// Bars (0-8) and style live in section.count_in, as before; this is just a
+// clearer place to set them, with a way to hear it at the section's tempo.
+
+function countInOn(section) {
+  const ci = section.count_in;
+  return !!ci && ci.style !== "none" && ci.bars > 0;
+}
+
+function buildCountInRow(song, section, index) {
+  if (!section.count_in) section.count_in = { bars: 0, style: "none" };
+  const ci = section.count_in;
+  const row = el("div", "countin-row");
+  row.dataset.countinFor = section.id;
+
+  const add = el("button", "btn-small countin-add", index === 0 ? "+ Count-in at the start" : "+ Count-in");
+  add.title = "Count the band in before this section";
+  add.addEventListener("click", () => apply(2, true));
+
+  const badge = el("span", "countin-badge", "Count-in");
+  const squares = el("div", "countin-squares");
+
+  const controls = el("div", "countin-controls");
+  const barsLabel = el("label", "countin-field", "Bars ");
+  const barsInput = el("input", "count-in-bars");
+  barsInput.type = "number";
+  barsInput.min = "0";
+  barsInput.max = "8";
+  barsInput.dataset.focusKey = `${section.id}:cibars`;
+  barsLabel.appendChild(barsInput);
+  const chips = el("span", "countin-chips");
+  const chipBtns = [1, 2, 4].map((n) => {
+    const b = el("button", "countin-chip", String(n));
+    b.title = `${n} bar${n === 1 ? "" : "s"} of count-in`;
+    b.addEventListener("click", () => apply(n, true));
+    chips.appendChild(b);
+    return b;
+  });
+  const styleLabel = el("label", "countin-field", "Style ");
+  const styleSel = el("select", "count-in-style");
+  styleSel.dataset.focusKey = `${section.id}:cistyle`;
+  for (const [v, t] of [["click", "click"], ["sticks", "sticks"], ["verbal", "verbal"]]) styleSel.appendChild(new Option(t, v));
+  styleLabel.appendChild(styleSel);
+  const bpmNote = el("span", "countin-bpm");
+  const listen = el("button", "btn-small countin-listen", "\u25B6 Listen");
+  listen.title = "Hear the count-in and the first bar of this section at its tempo, with this device's click settings";
+  const clear = el("button", "btn-icon countin-remove", "\u00D7");
+  clear.title = "Remove this count-in";
+  controls.append(barsLabel, chips, styleLabel, bpmNote, listen, clear);
+
+  row.append(add, badge, squares, controls);
+
+  function refresh() {
+    const on = countInOn(section);
+    row.classList.toggle("on", on);
+    squares.innerHTML = "";
+    if (on) {
+      for (let i = 0; i < ci.bars; i++) {
+        const sq = el("div", "bar-square count-in");
+        sq.title = `count-in bar ${i + 1}`;
+        for (let b = 0; b < 4; b++) sq.appendChild(el("div", "beat-dot"));
+        squares.appendChild(sq);
+      }
+    }
+    badge.textContent = on ? `Count-in \u00B7 ${ci.bars} bar${ci.bars === 1 ? "" : "s"} into ${section.label || "this section"}` : "Count-in";
+    if (document.activeElement !== barsInput) barsInput.value = on ? ci.bars : 0;
+    styleSel.value = on ? ci.style : "click";
+    chipBtns.forEach((b, i) => b.classList.toggle("active", on && ci.bars === [1, 2, 4][i]));
+    bpmNote.textContent = `at ${effectiveBpm(song, section)} BPM`;
+    listen.disabled = !on;
+  }
+
+  function apply(n, rewrite) {
+    n = Math.max(0, Math.min(8, n | 0));
+    ci.bars = n;
+    if (n === 0) ci.style = "none";
+    else if (ci.style === "none") ci.style = "click";
+    if (rewrite) barsInput.value = n;
+    refresh();
+    renderSongShape();
+    edited();
+  }
+
+  barsInput.addEventListener("input", () => {
+    const v = parseInt(barsInput.value, 10);
+    if (!Number.isNaN(v)) apply(v, false);
+  });
+  barsInput.addEventListener("change", () => refresh());
+  styleSel.addEventListener("change", () => {
+    ci.style = styleSel.value;
+    if (!ci.bars) ci.bars = 1;
+    refresh();
+    renderSongShape();
+    edited();
+  });
+  clear.addEventListener("click", () => apply(0, true));
+  listen.addEventListener("click", () => {
+    if (state.previewing) return stopPreview();
+    if (!countInOn(section)) return;
+    const full = Timing.build(song, section.id);
+    const keep = full.bars.filter((b) => b.section_id === section.id);
+    const nCi = keep.filter((b) => b.count_in).length;
+    const bars = keep.slice(0, nCi + 1); // the count-in, then where it lands
+    const last = bars[bars.length - 1];
+    startPreview({ bars, total_ms: last.start_ms + last.beat_ms * last.beats }, listen);
+    listen.textContent = "\u25A0 Stop";
+  });
+
+  refresh();
+  return { el: row, refresh };
+}
+
 function renderSections() {
   const song = state.currentSong;
   if (!song) return;
@@ -1508,6 +1785,7 @@ function renderSections() {
 
   sorted.forEach((section, index) => {
     const color = sectionColor(index);
+    const ciRow = buildCountInRow(song, section, index);
     const node = template.content.cloneNode(true);
     const card = node.querySelector(".section-card");
     card.dataset.sectionId = section.id;
@@ -1519,6 +1797,7 @@ function renderSections() {
     labelInput.dataset.focusKey = `${section.id}:label`;
     labelInput.addEventListener("input", () => {
       section.label = labelInput.value;
+      ciRow.refresh();
       renderSongShape();
       edited();
     });
@@ -1550,32 +1829,8 @@ function renderSections() {
       if (bpmInput.value === "") section.bpm = null;
       else if (v >= 20 && v <= 400) section.bpm = v;
       else return;
+      ciRow.refresh();
       renderSongShape();
-      edited();
-    });
-
-    const countBars = node.querySelector(".count-in-bars");
-    countBars.value = section.count_in.bars;
-    countBars.dataset.focusKey = `${section.id}:cibars`;
-    countBars.addEventListener("input", () => {
-      const v = parseInt(countBars.value, 10);
-      section.count_in.bars = Number.isNaN(v) ? 0 : Math.max(0, Math.min(8, v));
-      if (section.count_in.bars > 0 && section.count_in.style === "none") {
-        section.count_in.style = "click";
-        countStyle.value = "click";
-      }
-      edited();
-    });
-
-    const countStyle = node.querySelector(".count-in-style");
-    countStyle.value = section.count_in.style;
-    countStyle.dataset.focusKey = `${section.id}:cistyle`;
-    countStyle.addEventListener("change", () => {
-      section.count_in.style = countStyle.value;
-      if (countStyle.value !== "none" && !section.count_in.bars) {
-        section.count_in.bars = 1;
-        countBars.value = 1;
-      }
       edited();
     });
 
@@ -1631,6 +1886,7 @@ function renderSections() {
       if (input) input.focus();
     });
 
+    els.sectionsList.appendChild(ciRow.el);
     els.sectionsList.appendChild(node);
   });
 }
@@ -1641,15 +1897,7 @@ function renderSections() {
 function renderBarGrid(container, section, song, color) {
   container.innerHTML = "";
   const startBar = Timing.sectionStartBar(song, section.id);
-  if (section.count_in.style !== "none" && section.count_in.bars > 0) {
-    for (let i = 0; i < section.count_in.bars; i++) {
-      const sq = el("div", "bar-square count-in");
-      sq.title = `count-in (${section.count_in.style})`;
-      for (let b = 0; b < 4; b++) sq.appendChild(el("div", "beat-dot"));
-      container.appendChild(sq);
-    }
-    container.appendChild(el("span", "count-in-gap"));
-  }
+  // (the count-in has its own block above the card, see buildCountInRow)
   for (let i = 0; i < section.bars; i++) {
     const square = el("div", "bar-square");
     square.style.background = hexToRgba(color, 0.22);

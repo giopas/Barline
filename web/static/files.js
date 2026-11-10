@@ -177,6 +177,8 @@
     const other = structureFrom === "incoming" ? local : incoming;
     const song = clone(local);
     song.default_bpm = base.default_bpm;
+    if (base.click_pattern) song.click_pattern = clone(base.click_pattern);
+    else delete song.click_pattern;
     const tagSeen = new Set();
     song.tags = [];
     for (const t of [...(local.tags || []), ...(incoming.tags || [])]) {

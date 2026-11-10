@@ -369,7 +369,8 @@
           const ev = job.events[job.next];
           const at = job.startPerfMs + ev.t;
           if (at >= performance.now() - 30) {
-            const sound = job.soundFor ? job.soundFor(job.bars[ev.bar]) : this.opts.sound;
+            // a beat the song's pattern gave a sound of its own keeps it
+            const sound = ev.sound || (job.soundFor ? job.soundFor(job.bars[ev.bar]) : this.opts.sound);
             if (sound) this.play(sound, ev.kind, at, ev.n);
           }
           job.next++;

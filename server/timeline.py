@@ -23,6 +23,27 @@ from __future__ import annotations
 BEATS_PER_BAR = 4
 LEAD_IN_BARS = 1
 
+# A song can mix sounds and accents across the beats of a bar (0.19): one
+# slot per beat, {"sound": None | "off" | a sound name, "accent": bool}.
+# None = this device's sound. The default (accent on beat 1, nothing else)
+# is stored as no pattern at all.
+PATTERN_SOUNDS = ("off", "beep", "wood", "tick", "bell", "cowbell", "snap", "rim")
+DEFAULT_PATTERN = [{"sound": None, "accent": True}] + [{"sound": None, "accent": False}] * (BEATS_PER_BAR - 1)
+
+
+def click_pattern(raw):
+    """A song's beat pattern, cleaned: a list of four slots, or None for
+    the default (and for anything that isn't a list of four slots)."""
+    if not isinstance(raw, (list, tuple)) or len(raw) != BEATS_PER_BAR:
+        return None
+    out = []
+    for slot in raw:
+        if not isinstance(slot, dict):
+            return None
+        sound = slot.get("sound")
+        out.append({"sound": sound if sound in PATTERN_SOUNDS else None, "accent": bool(slot.get("accent"))})
+    return None if out == DEFAULT_PATTERN else out
+
 
 def _sorted_sections(song: dict) -> list:
     return sorted(song.get("sections", []), key=lambda s: s.get("order", 0))
@@ -104,7 +125,8 @@ def build(song: dict, start_section_id: str = None, lead_in: bool = True, first_
             })
             t += bar_ms
             song_bar += 1
-    return {"bars": bars, "total_ms": t, "song_bars": sum(int(s.get("bars", 0)) for s in sections)}
+    return {"bars": bars, "total_ms": t, "song_bars": sum(int(s.get("bars", 0)) for s in sections),
+            "pattern": click_pattern(song.get("click_pattern"))}
 
 
 def bar_at(timeline: dict, elapsed_ms: float) -> int:
@@ -161,8 +183,10 @@ def click_options(raw: dict = None) -> dict:
 def click_events(timeline: dict, options: dict = None) -> list:
     """Every sound of the click, in order: {t (ms), kind, n, bar (index)}.
 
-    kind is "accent" (beat 1 of a bar), "beat", "sub" (a subdivision
-    between beats) or "voice" (a spoken count, n = 1..4).
+    kind is "accent" (beat 1 of a bar, or wherever the song's pattern puts
+    its accents), "beat", "sub" (a subdivision between beats) or "voice"
+    (a spoken count, n = 1..4). An event may carry "sound": the pattern gave
+    that beat a sound of its own (a silent beat has no event at all).
 
       * count-in bars carry no subdivisions;
       * with the voice on, count-in bars are spoken instead of clicked:
@@ -173,6 +197,7 @@ def click_events(timeline: dict, options: dict = None) -> list:
     o = click_options(options)
     subs = SUBDIVISIONS[o["subdivision"]]
     bars = timeline["bars"]
+    pattern = timeline.get("pattern")
     out = []
     for i, bar in enumerate(bars):
         ci = bool(bar["count_in"])
@@ -188,7 +213,14 @@ def click_events(timeline: dict, options: dict = None) -> list:
                 elif b % 2 == 0:
                     out.append({"t": t, "kind": "voice", "n": b // 2 + 1, "bar": i})
                 continue
-            out.append({"t": t, "kind": "accent" if b == 0 else "beat", "n": b + 1, "bar": i})
+            slot = pattern[b] if pattern and not ci and b < len(pattern) else None
+            if slot is None:
+                out.append({"t": t, "kind": "accent" if b == 0 else "beat", "n": b + 1, "bar": i})
+            elif slot["sound"] != "off":
+                ev = {"t": t, "kind": "accent" if slot["accent"] else "beat", "n": b + 1, "bar": i}
+                if slot["sound"]:
+                    ev["sound"] = slot["sound"]
+                out.append(ev)
             if not ci:
                 for f in subs:
                     out.append({"t": t + f * bar["beat_ms"], "kind": "sub", "n": b + 1, "bar": i})

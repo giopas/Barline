@@ -110,6 +110,21 @@
             <input id="song-tag-input" type="text" list="tag-suggestions" maxlength="30" placeholder="Add a tag…" data-focus-key="song:tag" title="Own song, a cover's artist, acoustic, encore… Enter to add" />
             <datalist id="tag-suggestions"></datalist>
           </div>
+          <details class="song-advanced" id="song-advanced">
+            <summary>Advanced <span class="adv-sum" id="adv-summary"></span></summary>
+            <div class="pattern-box">
+              <h3>Click pattern</h3>
+              <p class="modal-note">Which sound plays on each beat of the bar, and where the accents fall: a wood block on 1 and beeps after, accents on 2 and 4, a silent beat. Every device still plays its own click for the beats you leave on &ldquo;device sound&rdquo;. Count-ins are not affected.</p>
+              <div class="pattern-grid" id="pattern-grid"></div>
+              <div class="pattern-actions">
+                <button class="btn-small" data-pattern="default" title="Accent on beat 1, this device's sound on every beat">Accent on 1 (default)</button>
+                <button class="btn-small" data-pattern="backbeat" title="Accents on beats 2 and 4">Accents on 2 and 4</button>
+                <button class="btn-small" data-pattern="woodbeep" title="A wood block on beat 1, beeps on the rest">Wood on 1, beeps after</button>
+                <button class="btn-small" data-pattern="none" title="No accent at all">No accent</button>
+                <button class="btn-small pattern-listen" id="pattern-listen" title="Hear two bars of the song with this pattern">&#9654; Hear 2 bars</button>
+              </div>
+            </div>
+          </details>
         </header>
         <div class="toolbar">
           <button class="btn btn-go" id="song-live-btn" title="Put this song on every live screen">&#9654; Go live</button>
@@ -518,6 +533,8 @@
           <button class="btn btn-go" id="ck-test">&#9654; Test the click</button>
           <button class="btn" id="ck-reset">Reset to defaults</button>
         </div>
+        <div class="ck-test-dots" id="ck-test-dots"><span></span><span></span><span></span><span></span></div>
+        <p class="ck-status" id="ck-test-status" aria-live="polite"></p>
         <dl class="ck-diag" id="ck-diag"></dl>
       </div>
     </div>
@@ -541,15 +558,6 @@
       <div class="section-card-fields">
         <label>Bars <input class="section-bars" type="number" min="1" max="999" /></label>
         <label>BPM override <input class="section-bpm" type="number" min="20" max="400" placeholder="(song default)" /></label>
-        <label>Count-in bars <input class="count-in-bars" type="number" min="0" max="8" /></label>
-        <label>Count-in style
-          <select class="count-in-style">
-            <option value="none">none</option>
-            <option value="sticks">sticks</option>
-            <option value="click">click</option>
-            <option value="verbal">verbal</option>
-          </select>
-        </label>
       </div>
       <div class="section-bar-grid"></div>
       <div class="section-hints">

@@ -238,6 +238,7 @@ def song_wav(song: dict, sound: str = DEFAULT_SOUND, count_in: bool = True, opti
     mix = [0] * total
     high, low = sounds(sound)
     stick_high, stick_low = sounds("wood" if sound == "tick" else "tick")
+    own = {}  # sounds a song's beat pattern asks for by name
     for ev in timeline.click_events(tl, options):
         bar = tl["bars"][ev["bar"]]
         sticks = bar["count_in"] and bar["count_in_style"] == "sticks"
@@ -246,6 +247,10 @@ def song_wav(song: dict, sound: str = DEFAULT_SOUND, count_in: bool = True, opti
         else:
             accent = ev["kind"] == "accent" or (ev["kind"] == "voice" and ev["n"] == 1)
             ring = (stick_high if accent else stick_low) if sticks else (high if accent else low)
+            if ev.get("sound") and ev["kind"] != "sub":
+                if ev["sound"] not in own:
+                    own[ev["sound"]] = sounds(ev["sound"])
+                ring = own[ev["sound"]][0 if accent else 1]
             gain = levels["sub"] if ev["kind"] == "sub" else levels["accent"] if accent else levels["beat"]
         if gain <= 0:
             continue

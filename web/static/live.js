@@ -289,11 +289,42 @@
     }
   }
 
+  // bars of count-in a section has (0 = none)
+  function ciBarsOf(s) {
+    const ci = s.count_in;
+    return ci && ci.style !== "none" ? ci.bars | 0 : 0;
+  }
+
+  // Where each section sits on the strip, count-ins included, so the
+  // playhead lines up with the blocks.
+  function shapeLayout() {
+    let pos = 0;
+    const start = {};
+    const ci = {};
+    for (const s of sections()) {
+      ci[s.id] = ciBarsOf(s);
+      start[s.id] = pos;
+      pos += ci[s.id] + (s.bars | 0);
+    }
+    return { total: Math.max(1, pos), start, ci };
+  }
+
   function renderShape() {
     const box = $("live-shape");
     box.innerHTML = "";
     const secs = sections();
+    live.layout = shapeLayout();
     secs.forEach((s, i) => {
+      const n = ciBarsOf(s);
+      if (n) {
+        const cb = S.el("div", "song-shape-block shape-countin", n >= 3 ? "count-in" : "");
+        cb.style.flexGrow = String(n);
+        cb.style.flexBasis = "0";
+        cb.dataset.countinFor = s.id;
+        cb.title = `Count-in: ${n} bar${n === 1 ? "" : "s"} before ${s.label}`;
+        cb.addEventListener("click", () => chooseStart(s.id));
+        box.appendChild(cb);
+      }
       const b = S.el("div", "song-shape-block", s.bars >= 2 ? s.label : "");
       const c = S.sectionColor(i);
       b.style.flexGrow = String(s.bars);
@@ -372,6 +403,27 @@
     box.appendChild(head);
     let bar = 1;
     sections().forEach((s, i) => {
+      const nCi = ciBarsOf(s);
+      if (nCi || i === 0) {
+        // the count-in is its own row, so you see it coming
+        const n = nCi || 1;
+        const cr = S.el("div", "chart-row chart-countin");
+        cr.dataset.countinFor = s.id;
+        const ctop = S.el("div", "chart-row-top");
+        ctop.appendChild(S.el("span", "chart-label", "Count-in"));
+        ctop.appendChild(S.el("span", "chart-meta",
+          `${n} bar${n === 1 ? "" : "s"}${nCi ? " \u00B7 " + s.count_in.style : " \u00B7 lead-in"} \u00B7 ${s.bpm || song.default_bpm} BPM \u00B7 into ${s.label}`));
+        cr.appendChild(ctop);
+        const sq = S.el("div", "chart-countin-squares");
+        for (let k = 0; k < n; k++) {
+          const q = S.el("div", "bar-square count-in");
+          for (let b = 0; b < 4; b++) q.appendChild(S.el("div", "beat-dot"));
+          sq.appendChild(q);
+        }
+        cr.appendChild(sq);
+        cr.addEventListener("click", () => chooseStart(s.id));
+        box.appendChild(cr);
+      }
       const row = S.el("div", "chart-row");
       row.dataset.sectionId = s.id;
       row.style.borderLeftColor = S.sectionColor(i);
@@ -379,8 +431,7 @@
       const top = S.el("div", "chart-row-top");
       top.appendChild(S.el("span", "chart-label", s.label));
       const bpm = s.bpm || song.default_bpm;
-      const ci = s.count_in && s.count_in.style !== "none" && s.count_in.bars ? ` · count-in ${s.count_in.bars} (${s.count_in.style})` : "";
-      top.appendChild(S.el("span", "chart-meta", `bar ${bar} · ${s.bars} bar${s.bars === 1 ? "" : "s"} · ${bpm} BPM${s.bpm ? " (change)" : ""}${ci}`));
+      top.appendChild(S.el("span", "chart-meta", `bar ${bar} · ${s.bars} bar${s.bars === 1 ? "" : "s"} · ${bpm} BPM${s.bpm ? " (change)" : ""}`));
       top.appendChild(S.el("span", "chart-start-tag", "start here"));
       const jb = S.el("button", "btn-small chart-jump", "\u2935 Jump here");
       jb.title = "Carry on from this section, from the next bar line";
@@ -668,7 +719,7 @@
     input.focus();
   }
 
-  function renderNowBars(section, index, barInSection, countIn) {
+  function renderNowBars(section, index, barInSection, countIn, ciBars) {
     let box = $("now-bars");
     if (!box) {
       box = S.el("div", "now-bars");
@@ -680,10 +731,17 @@
       return;
     }
     const color = S.sectionColor(index);
-    const key = section.id + ":" + section.bars;
+    ciBars = ciBars | 0;
+    const key = section.id + ":" + section.bars + ":" + ciBars;
     if (box.dataset.key !== key) {
       box.dataset.key = key;
       box.innerHTML = "";
+      for (let i = 0; i < ciBars; i++) {
+        const sq = S.el("div", "bar-square count-in");
+        for (let b = 0; b < 4; b++) sq.appendChild(S.el("div", "beat-dot"));
+        box.appendChild(sq);
+      }
+      if (ciBars) box.appendChild(S.el("span", "count-in-gap"));
       for (let i = 0; i < section.bars; i++) {
         const sq = S.el("div", "bar-square");
         sq.style.background = S.hexToRgba(color, 0.25);
@@ -696,7 +754,14 @@
         box.appendChild(sq);
       }
     }
-    const squares = box.children;
+    const ciSquares = box.querySelectorAll(".bar-square.count-in");
+    for (let i = 0; i < ciSquares.length; i++) {
+      const n = i + 1;
+      ciSquares[i].classList.toggle("past", !!countIn ? n < barInSection : true);
+      ciSquares[i].classList.toggle("current", !!countIn && n === barInSection);
+      ciSquares[i].classList.toggle("upcoming", !!countIn && n > barInSection);
+    }
+    const squares = box.querySelectorAll(".bar-square:not(.count-in)");
     for (let i = 0; i < squares.length; i++) {
       const n = i + 1;
       squares[i].classList.toggle("past", !countIn && n < barInSection);
@@ -735,9 +800,11 @@
         Timing.fmtDuration(left), live.startSection ? "to the end" : "song length");
     } else setStats("–", "–", "bar", "–", "next");
     setBeats(-1);
-    renderNowBars(start, start ? secs.indexOf(start) : 0, 0, true);
+    const idleCi = start ? Timing.build(song, start.id).bars.filter((b) => b.section_id === start.id && b.count_in).length : 0;
+    renderNowBars(start, start ? secs.indexOf(start) : 0, 0, true, idleCi);
     renderHintsPanel(true);
-    setPlayhead(start ? (Timing.sectionStartBar(song, start.id) - 1) / Math.max(1, Timing.songTotalBars(song)) : 0);
+    const L = live.layout || shapeLayout();
+    setPlayhead(start ? (L.start[start.id] || 0) / L.total : 0);
     markChart(null);
   }
 
@@ -746,16 +813,32 @@
     if (p) p.style.left = `${Math.max(0, Math.min(1, frac)) * 100}%`;
   }
 
-  function markChart(sectionId) {
+  // Highlights the row and strip block that are playing now: the count-in
+  // row while the count-in sounds, the section's own row after it.
+  function markChart(sectionId, countIn) {
+    const isNow = (node) => {
+      const ci = node.classList.contains("chart-countin") || node.classList.contains("shape-countin");
+      return (ci ? node.dataset.countinFor : node.dataset.sectionId) === sectionId && ci === !!countIn;
+    };
     for (const row of document.querySelectorAll("#live-chart .chart-row")) {
-      const on = row.dataset.sectionId === sectionId;
+      const on = isNow(row);
       row.classList.toggle("now", on);
       if (on) row.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
-    for (const b of document.querySelectorAll("#live-shape .song-shape-block")) b.classList.toggle("now", b.dataset.sectionId === sectionId);
+    for (const b of document.querySelectorAll("#live-shape .song-shape-block")) b.classList.toggle("now", isNow(b));
   }
 
   // -- running ------------------------------------------------------------------
+
+  // The big panel during a count-in: "Count-in" and the beat you're on,
+  // what it leads into underneath.
+  function showCountIn(bar, beat) {
+    const lab = $("now-label");
+    lab.textContent = "Count-in";
+    lab.appendChild(S.el("span", "ci-num", String(beat + 1)));
+    const style = bar.count_in_style && bar.count_in_style !== "lead-in" ? ` · ${bar.count_in_style}` : "";
+    $("now-sub").textContent = `into ${bar.label} · ${Math.round(bar.bpm)} BPM${style}`;
+  }
 
   function frame() {
     live.raf = null;
@@ -782,12 +865,18 @@
       if (beat !== live.lastBeat) {
         live.lastBeat = beat;
         setBeats(beat, bar.count_in);
-        if (bar.count_in) $("now-sub").textContent = `${bar.count_in_style === "lead-in" ? "count-in" : bar.count_in_style + " count-in"} · ${beat + 1}`;
+        if (bar.count_in) showCountIn(bar, beat);
       }
       // smooth playhead across the song's bars
-      if (bar.song_bar) {
-        const frac = (bar.song_bar - 1 + (elapsed - bar.start_ms) / (bar.beat_ms * bar.beats)) / Math.max(1, tl.song_bars);
-        setPlayhead(frac);
+      {
+        const L = live.layout || shapeLayout();
+        const within = (elapsed - bar.start_ms) / (bar.beat_ms * bar.beats);
+        const at = L.start[bar.section_id] || 0;
+        const ciN = L.ci[bar.section_id] || 0;
+        const pos = bar.count_in
+          ? at + (bar.count_in_style === "lead-in" ? 0 : Math.min(ciN, bar.bar_in_section - 1 + within))
+          : at + ciN + bar.bar_in_section - 1 + within;
+        setPlayhead(pos / L.total);
       }
       panel.classList.toggle("count-in-now", bar.count_in);
     }
@@ -802,8 +891,11 @@
     const sIndex = bar.section_index;
     $("now-label").textContent = bar.label;
     $("now-label").style.color = S.sectionColor(sIndex);
+    live.lastBeat = -1; // the beat display redraws for the new bar
     if (bar.count_in) {
-      $("now-kicker").textContent = bar.section_bars > 1 ? `Count-in, bar ${bar.bar_in_section} of ${bar.section_bars}, into` : "Count-in into";
+      $("now-label").style.color = "";
+      $("now-kicker").textContent = bar.section_bars > 1 ? `Count-in · bar ${bar.bar_in_section} of ${bar.section_bars}` : "Count-in";
+      $("now-sub").textContent = `into ${bar.label} · ${Math.round(bar.bpm)} BPM`;
     } else {
       $("now-kicker").textContent = "Now";
       $("now-sub").textContent = `bar ${bar.bar_in_section} of ${bar.section_bars} · ${Math.round(bar.bpm)} BPM · song bar ${bar.song_bar}/${tl.song_bars}`;
@@ -834,10 +926,12 @@
         String(away), nb ? `bar${away === 1 ? "" : "s"} to ${nb.label}${nb.count_in ? " (count-in)" : ""}${tempo}` : `bar${away === 1 ? "" : "s"} left`,
         away <= 2);
     }
-    renderNowBars(section, sIndex, bar.bar_in_section, bar.count_in);
-    if (live.lastSection !== bar.section_id) {
-      live.lastSection = bar.section_id;
-      markChart(bar.section_id);
+    const ciBars = tl.bars.filter((b) => b.section_id === bar.section_id && b.count_in).length;
+    renderNowBars(section, sIndex, bar.bar_in_section, bar.count_in, ciBars);
+    const mark = bar.section_id + (bar.count_in ? ":ci" : "");
+    if (live.lastSection !== mark) {
+      live.lastSection = mark;
+      markChart(bar.section_id, bar.count_in);
     }
     renderHintsPanel(false, section, nextSection);
   }
@@ -1158,6 +1252,7 @@
     },
     transport: applyTransport,
     song: () => live.song,
+    running: () => live.transport.state === "running",
     soloState: () => ({ ...solo.state }),
     soloCommand(body) {
       solo.command(body);

@@ -5,6 +5,39 @@ follows semver (MAJOR.MINOR.PATCH).
 
 ## [Unreleased]
 
+### Added
+
+- **Click pattern, per song.** Song page -> Advanced -> Click pattern: for
+  each of the four beats of the bar, pick a sound (this device's, wood,
+  beep, tick, ride bell, cowbell, finger snap, side stick, or silent) and
+  whether it is an accent. The default is still an accent on beat 1.
+  Presets: accents on 2 and 4, wood on 1 with beeps after, no accent; and a
+  button to hear two bars. It plays everywhere: the live click on every
+  device, the preview, the .wav click tracks and Barline Pocket. Count-ins
+  keep their own click. Stored as `click_pattern` in the song file (absent =
+  the default), so older versions simply ignore it.
+
+### Fixed
+
+- **Test the click** now shows it is running: the button turns into Stop,
+  four dots follow the beat, and a line says where it is and what to check
+  if nothing was heard. It no longer fights the live click: while a song is
+  playing it says so instead of silently replacing the song's click.
+
+### Changed
+
+- **The count-in is a block of its own.** In the editor each section has a
+  yellow count-in row above its card: pick 1, 2 or 4 bars (or any 0 to 8),
+  the style, and **Listen** to hear the count-in and the first bar at that
+  section's tempo, with this device's click settings. Sections without one
+  show a quiet "+ Count-in" button instead.
+- Count-ins show on the overview strips (editor and live) as hatched yellow
+  blocks, and the playhead on the live strip now runs across them.
+- Live view: the count-in has its own row in the song list, lit while it
+  sounds; the big panel reads "Count-in 1 2 3 4" in yellow with what it
+  leads into ("into Verse 1 - 127 BPM"), and the bar squares show the
+  count-in bars ahead of the section's.
+
 ## [0.18.1] -- 2026-11-10
 
 ### Added

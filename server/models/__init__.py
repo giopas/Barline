@@ -266,6 +266,26 @@ def clean_tags(tags) -> list:
     return out
 
 
+_PATTERN_SOUNDS = ("off", "beep", "wood", "tick", "bell", "cowbell", "snap", "rim")
+_DEFAULT_PATTERN = [{"sound": None, "accent": True}] + [{"sound": None, "accent": False}] * 3
+
+
+def clean_click_pattern(raw):
+    """A song's beat pattern (0.19): four slots {sound, accent}, one per beat
+    of the bar -- `sound` None (this device's sound), "off" or a sound name.
+    Returns None for the default (accent on beat 1) and for anything that
+    isn't four slots, so an odd hand-edited file still loads."""
+    if not isinstance(raw, (list, tuple)) or len(raw) != 4:
+        return None
+    out = []
+    for slot in raw:
+        if not isinstance(slot, dict):
+            return None
+        sound = slot.get("sound")
+        out.append({"sound": sound if sound in _PATTERN_SOUNDS else None, "accent": bool(slot.get("accent"))})
+    return None if out == _DEFAULT_PATTERN else out
+
+
 def validate_song(song: dict) -> None:
     if not song.get("title", "").strip():
         raise ValidationError("song title cannot be empty")

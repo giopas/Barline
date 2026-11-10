@@ -1246,3 +1246,125 @@ body.is-pocket .empty-actions .pocket-only { display: inline-block; }
 .offline-guides summary { cursor: pointer; font-weight: 600; }
 .offline-guides details[data-here] summary::after { content: "  (this browser)"; color: var(--accent); font-weight: 400; }
 .offline-guides p { margin: 8px 0 2px; font-size: 13px; color: var(--text-dim); }
+
+/* ---------- count-in as a block of its own (0.19) ---------- */
+
+/* editor: the row above each section */
+.countin-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin: 0 0 -6px;
+  padding: 8px 12px;
+  border: 1px dashed rgba(226, 185, 59, 0.55);
+  border-left: 4px solid var(--warn);
+  border-radius: 8px;
+  background: rgba(226, 185, 59, 0.06);
+}
+.countin-row:not(.on) {
+  padding: 0 0 0 4px;
+  border-color: transparent;
+  background: none;
+  margin: -4px 0 -8px;
+}
+.countin-row:not(.on) .countin-badge,
+.countin-row:not(.on) .countin-squares,
+.countin-row:not(.on) .countin-controls { display: none; }
+.countin-row:not(.on) .count-in-bars { display: none; }
+.countin-row.on .countin-add { display: none; }
+.countin-add { color: var(--text-dim); border-style: dashed; opacity: 0.75; }
+.countin-add:hover { opacity: 1; color: var(--warn); border-color: var(--warn); }
+.countin-badge {
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.countin-squares { display: flex; gap: 4px; }
+.countin-squares .bar-square.count-in,
+.chart-countin-squares .bar-square.count-in {
+  width: 22px;
+  height: 22px;
+  border: 1px dashed var(--warn);
+  background: rgba(226, 185, 59, 0.14);
+}
+.countin-squares .bar-square.count-in .beat-dot,
+.chart-countin-squares .bar-square.count-in .beat-dot,
+.now-bars .bar-square.count-in .beat-dot { background: var(--warn); opacity: 1; }
+.countin-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-left: auto; }
+.countin-field { display: flex; align-items: center; gap: 6px; color: var(--text-dim); font-size: 13px; }
+.countin-field input { width: 56px; }
+.countin-chips { display: inline-flex; gap: 4px; }
+.countin-chip {
+  min-width: 28px;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-card);
+  color: var(--text-dim);
+  cursor: pointer;
+}
+.countin-chip.active { color: #16181d; background: var(--warn); border-color: var(--warn); }
+.countin-bpm { color: var(--text-dim); font-size: 13px; font-variant-numeric: tabular-nums; }
+.countin-listen { color: var(--warn); border-color: var(--warn); }
+.countin-listen.playing { color: #16181d; background: var(--warn); }
+
+/* overview strips (editor and live) */
+.song-shape-block.shape-countin {
+  background: repeating-linear-gradient(135deg, rgba(226, 185, 59, 0.32) 0 4px, rgba(226, 185, 59, 0.1) 4px 8px);
+  border: 1px dashed var(--warn);
+  color: var(--warn);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.live-shape .song-shape-block.shape-countin { opacity: 0.9; }
+
+/* live: the song list */
+.chart-row.chart-countin {
+  border-left-color: var(--warn);
+  border-left-style: solid;
+  background: rgba(226, 185, 59, 0.07);
+  outline: 1px dashed rgba(226, 185, 59, 0.5);
+  outline-offset: -1px;
+}
+.chart-row.chart-countin .chart-label { color: var(--warn); font-size: 14px; text-transform: uppercase; letter-spacing: 0.08em; }
+.chart-row.chart-countin.now { background: rgba(226, 185, 59, 0.22); box-shadow: 0 0 0 2px var(--warn); outline: none; }
+.chart-countin-squares { display: flex; gap: 4px; margin-top: 6px; }
+
+/* live: the big panel while the count-in sounds */
+.live-now.count-in-now { border-width: 2px; background: linear-gradient(180deg, rgba(226, 185, 59, 0.12), transparent 70%); }
+.live-now.count-in-now .now-label { color: var(--warn); }
+.now-label .ci-num { margin-left: 0.45em; color: #fff; font-variant-numeric: tabular-nums; }
+.live-now.count-in-now .now-sub { color: var(--text); font-size: 22px; font-weight: 600; }
+.now-bars .bar-square.count-in { border: 1px dashed var(--warn); background: rgba(226, 185, 59, 0.14); }
+.now-bars .bar-square.count-in.past { opacity: 0.3; }
+.now-bars .bar-square.count-in.upcoming { opacity: 0.85; }
+.now-bars .bar-square.count-in.current { opacity: 1; background: rgba(226, 185, 59, 0.5); outline: 2px solid var(--warn); box-shadow: 0 0 10px var(--warn); }
+
+/* ---------- click pattern + click test (0.19) ---------- */
+
+.song-advanced { margin-top: 10px; color: var(--text-dim); font-size: 13px; }
+.song-advanced > summary { cursor: pointer; user-select: none; }
+.song-advanced .adv-sum { color: var(--warn); margin-left: 6px; }
+.pattern-box { margin-top: 10px; padding: 12px 14px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; }
+.pattern-box h3 { margin: 0 0 4px; font-size: 14px; color: var(--text); }
+.pattern-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 10px 0; }
+.pattern-col { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-card); }
+.pattern-beat { font-weight: 800; font-size: 20px; color: var(--text); }
+.pattern-col select { width: 100%; }
+.pattern-accent { display: flex; align-items: center; gap: 6px; color: var(--text); }
+.pattern-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.pattern-listen { color: var(--warn); border-color: var(--warn); }
+.pattern-listen.playing { color: #16181d; background: var(--warn); }
+@media (max-width: 520px) { .pattern-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.ck-test-dots { display: flex; gap: 8px; margin: 10px 0 2px; }
+.ck-test-dots span { width: 18px; height: 18px; border-radius: 50%; background: #2a2e37; transition: background 0.06s, box-shadow 0.06s; }
+.ck-test-dots span.on { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+.ck-test-dots span.on.count-in { background: var(--warn); box-shadow: 0 0 10px var(--warn); }
+.ck-status { min-height: 1.4em; margin: 4px 0 0; font-size: 13px; color: var(--text-dim); }
+.ck-status.bad { color: var(--danger); }
+#ck-test.playing { background: var(--warn); color: #16181d; border-color: var(--warn); }
