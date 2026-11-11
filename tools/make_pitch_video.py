@@ -24,7 +24,9 @@ Usage (from anywhere; paths are found from this file):
     python3 tools/make_pitch_video.py --only 5        # just slide 5, for a quick look
     python3 tools/make_pitch_video.py --list-voices   # voices `say` has on this Mac
     python3 tools/make_pitch_video.py --voice "Daniel" --rate 175
-    python3 tools/make_pitch_video.py --tts edge      # Microsoft neural voice (online)
+    python3 tools/make_pitch_video.py --tts edge      # Microsoft neural voice (online), much less robotic
+    python3 tools/make_pitch_video.py --tts edge --voice en-GB-RyanNeural
+    python3 -m edge_tts --list-voices                 # all edge voices
 
 Needs Pillow and ffmpeg (the Barline server itself needs neither):
 
@@ -34,7 +36,8 @@ Needs Pillow and ffmpeg (the Barline server itself needs neither):
 Optional, for a more natural voice: `pip install edge-tts`, then --tts edge
 (needs internet while generating; nothing else in Barline goes online). On a
 Mac, better `say` voices are a free download: System Settings > Accessibility
-> Spoken Content > System Voice > Manage Voices (e.g. "Zoe (Premium)").
+> Read & Speak (Spoken Content before macOS 26) > System voice menu > Manage
+Voices... (e.g. "Zoe (Premium)").
 
 To change what the video says, edit SLIDES below. Each slide's screenshots
 come from screenshots/ (retake them with tools/shots.py); a missing file is
@@ -346,6 +349,21 @@ def spoken(text: str) -> str:
     return text
 
 
+def edge_tts_command():
+    """How to run edge-tts: the command if it's on the PATH, otherwise as a
+    module of this Python (`pip install --user` puts the command in a folder,
+    e.g. ~/Library/Python/3.x/bin, that often isn't on the PATH)."""
+    if shutil.which("edge-tts"):
+        return ["edge-tts"]
+    try:
+        import importlib.util
+        if importlib.util.find_spec("edge_tts"):
+            return [sys.executable, "-m", "edge_tts"]
+    except (ImportError, ValueError):
+        pass
+    return None
+
+
 class Voice:
     """Turns a line of text into a 22050 Hz mono WAV with one engine."""
 
@@ -358,11 +376,14 @@ class Voice:
         if tts == "none":
             return cls("none")
         if tts == "edge":
-            if shutil.which("edge-tts"):
-                v = cls("edge", voice or "en-US-GuyNeural", rate)
+            cmd = edge_tts_command()
+            if cmd:
+                v = cls("edge", voice or "en-US-AndrewNeural", rate)
+                v.edge_cmd = cmd
                 v.label = f"edge-tts ({v.voice})"
                 return v
-            print("   ! edge-tts isn't installed (python3 -m pip install --user edge-tts); falling back.")
+            print("   ! edge-tts isn't installed for this Python "
+                  f"({sys.executable} -m pip install --user edge-tts); falling back.")
         if tts in ("say", "auto", "edge") and shutil.which("say"):
             v = cls("say", pick_say_voice(voice if tts == "say" else None), rate)
             v.label = f"macOS say ({v.voice or 'system voice'})"
@@ -392,7 +413,7 @@ class Voice:
             elif self.engine == "edge":
                 raw += ".mp3"
                 pct = round((self.rate / 180.0 - 1) * 100)
-                run(["edge-tts", "--voice", self.voice, f"--rate={pct:+d}%", "--text", text,
+                run(self.edge_cmd + ["--voice", self.voice, f"--rate={pct:+d}%", "--text", text,
                      "--write-media", raw], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             # Clean, consistent level: trim silence at both ends, gentle compression, normalise.
             run(["ffmpeg", "-loglevel", "error", "-y", "-i", raw, "-af",
