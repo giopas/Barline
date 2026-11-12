@@ -74,6 +74,35 @@ function toast(text, kind) {
   setTimeout(() => t.remove(), 3800);
 }
 
+// The app's icons (0.20): one SVG set from index.html, drawn the same on
+// every platform, instead of emoji and text glyphs.
+function icon(name) {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("class", "ic");
+  svg.setAttribute("aria-hidden", "true");
+  const use = document.createElementNS(NS, "use");
+  use.setAttribute("href", "#i-" + name);
+  svg.appendChild(use);
+  return svg;
+}
+
+// A button's icon and words in one go (either may be left out).
+function setLabel(btn, name, text) {
+  btn.replaceChildren();
+  if (name) btn.appendChild(icon(name));
+  if (text) btn.appendChild(document.createTextNode((name ? " " : "") + text));
+  return btn;
+}
+
+function iconButton(cls, name, title) {
+  const b = el("button", cls);
+  b.title = title;
+  b.setAttribute("aria-label", title);
+  b.appendChild(icon(name));
+  return b;
+}
+
 function newId() {
   const a = new Uint8Array(6);
   crypto.getRandomValues(a);
@@ -350,7 +379,7 @@ function renderTagFilter(container) {
     container.appendChild(chip);
   }
   if (active.length) {
-    const clear = el("button", "chip tag-clear", "× all songs");
+    const clear = setLabel(el("button", "chip tag-clear"), "close", "all songs");
     clear.title = "Stop filtering by tag";
     clear.addEventListener("click", () => setTagFilter([]));
     container.appendChild(clear);
@@ -480,7 +509,7 @@ function whoLabel() {
 function renderWho() {
   for (const id of ["who-btn", "live-who"]) {
     const b = document.getElementById(id);
-    if (b) b.textContent = (id === "who-btn" ? "You: " : "") + whoLabel();
+    if (b) b.textContent = "You: " + whoLabel();
   }
 }
 
@@ -529,7 +558,7 @@ document.addEventListener("keydown", (ev) => {
 
 for (const m of document.querySelectorAll(".modal")) {
   m.addEventListener("click", (ev) => {
-    if (ev.target === m || ev.target.hasAttribute("data-close")) m.classList.add("hidden");
+    if (ev.target === m || ev.target.closest("[data-close]")) m.classList.add("hidden");
   });
 }
 
@@ -613,7 +642,50 @@ function renderSongView() {
 }
 
 function songIsDirty() {
-  return saveSong.pending() || savingSong;
+  return saveSong.pending() || savingSong || (!!unsaved.song && unsaved.song === state.currentSong);
+}
+
+// Edits made while the server is out of reach (0.20): held in this page and
+// sent as soon as it's back, instead of failing with "Failed to fetch".
+// A reload before then loses them, which the banner says.
+const unsaved = { song: null, setlist: null, band: false, told: false };
+
+function isUnreachable(err) {
+  return !!(err && err.unreachable) || !Sync.connected;
+}
+
+function heldBack() {
+  if (unsaved.told) return;
+  unsaved.told = true;
+  toast("Kept on this device: it goes to the server when it's back.", "warn");
+}
+
+async function sendUnsaved() {
+  const sent = [];
+  try {
+    if (unsaved.song) {
+      const s = unsaved.song;
+      await api("PUT", `/songs/${s.id}`, s);
+      if (unsaved.song === s) unsaved.song = null;
+      sent.push("song");
+    }
+    if (unsaved.setlist) {
+      const s = unsaved.setlist;
+      await api("PUT", `/setlists/${s.id}`, s);
+      if (unsaved.setlist === s) unsaved.setlist = null;
+      sent.push("setlist");
+    }
+    if (unsaved.band) {
+      await api("PUT", "/band", state.band);
+      unsaved.band = false;
+      sent.push("band");
+    }
+  } catch (err) {
+    return false; // still out of reach: the next reconnect tries again
+  }
+  unsaved.told = false;
+  if (sent.length) toast("Back in touch: your changes are saved.", "ok");
+  return true;
 }
 
 let savingSong = false;
@@ -630,9 +702,15 @@ const saveSong = debounce(async () => {
     // "section names not saved" bug). Remote updates do re-render, which
     // rebuilds every handler against the new objects -- see onRemoteSong.
     await api("PUT", `/songs/${song.id}`, song);
+    if (unsaved.song === song) unsaved.song = null;
     refreshListsSoon();
   } catch (err) {
-    toast("Couldn't save: " + err.message, "error");
+    if (isUnreachable(err)) {
+      unsaved.song = song;
+      heldBack();
+    } else {
+      toast("Couldn't save: " + err.message, "error");
+    }
   } finally {
     savingSong = false;
     if (songEdits !== editsAtSend && !saveSong.pending()) saveSong();
@@ -672,8 +750,7 @@ function renderSongTags() {
   els.songTagChips.innerHTML = "";
   for (const tag of song.tags) {
     const chip = el("span", "chip tag-chip", tag);
-    const x = el("button", "tag-remove", "×");
-    x.title = `Remove the tag "${tag}"`;
+    const x = iconButton("tag-remove", "close", `Remove the tag "${tag}"`);
     x.addEventListener("click", () => {
       song.tags = song.tags.filter((t) => t !== tag);
       songTagsChanged();
@@ -924,6 +1001,9 @@ function renderClickSettings() {
   document.getElementById("ck-keep").checked = prefs.get("keepPlaying", true);
   document.getElementById("ck-awake").checked = prefs.get("keepAwake", true);
   document.getElementById("ck-latency-val").textContent = `${o.latencyMs > 0 ? "+" : ""}${o.latencyMs} ms`;
+  for (const out of document.querySelectorAll("#click-modal output[data-pct]")) {
+    out.textContent = Math.round(parseFloat(document.getElementById(out.htmlFor.value).value) * 100) + "%";
+  }
   renderDiagnostics();
 }
 
@@ -994,7 +1074,7 @@ function resetClickTest() {
   ckTimers = [];
   const btn = document.getElementById("ck-test");
   if (!btn) return;
-  btn.textContent = "\u25B6 Test the click";
+  setLabel(btn, "play", "Test the click");
   btn.classList.remove("playing");
   for (const d of document.querySelectorAll("#ck-test-dots span")) d.className = "";
 }
@@ -1021,7 +1101,7 @@ document.getElementById("ck-test").addEventListener("click", () => {
   startPreview(tl);
   if (!state.previewing) return; // no sound in this browser: startPreview said so
   const btn = document.getElementById("ck-test");
-  btn.textContent = "\u25A0 Stop test";
+  setLabel(btn, "stop", "Stop test");
   btn.classList.add("playing");
   ckStatus("Playing\u2026");
   const dots = document.querySelectorAll("#ck-test-dots span");
@@ -1134,7 +1214,7 @@ document.getElementById("pattern-listen").addEventListener("click", (ev) => {
   const last = bars[bars.length - 1];
   const btn = ev.currentTarget;
   startPreview({ bars, total_ms: last.start_ms + last.beat_ms * last.beats, pattern: tl.pattern }, btn);
-  if (state.previewing) btn.textContent = "\u25A0 Stop";
+  if (state.previewing) setLabel(btn, "stop", "Stop");
 });
 
 
@@ -1174,7 +1254,8 @@ function renderPrintChoices() {
     open.appendChild(el("strong", "", label));
     open.appendChild(el("span", "", sub));
     open.addEventListener("click", () => closeModal("print-modal"));
-    const save = el("a", "print-save", "\u2913");
+    const save = el("a", "print-save");
+    save.appendChild(icon("download"));
     save.href = href(player, true);
     save.title = "Download the PDF";
     save.setAttribute("aria-label", `Download the PDF for ${label}`);
@@ -1539,16 +1620,16 @@ function stopPreview() {
   state.previewing = false;
   metronome.stop();
   clearTimeout(state.previewTimer);
-  document.getElementById("song-preview-btn").textContent = "♫ Preview click";
+  setLabel(document.getElementById("song-preview-btn"), "note", "Preview click");
   for (const b of document.querySelectorAll(".preview-section.playing")) b.classList.remove("playing");
   resetClickTest();
   for (const b of document.querySelectorAll(".pattern-listen.playing")) {
     b.classList.remove("playing");
-    b.textContent = "\u25B6 Hear 2 bars";
+    setLabel(b, "play", "Hear 2 bars");
   }
   for (const b of document.querySelectorAll(".countin-listen.playing")) {
     b.classList.remove("playing");
-    b.textContent = "\u25B6 Listen";
+    setLabel(b, "play", "Listen");
   }
 }
 
@@ -1574,7 +1655,7 @@ document.getElementById("song-preview-btn").addEventListener("click", (ev) => {
   const tl = Timing.build(state.currentSong);
   if (!tl.bars.length) return toast("Add a section with some bars first.", "warn");
   startPreview(tl);
-  ev.currentTarget.textContent = "■ Stop preview";
+  setLabel(ev.currentTarget, "stop", "Stop preview");
 });
 
 // -- sections -------------------------------------------------------------
@@ -1626,6 +1707,44 @@ function renderSummary() {
     : "No sections yet: add the first one below.";
 }
 
+// A short form of a section's name for a narrow strip: "Verse 1" -> "V1",
+// "Pre-chorus" -> "PC", "Chorus" -> "Ch". The full name stays in the tooltip.
+const SHORT_WORDS = { intro: "In", verse: "V", chorus: "Ch", bridge: "Br", outro: "Out", solo: "So", break: "Bk", interlude: "Int", coda: "Co", hook: "Hk", tag: "Tag", instrumental: "Ins", breakdown: "Bd", refrain: "R" };
+function shortLabel(label) {
+  const t = String(label || "").trim();
+  const num = (t.match(/\s*(\d+)$/) || ["", ""])[1];
+  const words = t.replace(/\s*\d+$/, "").split(/[\s\-_/]+/).filter(Boolean);
+  if (!words.length) return num;
+  if (words.length > 1) return words.map((w) => w[0].toUpperCase()).join("") + num;
+  const w = words[0];
+  return (SHORT_WORDS[w.toLowerCase()] || w.slice(0, 2)) + num;
+}
+
+// Each block shows its full name if it fits, else the short form, else nothing.
+function fitShapeLabels(box) {
+  if (!box || !box.clientWidth) return;
+  for (const b of box.querySelectorAll(".song-shape-block[data-label]")) {
+    const cs = getComputedStyle(b);
+    const room = b.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    // the text's own width, to the fraction of a pixel (scrollWidth rounds)
+    const fits = (text) => {
+      const s = document.createElement("span");
+      s.textContent = text;
+      b.replaceChildren(s);
+      return s.getBoundingClientRect().width <= room;
+    };
+    const full = b.dataset.label;
+    const short = shortLabel(full);
+    b.textContent = fits(full) ? full : fits(short) ? short : "";
+  }
+}
+// refit whenever a strip changes size (window resized, the layout around it settled)
+if (window.ResizeObserver) {
+  const shapeSizes = new ResizeObserver((entries) => entries.forEach((e) => fitShapeLabels(e.target)));
+  shapeSizes.observe(els.songShape);
+  shapeSizes.observe(document.getElementById("live-shape"));
+}
+
 function renderSongShape() {
   const song = state.currentSong;
   els.songShape.innerHTML = "";
@@ -1649,7 +1768,8 @@ function renderSongShape() {
     block.style.background = hexToRgba(color, 0.28);
     block.style.borderColor = hexToRgba(color, 0.7);
     block.title = `${section.label} -- ${section.bars} bars @ ${effectiveBpm(song, section)} BPM`;
-    block.textContent = section.bars >= 2 ? section.label : "";
+    if (section.bars >= 2) block.dataset.label = section.label;
+    block.setAttribute("aria-label", block.title);
     block.addEventListener("click", () => {
       const card = els.sectionsList.querySelector(`[data-section-id="${section.id}"]`);
       if (card) card.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1661,6 +1781,7 @@ function renderSongShape() {
     empty.style.flexGrow = "1";
     els.songShape.appendChild(empty);
   }
+  fitShapeLabels(els.songShape);
   renderSummary();
 }
 
@@ -1708,9 +1829,10 @@ function buildCountInRow(song, section, index) {
   for (const [v, t] of [["click", "click"], ["sticks", "sticks"], ["verbal", "verbal"]]) styleSel.appendChild(new Option(t, v));
   styleLabel.appendChild(styleSel);
   const bpmNote = el("span", "countin-bpm");
-  const listen = el("button", "btn-small countin-listen", "\u25B6 Listen");
+  const listen = setLabel(el("button", "btn-small countin-listen"), "play", "Listen");
   listen.title = "Hear the count-in and the first bar of this section at its tempo, with this device's click settings";
-  const clear = el("button", "btn-icon countin-remove", "\u00D7");
+  const clear = el("button", "btn-icon countin-remove");
+  clear.appendChild(icon("close"));
   clear.title = "Remove this count-in";
   controls.append(barsLabel, chips, styleLabel, bpmNote, listen, clear);
 
@@ -1769,7 +1891,7 @@ function buildCountInRow(song, section, index) {
     const bars = keep.slice(0, nCi + 1); // the count-in, then where it lands
     const last = bars[bars.length - 1];
     startPreview({ bars, total_ms: last.start_ms + last.beat_ms * last.beats }, listen);
-    listen.textContent = "\u25A0 Stop";
+    setLabel(listen, "stop", "Stop");
   });
 
   refresh();
@@ -1926,7 +2048,7 @@ function touchHint(hint) {
 
 function drawAuthor(node, hint) {
   const label = Files.authorLabel(hint.author, state.band);
-  node.textContent = label;
+  node.textContent = label ? `from ${label}` : "";
   node.title = label ? `Last written by ${label}` : "";
   node.classList.toggle("hidden", !label);
 }
@@ -1977,7 +2099,8 @@ function renderHints(container, section) {
     const drawClip = () => {
       playBtn.classList.toggle("hidden", !hint.audio);
       recBtn.title = hint.audio ? "Remove the voice memo" : canRecord() ? "Record a short voice memo" : "Attach a voice memo (record one, or pick a file)";
-      recBtn.innerHTML = hint.audio ? "&#10005;&#9834;" : "&#127908;";
+      setLabel(recBtn, hint.audio ? "mic-off" : "mic");
+      recBtn.setAttribute("aria-label", recBtn.title);
       recBtn.classList.toggle("has-clip", !!hint.audio);
     };
     drawClip();
@@ -2029,7 +2152,7 @@ function renderHints(container, section) {
         rec.start();
         recBtn._recorder = rec;
         recBtn.classList.add("recording");
-        recBtn.innerHTML = "&#9632;";
+        setLabel(recBtn, "stop");
         recBtn.title = "Stop recording";
         recBtn._limit = setTimeout(() => rec.state === "recording" && rec.stop(), 30000);
       } catch (err) {
@@ -2086,6 +2209,14 @@ function tagBadges(song) {
   return box;
 }
 
+// tempo, length and tags on one line under a setlist row's title
+function songMeta(song) {
+  const meta = el("span", "setlist-song-meta");
+  meta.appendChild(el("span", "item-count", `${song.default_bpm} BPM · ${Timing.fmtDuration(song.duration_ms)}`));
+  if (songTags(song).length) meta.appendChild(tagBadges(song));
+  return meta;
+}
+
 function renderSetlistSongs() {
   const setlist = state.currentSetlist;
   if (!setlist) return;
@@ -2107,7 +2238,8 @@ function renderSetlistSongs() {
     }
     const li = el("li");
     li.dataset.index = String(index);
-    const handle = el("span", "drag-handle", "⋮⋮");
+    const handle = el("span", "drag-handle");
+    handle.appendChild(icon("grip"));
     handle.title = filtering ? "Clear the search and tag filter to reorder by dragging" : "Drag to move";
     if (!filtering) handle.addEventListener("pointerdown", (ev) => startSetlistDrag(ev, li));
     li.appendChild(handle);
@@ -2116,12 +2248,10 @@ function renderSetlistSongs() {
     const title = el("span", "setlist-song-title", song ? song.title : "(deleted song)");
     if (song) title.addEventListener("click", () => go(`#/song/${song.id}`));
     main.appendChild(title);
-    if (song && songTags(song).length) main.appendChild(tagBadges(song));
+    if (song) main.appendChild(songMeta(song));
     li.appendChild(main);
-    if (song) li.appendChild(el("span", "item-count", `${song.default_bpm} BPM · ${Timing.fmtDuration(song.duration_ms)}`));
-    const mk = (label, tip, fn, disabled) => {
-      const b = el("button", "btn-icon", label);
-      b.title = tip;
+    const mk = (name, tip, fn, disabled) => {
+      const b = iconButton("btn-icon", name, tip);
       b.disabled = !!disabled;
       b.addEventListener("click", fn);
       li.appendChild(b);
@@ -2131,9 +2261,11 @@ function renderSetlistSongs() {
       [setlist.songs[index], setlist.songs[j]] = [setlist.songs[j], setlist.songs[index]];
       setlistReordered();
     };
-    mk("↑", "Move up", () => swap(-1), index === 0);
-    mk("↓", "Move down", () => swap(1), index === setlist.songs.length - 1);
-    mk("−", "Remove from setlist", () => {
+    mk("up", "Move up", () => swap(-1), index === 0);
+    li.lastChild.classList.add("move-btn");
+    mk("down", "Move down", () => swap(1), index === setlist.songs.length - 1);
+    li.lastChild.classList.add("move-btn");
+    mk("minus", "Remove from setlist", () => {
       setlist.songs.splice(index, 1);
       setlistReordered();
     });
@@ -2145,7 +2277,7 @@ function renderSetlistSongs() {
   }
   els.setlistDragNote.textContent = filtering
     ? `showing ${setlist.songs.length - hidden} of ${setlist.songs.length}`
-    : "drag ⋮⋮ to reorder";
+    : "drag the handle to reorder";
   els.setlistSummary.textContent = setlist.songs.length
     ? `${setlist.songs.length} songs · about ${Timing.fmtDuration(total)} of music`
     : "Empty: add songs from the right.";
@@ -2159,11 +2291,9 @@ function renderSetlistSongs() {
     const li = el("li");
     const main = el("span", "setlist-song-main");
     main.appendChild(el("span", "setlist-song-title", song.title));
-    if (songTags(song).length) main.appendChild(tagBadges(song));
+    main.appendChild(songMeta(song));
     li.appendChild(main);
-    li.appendChild(el("span", "item-count", `${song.default_bpm} BPM · ${Timing.fmtDuration(song.duration_ms)}`));
-    const addBtn = el("button", "btn-icon", "+");
-    addBtn.title = "Add to setlist";
+    const addBtn = iconButton("btn-icon", "plus", "Add to setlist");
     addBtn.addEventListener("click", () => {
       setlist.songs.push(song.id);
       setlistReordered();
@@ -2272,9 +2402,15 @@ const saveSetlist = debounce(async () => {
   try {
     // same reasoning as saveSong(): don't swap in the PUT response
     await api("PUT", `/setlists/${state.currentSetlist.id}`, state.currentSetlist);
+    if (unsaved.setlist === state.currentSetlist) unsaved.setlist = null;
     refreshListsSoon();
   } catch (err) {
-    toast("Couldn't save: " + err.message, "error");
+    if (isUnreachable(err)) {
+      unsaved.setlist = state.currentSetlist;
+      heldBack();
+    } else {
+      toast("Couldn't save: " + err.message, "error");
+    }
   }
 }, 400);
 
@@ -2460,8 +2596,7 @@ function renderBand() {
       p.role = role.value;
       saveBand();
     });
-    const del = el("button", "btn-icon danger", "×");
-    del.title = "Remove player (their hints go back to the whole band)";
+    const del = iconButton("btn-icon danger", "close", "Remove player (their hints go back to the whole band)");
     del.addEventListener("click", () => {
       if (!confirm(`Remove ${p.name || "this player"}? Hints aimed at them will show for the whole band.`)) return;
       state.band.players = state.band.players.filter((x) => x.id !== p.id);
@@ -2477,8 +2612,14 @@ function renderBand() {
 const saveBand = debounce(async () => {
   try {
     await api("PUT", "/band", state.band);
+    unsaved.band = false;
   } catch (err) {
-    toast("Couldn't save: " + err.message, "error");
+    if (isUnreachable(err)) {
+      unsaved.band = true;
+      heldBack();
+    } else {
+      toast("Couldn't save: " + err.message, "error");
+    }
   }
 }, 400);
 
@@ -2566,8 +2707,9 @@ Sync.on("presence", (list) => {
 function renderPresence() {
   const n = state.presence.length;
   const names = state.presence.map((c) => playerName(c.player_id)).filter(Boolean);
-  const label = n ? `${n} device${n === 1 ? "" : "s"}` : "";
-  const tip = names.length ? names.join(", ") : "";
+  const lost = document.body.classList.contains("offline");
+  const label = lost ? "– devices" : n ? `${n} device${n === 1 ? "" : "s"}` : "";
+  const tip = lost ? "Out of touch with the server: the other devices can't be seen" : names.length ? names.join(", ") : "";
   for (const id of ["presence-label", "live-presence"]) {
     const e = document.getElementById(id);
     e.textContent = label;
@@ -2581,6 +2723,7 @@ Sync.on("status", (ok) => {
   dot.title = ok ? "Connected to the server" : "Lost the server: retrying";
   document.getElementById("connection-label").textContent = ok ? "connected" : "reconnecting…";
   document.body.classList.toggle("offline", !ok);
+  renderPresence();
 });
 
 // ---------------------------------------------------------------------
@@ -2715,7 +2858,8 @@ Sync.on("reload", () => {
 });
 
 // after a Wi-Fi blip, catch up on anything missed while away
-Sync.on("reconnect", () => {
+Sync.on("reconnect", async () => {
+  await sendUnsaved(); // ours first, so the catch-up below doesn't undo them
   loadState(true);
   refreshBundleSoon();
 });
@@ -2740,6 +2884,33 @@ async function refreshBundle() {
 }
 const refreshBundleSoon = debounce(refreshBundle, 800);
 for (const type of ["song", "song_deleted", "setlist", "setlist_deleted"]) Sync.on(type, () => refreshBundleSoon());
+
+// ---------------------------------------------------------------------
+// Drop-down menus (0.20: Share) and names for icon-only buttons
+// ---------------------------------------------------------------------
+
+document.addEventListener("click", (ev) => {
+  for (const m of document.querySelectorAll("details.menu[open]")) {
+    if (!m.contains(ev.target) || ev.target.closest(".menu-item")) m.open = false;
+  }
+});
+document.addEventListener("keydown", (ev) => {
+  if (ev.key !== "Escape") return;
+  for (const m of document.querySelectorAll("details.menu[open]")) {
+    m.open = false;
+    m.querySelector("summary").focus();
+  }
+});
+
+// A button that shows only an icon gets its tooltip as its name, for
+// screen readers (a title alone is never seen on a touch screen).
+function nameIconButtons(root) {
+  for (const b of root.querySelectorAll("button.btn-icon:not([aria-label])[title]")) b.setAttribute("aria-label", b.title);
+}
+nameIconButtons(document);
+new MutationObserver((list) => {
+  for (const m of list) for (const n of m.addedNodes) if (n.nodeType === 1) nameIconButtons(n.parentNode || n);
+}).observe(document.body, { childList: true, subtree: true });
 
 // ---------------------------------------------------------------------
 // Boot
@@ -2807,8 +2978,8 @@ async function boot() {
 window.addEventListener("hashchange", route);
 
 window.Barline = {
-  state, els, api, prefs, toast, el, go, metronome, sectionColor, hexToRgba, playerById, playerName,
-  nameForClient, soundForBar, openWho, renderPresence, openClickSettings, saveClick, openModal, closeModal,
+  state, els, api, prefs, toast, el, go, metronome, icon, setLabel, iconButton, sectionColor, hexToRgba, playerById, playerName,
+  nameForClient, soundForBar, fitShapeLabels, openWho, renderPresence, openClickSettings, saveClick, openModal, closeModal,
   bundleSong: (id) => (Pocket ? Pocket.song(id) : bundle.songs[id] || null),
   bundleSetlist: (id) => (Pocket ? Pocket.setlist(id) : bundle.setlists[id] || null),
   clipUrl,

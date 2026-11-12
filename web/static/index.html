@@ -14,6 +14,36 @@
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
+  <svg class="icon-sprite" aria-hidden="true" focusable="false">
+    <!-- Barline's icons (0.20): one set, drawn the same on every platform. -->
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15l12-7.5z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M9 18V5.5l10-2V16"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V5M7 10l5-5 5 5M5 20h14"/></symbol>
+    <symbol id="i-print" viewBox="0 0 24 24"><path d="M7 9V4h10v5"/><rect x="4" y="9" width="16" height="7" rx="1.5"/><path d="M7 13h10v7H7z"/></symbol>
+    <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7"/><path d="M12 13.5V9.5M10 3h4"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14M6 13l6 6 6-6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11" height="11" rx="2"/><path d="M15.5 8.5V5.5a1 1 0 0 0-1-1h-9a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3"/></symbol>
+    <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/></symbol>
+    <symbol id="i-mic-off" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M4 4l16 16"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+    <symbol id="i-prev" viewBox="0 0 24 24"><path d="M16.5 5L7.5 12l9 7z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-next" viewBox="0 0 24 24"><path d="M7.5 5l9 7-9 7z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-jump" viewBox="0 0 24 24"><path d="M4 17a8 8 0 0 1 14-5.3L20 14M20 7v7h-7"/></symbol>
+    <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+    <symbol id="i-speaker-off" viewBox="0 0 24 24"><path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/><path d="M16 9.5l5 5M21 9.5l-5 5"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 3.5v11M7.5 8L12 3.5 16.5 8"/><path d="M5 12.5V19a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6.5"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></symbol>
+    <symbol id="i-grip" viewBox="0 0 24 24"><g fill="currentColor" stroke="none"><circle cx="9" cy="6" r="1.7"/><circle cx="15" cy="6" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="18" r="1.7"/><circle cx="15" cy="18" r="1.7"/></g></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7"/></symbol>
+  </svg>
   <div id="demo-banner" class="demo-banner hidden">
     <span><strong>Demo band</strong><span class="demo-long">: a throwaway copy to try things on. Nothing here is kept, and your own songs aren't touched.</span><span class="demo-short">: nothing here is kept</span></span>
     <button class="btn-small" id="demo-off-btn">Back to my band</button>
@@ -34,7 +64,7 @@
       <section class="sidebar-section">
         <div class="sidebar-section-head">
           <h2>Setlists</h2>
-          <button class="btn-icon" id="new-setlist-btn" title="New setlist">+</button>
+          <button class="btn-icon" id="new-setlist-btn" title="New setlist"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
         </div>
         <ul id="setlist-list" class="item-list"></ul>
       </section>
@@ -43,8 +73,8 @@
         <div class="sidebar-section-head">
           <h2>Songs</h2>
           <span>
-            <button class="btn-icon" id="import-song-btn" title="Import a file (.ssp.json, or a song's PDF): new songs are added, songs already here are merged">&#8613;</button>
-            <button class="btn-icon" id="new-song-btn" title="New song">+</button>
+            <button class="btn-icon" id="import-song-btn" title="Import a file (.ssp.json, or a song's PDF): new songs are added, songs already here are merged"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg></button>
+            <button class="btn-icon" id="new-song-btn" title="New song"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg></button>
           </span>
         </div>
         <div class="song-list-tools">
@@ -76,15 +106,15 @@
 
     <main class="main" id="main">
       <div class="mobile-bar">
-        <button class="btn-icon menu-btn" id="menu-btn" title="Songs and setlists">&#9776;</button>
-        <span class="mobile-title">Barline</span>
+        <button class="btn-icon menu-btn" id="menu-btn" title="Songs and setlists"><svg class="ic" aria-hidden="true"><use href="#i-menu"/></svg></button>
+        <span class="mobile-title" id="mobile-title">Barline</span>
       </div>
 
       <div id="empty-state" class="empty-state">
         <p>Select a song to start planning its structure, or add some.</p>
         <div class="empty-actions">
-          <button class="btn btn-go" id="empty-quick-btn">+ Add songs</button>
-          <button class="btn pocket-only" id="pocket-import-btn">&#8613; Import a file</button>
+          <button class="btn btn-go" id="empty-quick-btn"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg> Add songs</button>
+          <button class="btn pocket-only" id="pocket-import-btn"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Import a file</button>
           <button class="btn pocket-only" id="pocket-demo-btn">Try the demo band</button>
         </div>
         <p class="modal-note">Just titles and tempos is fine: paste a whole setlist in one go.</p>
@@ -121,21 +151,27 @@
                 <button class="btn-small" data-pattern="backbeat" title="Accents on beats 2 and 4">Accents on 2 and 4</button>
                 <button class="btn-small" data-pattern="woodbeep" title="A wood block on beat 1, beeps on the rest">Wood on 1, beeps after</button>
                 <button class="btn-small" data-pattern="none" title="No accent at all">No accent</button>
-                <button class="btn-small pattern-listen" id="pattern-listen" title="Hear two bars of the song with this pattern">&#9654; Hear 2 bars</button>
+                <button class="btn-small pattern-listen" id="pattern-listen" title="Hear two bars of the song with this pattern"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> Hear 2 bars</button>
               </div>
+            </div>
+            <div class="danger-zone">
+              <button id="delete-song-btn" class="btn-danger">Delete this song</button>
+              <span class="dim-note">Removes it from every setlist, on every device.</span>
             </div>
           </details>
         </header>
         <div class="toolbar">
-          <button class="btn btn-go" id="song-live-btn" title="Put this song on every live screen">&#9654; Go live</button>
-          <button class="btn" id="song-preview-btn" title="Hear the song's click on this device">&#9835; Preview click</button>
-          <span class="tool-group">
-            <button class="btn" id="song-click-settings" title="This device's click: sound, subdivisions, spoken count-in, ear, test">&#9881; Click</button>
-            <button class="btn" id="song-wav-btn" data-server-only title="Download a practice click track (.wav) with this device's click settings">&#8615; Click track</button>
-          </span>
-          <button class="btn" id="song-print-btn" data-server-only title="A PDF to print: whole band, or one player's part">&#9113; Paper chart</button>
-          <button class="btn" id="song-export-btn" title="Download this song as one portable file, with its voice memos">&#8615; Export</button>
-          <button id="delete-song-btn" class="btn-danger">Delete</button>
+          <button class="btn btn-go btn-primary" id="song-live-btn" title="Put this song on every live screen"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> Go live</button>
+          <button class="btn" id="song-preview-btn" title="Hear the song's click on this device"><svg class="ic" aria-hidden="true"><use href="#i-note"/></svg> Preview click</button>
+          <button class="btn" id="song-click-settings" title="This device's click: sound, subdivisions, spoken count-in, ear, test"><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg> Click</button>
+          <details class="menu" id="song-share">
+            <summary class="btn" title="Print, download or export this song"><svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> Share <svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+            <div class="menu-list" role="menu">
+              <button class="menu-item" role="menuitem" id="song-print-btn" data-server-only title="A PDF to print: whole band, or one player's part"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> Paper chart <span class="menu-note">PDF</span></button>
+              <button class="menu-item" role="menuitem" id="song-wav-btn" data-server-only title="Download a practice click track (.wav) with this device's click settings"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> Click track <span class="menu-note">.wav</span></button>
+              <button class="menu-item" role="menuitem" id="song-export-btn" title="Download this song as one portable file, with its voice memos"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> Export <span class="menu-note">for another Barline</span></button>
+            </div>
+          </details>
         </div>
 
         <div id="song-shape" class="song-shape" title="Whole-song overview"></div>
@@ -144,8 +180,8 @@
         <div class="sections-head">
           <h2>Sections</h2>
           <span class="tool-group">
-            <button id="song-countins-btn" class="btn" title="Count-ins at the start and/or at every section change, in one go (this song, a setlist, or every song)">&#9201; Count-ins</button>
-            <button id="add-section-btn" class="btn">+ Add section</button>
+            <button id="song-countins-btn" class="btn" title="Count-ins at the start and/or at every section change, in one go (this song, a setlist, or every song)"><svg class="ic" aria-hidden="true"><use href="#i-timer"/></svg> Count-ins</button>
+            <button id="add-section-btn" class="btn"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg> Add section</button>
           </span>
         </div>
 
@@ -157,11 +193,16 @@
           <input id="setlist-name" class="song-title-input" type="text" placeholder="Setlist name" data-focus-key="setlist:name" />
         </header>
         <div class="toolbar">
-          <button class="btn btn-go" id="setlist-live-btn" title="Put this setlist on every live screen">&#9654; Go live with this setlist</button>
-          <button class="btn" id="setlist-print-btn" data-server-only title="A PDF to print: the running order, then every song's chart">&#9113; Print set</button>
-          <button class="btn" id="setlist-countins-btn" title="Count-ins at the start and/or at every section change, for every song in this setlist">&#9201; Count-ins</button>
-          <button class="btn" id="setlist-export-btn" title="Download this setlist with its songs, voice memos and the band, as one file (for Pocket, another server, or a backup)">&#8615; Export</button>
-          <button class="btn" id="setlist-zip-btn" data-server-only title="One click track per song, in a .zip, with this device's click settings: practise anywhere, no server needed">&#8615; Practice tracks</button>
+          <button class="btn btn-go btn-primary" id="setlist-live-btn" title="Put this setlist on every live screen"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> Go live with this setlist</button>
+          <button class="btn" id="setlist-countins-btn" title="Count-ins at the start and/or at every section change, for every song in this setlist"><svg class="ic" aria-hidden="true"><use href="#i-timer"/></svg> Count-ins</button>
+          <details class="menu" id="setlist-share">
+            <summary class="btn" title="Print, download or export this setlist"><svg class="ic" aria-hidden="true"><use href="#i-share"/></svg> Share <svg class="ic" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+            <div class="menu-list" role="menu">
+              <button class="menu-item" role="menuitem" id="setlist-print-btn" data-server-only title="A PDF to print: the running order, then every song's chart"><svg class="ic" aria-hidden="true"><use href="#i-print"/></svg> Print set <span class="menu-note">PDF</span></button>
+              <button class="menu-item" role="menuitem" id="setlist-zip-btn" data-server-only title="One click track per song, in a .zip, with this device's click settings: practise anywhere, no server needed"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> Practice tracks <span class="menu-note">.zip</span></button>
+              <button class="menu-item" role="menuitem" id="setlist-export-btn" title="Download this setlist with its songs, voice memos and the band, as one file (for Pocket, another server, or a backup)"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> Export <span class="menu-note">for Pocket or a backup</span></button>
+            </div>
+          </details>
           <button id="delete-setlist-btn" class="btn-danger">Delete</button>
         </div>
         <p id="setlist-summary" class="song-summary"></p>
@@ -171,7 +212,7 @@
         </div>
         <div class="setlist-builder">
           <div class="setlist-column">
-            <h2>In this setlist <span class="dim-note" id="setlist-drag-note">drag &#8942;&#8942; to reorder</span></h2>
+            <h2>In this setlist <span class="dim-note" id="setlist-drag-note">drag <svg class="ic" aria-hidden="true"><use href="#i-grip"/></svg> to reorder</span></h2>
             <ol id="setlist-songs" class="setlist-songs"></ol>
           </div>
           <div class="setlist-column">
@@ -187,13 +228,13 @@
         </header>
         <p class="song-summary">Everyone who plays. A hint can be aimed at one of them, and each device can say who's holding it so that player's hints stand out.</p>
         <ul id="player-list" class="player-list"></ul>
-        <button class="btn" id="add-player-btn">+ Add player</button>
+        <button class="btn" id="add-player-btn"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg> Add player</button>
         <div class="band-files">
           <h3>Files</h3>
           <p>Everything in one file: every song, setlist, player and voice memo. Keep it as a backup, open it in Barline Pocket to practise away from the band, or bring a Pocket file back here: songs already here are merged, not doubled.</p>
           <div class="tool-group">
-            <button class="btn" id="export-all-btn">&#8615; Export everything</button>
-            <button class="btn" id="band-import-btn">&#8613; Import a file</button>
+            <button class="btn" id="export-all-btn"><svg class="ic" aria-hidden="true"><use href="#i-download"/></svg> Export everything</button>
+            <button class="btn" id="band-import-btn"><svg class="ic" aria-hidden="true"><use href="#i-upload"/></svg> Import a file</button>
           </div>
           <p data-server-only>Barline Pocket runs on a phone, tablet or computer with no server: open <a href="https://giopas.github.io/Barline/" target="_blank" rel="noopener">giopas.github.io/Barline</a> and install it (or add it to the home screen). It needs the internet once, to load; after that it works offline.</p>
           <div class="pocket-only">
@@ -207,20 +248,26 @@
     <!-- Live / on-stage view -->
     <section id="live-view" class="live hidden">
       <header class="live-top">
-        <button class="btn-small" id="live-exit" title="Back to editing">&larr; Edit</button>
+        <button class="btn-small" id="live-exit" title="Back to editing"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg> Edit</button>
         <div class="live-title">
           <span id="live-song-title">No song cued</span>
           <span id="live-song-meta" class="live-meta"></span>
         </div>
         <div class="live-setlist-nav" id="live-setlist-nav">
-          <button class="btn-small" id="live-prev" title="Previous song">&#9664;</button>
+          <button class="btn-small" id="live-prev" title="Previous song" aria-label="Previous song"><svg class="ic" aria-hidden="true"><use href="#i-prev"/></svg></button>
           <span id="live-setlist-pos"></span>
-          <button class="btn-small" id="live-next" title="Next song">&#9654;</button>
+          <button class="btn-small" id="live-next" title="Next song" aria-label="Next song"><svg class="ic" aria-hidden="true"><use href="#i-next"/></svg></button>
         </div>
         <span class="live-presence" id="live-presence" data-server-only></span>
-        <button class="chip" id="live-solo" data-server-only>With the band</button>
-        <button class="chip" id="live-big" title="Drummer view: huge tempo, bar count and what's next">Big view</button>
-        <button class="chip" id="live-who" title="Who's using this device?">Whole band</button>
+        <div class="seg live-seg" role="group" aria-label="Who Start and Stop reach" data-server-only>
+          <button id="live-band" aria-pressed="true" title="Start and Stop reach every device">With the band</button>
+          <button id="live-solo" aria-pressed="false" title="Play on your own (practice, or no server): Start and Stop only affect this device">Solo</button>
+        </div>
+        <div class="seg live-seg" role="group" aria-label="How this screen looks">
+          <button id="live-normal" aria-pressed="true" title="The whole song, with every section's hints">Chart</button>
+          <button id="live-big" aria-pressed="false" title="Drummer view: huge tempo, bar count and what's next">Big</button>
+        </div>
+        <button class="chip" id="live-who" title="Who's using this device?">You: Whole band</button>
       </header>
 
       <div class="live-solo-note hidden" id="live-solo-note"></div>
@@ -250,7 +297,7 @@
         <div class="sheet-head">
           <h3>Jump to</h3>
           <span class="dim-note">lands on the next bar line, beat kept</span>
-          <button class="btn-icon" id="live-jump-close" title="Close">&times;</button>
+          <button class="btn-icon" id="live-jump-close" title="Close"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
         </div>
         <div class="jump-list" id="live-jump-list"></div>
         <details class="nudge" id="live-nudge">
@@ -268,14 +315,15 @@
       </div>
 
       <footer class="live-controls">
-        <button class="big-go" id="live-start">&#9654; Start</button>
-        <button class="big-stop hidden" id="live-stop">&#9632; Stop</button>
-        <button class="chip hidden" id="live-jump-btn" title="Jump to another section (from the next bar line), or nudge the click">&#10549; Jump</button>
+        <button class="live-unlock hidden" id="live-unlock"><svg class="ic" aria-hidden="true"><use href="#i-speaker"/></svg><span><strong>Tap here to turn on your click</strong><span class="live-unlock-sub">Browsers keep sound off until this device is tapped once.</span></span></button>
+        <button class="big-go" id="live-start"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> <span id="live-start-label">Start</span></button>
+        <button class="big-stop hidden" id="live-stop"><svg class="ic" aria-hidden="true"><use href="#i-stop"/></svg> Stop</button>
+        <button class="chip hidden" id="live-jump-btn" title="Jump to another section (from the next bar line), or nudge the click"><svg class="ic" aria-hidden="true"><use href="#i-jump"/></svg> Jump</button>
         <span class="live-driver" id="live-driver"></span>
         <span class="click-controls">
-          <button class="chip" id="click-toggle" title="Metronome click on this device">&#128264; Click: tap to enable</button>
-          <input type="range" id="live-volume" min="0" max="1" step="0.05" title="Click volume" />
-          <button class="chip" id="live-click-settings" title="Click sound, subdivisions, spoken count-in, left/right ear, test">&#9881; Click</button>
+          <button class="chip" id="click-toggle" title="Metronome click on this device"><svg class="ic" aria-hidden="true"><use href="#i-speaker-off"/></svg> Click off</button>
+          <input type="range" id="live-volume" min="0" max="1" step="0.05" title="Click volume" aria-label="Click volume" />
+          <button class="chip" id="live-click-settings" title="Click sound, subdivisions, spoken count-in, left/right ear, test"><svg class="ic" aria-hidden="true"><use href="#i-sliders"/></svg> Click</button>
         </span>
       </footer>
     </section>
@@ -286,7 +334,7 @@
     <div class="modal-card">
       <div class="modal-head">
         <h2>Connect a phone or tablet</h2>
-        <button class="btn-icon" data-close>&times;</button>
+        <button class="btn-icon" data-close title="Close" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
       </div>
       <p class="modal-note">Same Wi-Fi as this server, then scan the code or type the address into any browser. No app, no account.</p>
       <p class="modal-note"><strong>Make it feel like an app:</strong> on iPad/iPhone, Safari's Share &rarr; <em>Add to Home Screen</em>; on Android, Chrome's menu &rarr; <em>Add to Home screen</em>. It then opens full-screen, straight into the live view.</p>
@@ -311,7 +359,7 @@
     <div class="modal-card">
       <div class="modal-head">
         <h2>Who's using this device?</h2>
-        <button class="btn-icon" data-close>&times;</button>
+        <button class="btn-icon" data-close title="Close" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
       </div>
       <p class="modal-note">Hints aimed at you will stand out. You can change this any time.</p>
       <div id="who-options" class="who-options"></div>
@@ -323,7 +371,7 @@
     <div class="modal-card">
       <div class="modal-head">
         <h2>Use Pocket offline</h2>
-        <button class="btn-icon" data-close>&times;</button>
+        <button class="btn-icon" data-close title="Close" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
       </div>
       <p class="offline-status" id="offline-status"></p>
       <p class="modal-note">Any browser: open Pocket once with the internet on, and from then on it opens without it, at the same address. <strong>Installing it is better</strong>: it gets its own icon and window, and the browser won't clear your songs to save space, as it may do with websites you haven't opened for a while.</p>
@@ -365,7 +413,7 @@
     <div class="modal-card">
       <div class="modal-head">
         <h2 id="print-title">Paper chart</h2>
-        <button class="btn-icon" data-close>&times;</button>
+        <button class="btn-icon" data-close title="Close" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
       </div>
       <div class="print-settings">
         <div class="seg" data-opt="size" role="group" aria-label="Size">
@@ -391,7 +439,7 @@
     <div class="modal-card click-card">
       <div class="modal-head">
         <h2>Count-ins in one go</h2>
-        <button class="btn-icon" data-close>&times;</button>
+        <button class="btn-icon" data-close title="Close" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
       </div>
       <p class="modal-note">A count-in at the start of each song, before every section change, or both. You can still change any section by hand afterwards.</p>
       <div class="click-grid">
@@ -425,7 +473,7 @@
     <div class="modal-card">
       <div class="modal-head">
         <h2>Import</h2>
-        <button class="btn-icon" data-close>&times;</button>
+        <button class="btn-icon" data-close title="Close" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
       </div>
       <p class="modal-note" id="import-summary"></p>
       <p class="modal-note">A song that's already here is merged: hints from both copies (newest wins when both changed one), nothing deleted. When the two structures differ, you choose which to keep.</p>
@@ -444,7 +492,7 @@
     <div class="modal-card quick-card">
       <div class="modal-head">
         <h2>Add songs</h2>
-        <button class="btn-icon" data-close>&times;</button>
+        <button class="btn-icon" data-close title="Close" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
       </div>
       <div class="tabs">
         <button class="tab active" data-tab="quick-one">One song</button>
@@ -454,9 +502,9 @@
         <p class="modal-note">A title and a tempo is all the click needs. Plan the sections later, or never.</p>
         <label>Title <input id="q-title" type="text" maxlength="120" placeholder="e.g. Seven Nation Army" autocomplete="off" /></label>
         <div class="quick-row">
-          <label>BPM <input id="q-bpm" type="number" min="20" max="400" placeholder="120" /></label>
+          <label>BPM <span class="label-note">(120 if empty)</span> <input id="q-bpm" type="number" min="20" max="400" placeholder="e.g. 124" /></label>
           <button type="button" class="btn tap-btn" id="q-tap" title="Tap along to the song">Tap</button>
-          <label>Length <input id="q-length" type="text" placeholder="4:00" inputmode="numeric" pattern="\d{1,2}:[0-5]\d" title="minutes:seconds (optional, 4:00 if empty)" /></label>
+          <label>Length <span class="label-note">(optional)</span> <input id="q-length" type="text" placeholder="e.g. 3:45" inputmode="numeric" pattern="\d{1,2}:[0-5]\d" title="minutes:seconds (optional, 4:00 if empty)" /></label>
         </div>
         <div class="ck-actions">
           <button class="btn btn-go" type="submit" id="q-add">Add song</button>
@@ -482,7 +530,7 @@
     <div class="modal-card click-card">
       <div class="modal-head">
         <h2>Click on this device</h2>
-        <button class="btn-icon" data-close>&times;</button>
+        <button class="btn-icon" data-close title="Close" aria-label="Close"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
       </div>
       <p class="modal-note">Only this device changes. Every device keeps its own click; the beat is shared.</p>
       <div class="click-grid">
@@ -517,10 +565,10 @@
         <label class="ck-wide ck-check"><input type="checkbox" id="ck-voice" /> Spoken count-in ("one, two, three, four")</label>
         <label class="ck-wide ck-check"><input type="checkbox" id="ck-awake" /> Keep the screen on in the live view</label>
         <label class="ck-wide ck-check"><input type="checkbox" id="ck-keep" /> If the server drops mid-song, keep playing on this device</label>
-        <label>Volume <input type="range" id="ck-volume" min="0" max="1" step="0.05" /></label>
-        <label>Beat 1 (accent) <input type="range" id="ck-accent" min="0" max="1" step="0.05" /></label>
-        <label>Other beats <input type="range" id="ck-beat" min="0" max="1" step="0.05" /></label>
-        <label>Subdivisions <input type="range" id="ck-sub" min="0" max="1" step="0.05" /></label>
+        <label>Volume <output class="ck-val" for="ck-volume" data-pct></output><input type="range" id="ck-volume" min="0" max="1" step="0.05" /></label>
+        <label>Beat 1 (accent) <output class="ck-val" for="ck-accent" data-pct></output><input type="range" id="ck-accent" min="0" max="1" step="0.05" /></label>
+        <label>Other beats <output class="ck-val" for="ck-beat" data-pct></output><input type="range" id="ck-beat" min="0" max="1" step="0.05" /></label>
+        <label>Subdivisions <output class="ck-val" for="ck-sub" data-pct></output><input type="range" id="ck-sub" min="0" max="1" step="0.05" /></label>
         <label class="ck-wide">Timing nudge <span id="ck-latency-val" class="ck-val"></span>
           <input type="range" id="ck-latency" min="-150" max="150" step="5" />
           <span class="ck-hint">Click late in your ears (e.g. Bluetooth)? Move left. Early? Move right.</span>
@@ -530,8 +578,8 @@
         <h3>Click check</h3>
         <p class="modal-note">Plug in what you use on stage (splitter, in-ears), then test: a count-in and two bars at <span id="ck-test-bpm">120</span> BPM with the settings above.</p>
         <div class="ck-actions">
-          <button class="btn btn-go" id="ck-test">&#9654; Test the click</button>
-          <button class="btn" id="ck-reset">Reset to defaults</button>
+          <button class="btn btn-go" id="ck-test"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg> Test the click</button>
+          <button class="btn-link" id="ck-reset">Reset to defaults</button>
         </div>
         <div class="ck-test-dots" id="ck-test-dots"><span></span><span></span><span></span><span></span></div>
         <p class="ck-status" id="ck-test-status" aria-live="polite"></p>
@@ -548,11 +596,11 @@
         <span class="section-start"></span>
         <input class="section-label" type="text" placeholder="Section label" />
         <div class="section-card-controls">
-          <button class="btn-icon preview-section" title="Hear this section's count-in and first bars">&#9835;</button>
-          <button class="btn-icon move-up" title="Move up">&uarr;</button>
-          <button class="btn-icon move-down" title="Move down">&darr;</button>
-          <button class="btn-icon duplicate-section" title="Duplicate section">&#10697;</button>
-          <button class="btn-icon danger remove-section" title="Remove section">&times;</button>
+          <button class="btn-icon preview-section" title="Hear this section's count-in and first bars"><svg class="ic" aria-hidden="true"><use href="#i-note"/></svg></button>
+          <button class="btn-icon move-up" title="Move up"><svg class="ic" aria-hidden="true"><use href="#i-up"/></svg></button>
+          <button class="btn-icon move-down" title="Move down"><svg class="ic" aria-hidden="true"><use href="#i-down"/></svg></button>
+          <button class="btn-icon duplicate-section" title="Duplicate section"><svg class="ic" aria-hidden="true"><use href="#i-copy"/></svg></button>
+          <button class="btn-icon danger remove-section" title="Remove section"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
         </div>
       </div>
       <div class="section-card-fields">
@@ -563,7 +611,7 @@
       <div class="section-hints">
         <div class="section-hints-head">
           <h3>Hints</h3>
-          <button class="btn-small add-hint" title="Add a note for the whole band or for one player">+ Add hint</button>
+          <button class="btn-small add-hint" title="Add a note for the whole band or for one player"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg> Add hint</button>
         </div>
         <ul class="hint-list"></ul>
       </div>
@@ -574,12 +622,12 @@
     <li class="hint-row">
       <input class="hint-text" type="text" placeholder="e.g. Watch Ruby for the stop" />
       <span class="hint-author hidden"></span>
-      <select class="hint-visibility">
+      <select class="hint-visibility" aria-label="Who this hint is for">
         <option value="all">For the whole band</option>
       </select>
-      <button class="btn-icon hint-play hidden" title="Play the voice memo">&#9654;</button>
-      <button class="btn-icon hint-record" title="Record or attach a short voice memo">&#127908;</button>
-      <button class="btn-icon danger remove-hint" title="Remove hint">&times;</button>
+      <button class="btn-icon hint-play hidden" title="Play the voice memo"><svg class="ic" aria-hidden="true"><use href="#i-play"/></svg></button>
+      <button class="btn-icon hint-record" title="Record or attach a short voice memo"><svg class="ic" aria-hidden="true"><use href="#i-mic"/></svg></button>
+      <button class="btn-icon danger remove-hint" title="Remove hint"><svg class="ic" aria-hidden="true"><use href="#i-close"/></svg></button>
       <input type="file" class="hint-file hidden" accept="audio/*" capture />
     </li>
   </template>

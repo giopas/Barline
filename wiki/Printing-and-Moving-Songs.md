@@ -2,7 +2,7 @@
 
 ## Paper charts
 
-Sometimes paper is the backup you want: on a music stand, taped to the floor, or in a rehearsal folder. **⎙ Paper chart** on a song (or **⎙ Print set** on a setlist) opens a PDF in a new tab; print it from there, or save it. The ⤓ button next to each choice downloads the PDF instead.
+Sometimes paper is the backup you want: on a music stand, taped to the floor, or in a rehearsal folder. **Share → Paper chart** on a song (or **Share → Print set** on a setlist) opens a PDF in a new tab; print it from there, or save it. The download button next to each choice downloads the PDF instead.
 
 ![Choosing what to print](https://raw.githubusercontent.com/giopas/barline/main/screenshots/17-print-dialog.png)
 
@@ -43,7 +43,7 @@ Barline remembers these choices on each device.
 
 ### The song is inside its PDF
 
-A song's PDF carries the song itself, voice memos included, as an attachment (a PDF viewer lists it as `song.ssp.json`). Pick the PDF with the ⇡ import button and you get the song back, so emailing a chart to another band's Barline is enough. A set's PDF doesn't carry its songs; use the setlist's **Export** instead (below).
+A song's PDF carries the song itself, voice memos included, as an attachment (a PDF viewer lists it as `song.ssp.json`). Pick the PDF with the import button (next to Songs) and you get the song back, so emailing a chart to another band's Barline is enough. A set's PDF doesn't carry its songs; use the setlist's **Share → Export** instead (below).
 
 The PDFs are made by Barline itself, with nothing to install: the idea and the code come from [Song Notation Tool](https://github.com/giopas/song-notation-tool).
 
@@ -51,7 +51,7 @@ The PDFs are made by Barline itself, with nothing to install: the idea and the c
 
 Every song is one small file in your songs folder, so you can copy it to another Barline by hand. That works, except for voice memos, which live in their own folder.
 
-The easy way is **Export** on the song: it downloads one `.ssp.json` file with the song *and* its voice memos inside. A setlist's **Export** does the same for the setlist, its songs and the band's players, and **Band → Export everything** for all of it. On the other Barline, click the ⇡ button next to Songs and pick the file (a song's paper-chart PDF works too).
+The easy way is **Share → Export** on the song: it downloads one `.ssp.json` file with the song *and* its voice memos inside. A setlist's **Share → Export** does the same for the setlist, its songs and the band's players, and **Band → Export everything** for all of it. On the other Barline, click the import button next to Songs and pick the file (a song's paper-chart PDF works too).
 
 Before anything changes, you see what's in the file. A song that isn't there yet comes in as a new song. A song that's already there (the same song, or one with the same title) is **merged**: the hints from both copies end up in one song, each showing who wrote it, and nothing is deleted. If the two copies' structures differ, you choose which to keep. [[Barline Pocket]] explains the merge in detail, since that's where it's used most.
 

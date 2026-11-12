@@ -118,6 +118,12 @@ class Shooter:
         pg.set_default_timeout(8000)
         return pg
 
+    @staticmethod
+    def tapped(pg):
+        """A device on stage has been tapped once, so its click is allowed:
+        the pictures don't show the "tap to turn on your click" bar (0.20)."""
+        pg.evaluate("() => { window.Barline.metronome.unlock(); window.SSPLive.clickChanged(); }")
+
     def save(self, pg, name, full_page=False):
         path = os.path.join(OUT, name)
         pg.screenshot(path=path, full_page=full_page)
@@ -173,6 +179,7 @@ class Shooter:
         self.cue("Harbour Lights", "Friday at the Harbour Bar")
         for pg in (lap, tab, phone):
             pg.goto(f"{self.srv.base}/#/live")
+            self.tapped(pg)
             pg.wait_for_selector("#live-chart .chart-row", state="attached")
         lap.wait_for_timeout(400)
         self.save(tab, "05-live-ready-tablet.png")
@@ -205,6 +212,7 @@ class Shooter:
                        "16-paper-setlist-and-floor.png")
         lap.goto(f"{self.srv.base}/#/setlist/{friday}")
         lap.wait_for_selector("#setlist-songs li")
+        lap.click("#setlist-share summary")  # 0.20: printing lives in the Share menu
         lap.click("#setlist-print-btn")
         lap.wait_for_selector("#print-modal:not(.hidden)")
         lap.wait_for_timeout(300)
@@ -225,6 +233,7 @@ class Shooter:
         self.save(p2, "12-phone-editor.png")
         # 0.10: the drummer's click settings + click check, and quick add
         tab.goto(f"{self.srv.base}/#/live")
+        self.tapped(tab)
         tab.wait_for_selector("#live-view:not(.hidden)")
         tab.evaluate("window.Barline.saveClick({subdivision: '8', voice: true, channel: 'left'})")
         tab.click("#live-click-settings")
@@ -255,6 +264,7 @@ class Shooter:
 
         self.cue("Harbour Lights", "Friday at the Harbour Bar")
         tab.goto(f"{self.srv.base}/#/live")
+        self.tapped(tab)
         tab.wait_for_selector("#live-chart .chart-row", state="attached")
         t = self.start("Harbour Lights", "Verse 1", "Friday at the Harbour Bar", by=tab)
         first = t["timeline"]["bars"][0]
@@ -532,6 +542,7 @@ class Shooter:
         self.cue("Night Bus to Nowhere", "Friday at the Harbour Bar")
         for pg in (tab, phone):
             pg.goto(f"{self.srv.base}/#/live")
+            self.tapped(pg)
             pg.wait_for_selector("#live-chart .chart-row", state="attached")
         # Ruby's a drummer, so her tablet is in big view: pick the start in the strip
         tab.locator("#live-shape .song-shape-block").filter(has_text="Chorus").first.click()

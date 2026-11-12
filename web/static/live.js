@@ -34,7 +34,14 @@
     showAll: S.prefs.get("showAllHints", false),
     big: S.prefs.get("bigView", null), // null: not chosen yet -> on for drummers
     wakeLock: null,
+    serverLost: false, // the event stream dropped (0.20: said so on this screen too)
   };
+
+  // A device that isn't one of the band's players comes through as
+  // "someone": say where it came from instead.
+  function byWhom(name) {
+    return !name || name === "someone" ? null : name;
+  }
 
   // -- data ---------------------------------------------------------------
   // In solo mode songs come from this device's copy (S.bundle, kept fresh
@@ -251,21 +258,19 @@
   }
 
   function renderSolo() {
-    const b = $("live-solo");
-    b.textContent = live.solo ? "Solo: this device only" : "With the band";
-    b.classList.toggle("active", live.solo);
-    b.title = live.solo
-      ? "Start/stop here only affects this device. Tap to rejoin the band."
-      : "Tap to play on your own (practice, or no server): Start/Stop only affect this device.";
+    $("live-band").setAttribute("aria-pressed", String(!live.solo));
+    $("live-solo").setAttribute("aria-pressed", String(live.solo));
     const note = $("live-solo-note");
+    let text = "";
     if (live.solo && live.soloWhy === "lost") {
-      note.textContent = Sync.connected
+      text = Sync.connected
         ? "The server is back. You'll rejoin the band when this song stops."
         : "Server out of reach: playing on, on this device only.";
-      note.classList.remove("hidden");
-    } else {
-      note.classList.add("hidden");
+    } else if (!live.solo && live.serverLost && !window.BarlinePocket) {
+      text = "Lost the server, reconnecting\u2026 Start plays on this device only until it's back.";
     }
+    note.textContent = text;
+    note.classList.toggle("hidden", !text);
   }
 
   // -- static parts (redrawn when the song or setlist changes) --------------
@@ -325,7 +330,9 @@
         cb.addEventListener("click", () => chooseStart(s.id));
         box.appendChild(cb);
       }
-      const b = S.el("div", "song-shape-block", s.bars >= 2 ? s.label : "");
+      const b = S.el("div", "song-shape-block");
+      if (s.bars >= 2) b.dataset.label = s.label;
+      b.title = s.label;
       const c = S.sectionColor(i);
       b.style.flexGrow = String(s.bars);
       b.style.flexBasis = "0";
@@ -338,19 +345,22 @@
     const head = S.el("div", "playhead");
     head.id = "live-playhead";
     box.appendChild(head);
+    S.fitShapeLabels(box); // measured now: a background tab may never get an animation frame
   }
 
   function hintItem(h, kind) {
     const li = S.el("li", `live-hint hint-${kind}`);
     if (kind !== "all") {
       const who = S.playerById(h.visibility);
-      li.appendChild(S.el("span", "hint-who", kind === "mine" ? "For you" : who ? who.name : ""));
+      li.appendChild(S.el("span", "hint-who", kind === "mine" ? "For you" : who ? `For ${who.name}` : ""));
     }
     li.appendChild(S.el("span", "hint-body", h.text || "(voice memo)"));
-    if (h.author) li.appendChild(S.el("span", "hint-by", window.BarlineFiles.authorLabel(h.author, S.state.band)));
+    if (h.author) li.appendChild(S.el("span", "hint-by", "from " + window.BarlineFiles.authorLabel(h.author, S.state.band)));
     if (h.audio) {
-      const b = S.el("button", "btn-icon hint-play-live", "▶");
+      const b = S.el("button", "btn-icon hint-play-live");
+      b.appendChild(S.icon("play"));
       b.title = "Play the voice memo";
+      b.setAttribute("aria-label", "Play the voice memo");
       b.addEventListener("click", (ev) => {
         ev.stopPropagation();
         metronome.playClip(S.clipUrl(h.audio));
@@ -433,7 +443,7 @@
       const bpm = s.bpm || song.default_bpm;
       top.appendChild(S.el("span", "chart-meta", `bar ${bar} · ${s.bars} bar${s.bars === 1 ? "" : "s"} · ${bpm} BPM${s.bpm ? " (change)" : ""}`));
       top.appendChild(S.el("span", "chart-start-tag", "start here"));
-      const jb = S.el("button", "btn-small chart-jump", "\u2935 Jump here");
+      const jb = S.setLabel(S.el("button", "btn-small chart-jump"), "jump", "Jump here");
       jb.title = "Carry on from this section, from the next bar line";
       jb.addEventListener("click", (ev) => {
         ev.stopPropagation();
@@ -575,7 +585,7 @@
     clickOn();
     const m = t.moved;
     if (!m) return;
-    const who = m.client_id === Sync.clientId ? "" : `${m.by || "Someone"}: `;
+    const who = m.client_id === Sync.clientId ? "" : `${byWhom(m.by) || "Another device"}: `;
     if (m.kind === "jump") S.toast(`${who}jump to ${m.label}`);
     else if (m.kind === "nudge") S.toast(`${who}click ${m.ms > 0 ? "ahead" : "back"} ${Math.round(Math.abs(m.ms))} ms`);
   }
@@ -593,11 +603,20 @@
   function renderBig() {
     const on = bigOn();
     $("live-view").classList.toggle("big", on);
-    $("live-big").classList.toggle("active", on);
+    $("live-big").setAttribute("aria-pressed", String(on));
+    $("live-normal").setAttribute("aria-pressed", String(!on));
   }
 
+  $("live-normal").addEventListener("click", () => {
+    if (!bigOn()) return;
+    live.big = false;
+    S.prefs.set("bigView", live.big);
+    renderBig();
+  });
+
   $("live-big").addEventListener("click", () => {
-    live.big = !bigOn();
+    if (bigOn()) return;
+    live.big = true;
     S.prefs.set("bigView", live.big);
     renderBig();
   });
@@ -640,14 +659,25 @@
     const count = h.mine.length + h.all.length + (live.showAll || !S.state.me ? h.others.length : 0);
     const othersHidden = S.state.me && !live.showAll ? h.others.length : 0;
     const head = S.el("div", "hints-now-head");
-    head.appendChild(S.el("h3", "", count ? `Hints: ${section.label}`
-      : othersHidden ? `${section.label}: nothing for you (${othersHidden} for others)` : `${section.label}: no hints`));
-    const add = S.el("button", "btn-small", "+ Hint");
+    const add = S.setLabel(S.el("button", "btn-small"), "plus", "Hint");
     add.title = `Add a hint to ${section.label}`;
     add.addEventListener("click", () => openQuickHint(section));
+    if (count) {
+      head.appendChild(S.el("h3", "", `Hints: ${section.label}`));
+    } else {
+      now.classList.add("empty");
+      const line = S.el("p", "hints-empty-line", S.state.me ? `No hints for you in ${section.label}` : `No hints in ${section.label}`);
+      if (othersHidden) {
+        const more = S.el("button", "btn-link", `${othersHidden} for others`);
+        more.title = "Show every player's hints on this device";
+        more.addEventListener("click", () => setShowAll(true));
+        line.append(" \u00B7 ", more);
+      }
+      head.appendChild(line);
+    }
     head.appendChild(add);
     now.appendChild(head);
-    now.appendChild(hintList(section, true));
+    if (count) now.appendChild(hintList(section, true));
     // a hint being typed survives the panel moving on to the next section
     if (live.quickForm) now.appendChild(live.quickForm);
     box.appendChild(now);
@@ -1012,7 +1042,11 @@
     $("live-jump-btn").classList.toggle("hidden", !running);
     $("live-start").disabled = !live.song;
     const d = live.transport.driver;
-    $("live-driver").textContent = running && d ? `Started by ${d.client_id === Sync.clientId ? "you" : d.name}` : "";
+    $("live-driver").textContent = running && d
+      ? d.client_id === Sync.clientId ? "Started by you" : byWhom(d.name) ? `Started by ${d.name}` : "Started on another device"
+      : "";
+    // finding 1 (0.20): with the server gone, Start only reaches this device; say so on the button
+    $("live-start-label").textContent = !live.solo && live.serverLost && !window.BarlinePocket ? "Start on this device" : "Start";
     $("live-prev").title = live.solo ? "Previous song (this device only)" : "Previous song";
     renderSolo();
     renderClick();
@@ -1020,11 +1054,29 @@
 
   function renderClick() {
     const b = $("click-toggle");
-    if (!metronome.unlocked) b.textContent = "🔈 Click: tap to enable";
-    else b.textContent = metronome.enabled ? "🔊 Click on" : "🔇 Click off";
-    b.classList.toggle("active", metronome.unlocked && metronome.enabled);
+    const on = metronome.unlocked && metronome.enabled;
+    S.setLabel(b, on ? "speaker" : "speaker-off", on ? "Click on" : "Click off");
+    b.classList.toggle("active", on);
+    b.title = !metronome.unlocked ? "The click is off until this device is tapped: tap to turn it on" : "Metronome click on this device";
     $("live-volume").value = metronome.volume;
+    // Sound needs one tap on each device. Players who never press Start
+    // (they follow the drummer) would stay silent: ask, big and clear.
+    $("live-unlock").classList.toggle("hidden", metronome.unlocked || !metronome.enabled);
   }
+
+  function unlockClick() {
+    if (metronome.unlocked || !metronome.enabled) return;
+    metronome.unlock();
+    if (live.transport.state === "running") clickOn();
+    setTimeout(renderClick, 50);
+  }
+
+  $("live-unlock").addEventListener("click", unlockClick);
+  // any tap on this screen counts (except the click button, which does its own)
+  $("live-view").addEventListener("click", (ev) => {
+    if (ev.target.closest("#click-toggle")) return;
+    unlockClick();
+  }, true);
 
   $("click-toggle").addEventListener("click", () => {
     if (!metronome.unlocked) {
@@ -1049,6 +1101,8 @@
   async function start() {
     if (!live.song) return;
     if (!metronome.unlocked && metronome.enabled) metronome.unlock(); // this tap is our one chance on iOS
+    // the server is gone: play on this device rather than fail, and rejoin when it's back
+    if (!live.solo && live.serverLost && !window.BarlinePocket) await setSolo(true, "lost");
     try {
       await command({
         action: "start", song_id: live.song.id, setlist_id: live.setlist ? live.setlist.id : null,
@@ -1071,7 +1125,8 @@
   $("live-stop").addEventListener("click", stop);
   $("live-prev").addEventListener("click", () => command({ action: "prev" }));
   $("live-next").addEventListener("click", () => command({ action: "next" }));
-  $("live-solo").addEventListener("click", () => setSolo(!live.solo, "chosen"));
+  $("live-solo").addEventListener("click", () => setSolo(true, "chosen"));
+  $("live-band").addEventListener("click", () => setSolo(false));
   $("live-exit").addEventListener("click", () => {
     S.go(live.song ? `#/song/${live.song.id}` : "#/");
   });
@@ -1194,8 +1249,10 @@
   });
   // the server came back after we went solo on our own: rejoin once idle
   Sync.on("status", (ok) => {
-    if (!live.solo || live.soloWhy !== "lost") return;
+    live.serverLost = !ok;
     renderSolo();
+    renderControls();
+    if (!live.solo || live.soloWhy !== "lost") return;
     if (ok && live.transport.state !== "running") setSolo(false);
   });
   // Positions are worked out locally from the shared clock; the server's

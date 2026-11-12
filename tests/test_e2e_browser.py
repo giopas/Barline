@@ -344,8 +344,9 @@ class BrowserSync(unittest.TestCase):
         before = len(self.s.store.songs), len(self.s.store.setlists)
         pg = self.page(accept_downloads=True)
         pg.goto(f"{self.s.base}/#/setlist/{sl['id']}")
-        pg.wait_for_selector("#setlist-export-btn")
+        pg.wait_for_selector("#setlist-share")
         with pg.expect_download() as dl:
+            pg.click("#setlist-share summary")  # 0.20: export lives in the Share menu
             pg.click("#setlist-export-btn")
         path = os.path.join(tempfile.mkdtemp(prefix="ssp-dl-"), "set.ssp.json")
         dl.value.save_as(path)
@@ -368,15 +369,16 @@ class BrowserSync(unittest.TestCase):
         pg = self.page()
         pg.goto(f"{self.s.base}/#/live")
         pg.wait_for_function(f"document.getElementById('live-song-title').textContent === {song['title']!r}")
+        pg.click("#click-toggle")  # the tap that allows sound (0.20: any tap on the live view would)
         pg.click("#live-solo")
-        pg.click("#click-toggle")
+        pg.wait_for_function("window.Barline.metronome.enabled")
         pg.click("#live-start")
         pg.wait_for_selector("#live-stop:not(.hidden)")
         pg.wait_for_function("window.Barline.metronome.job !== null")
         self.assertEqual(self.s.httpd.ssp_transport.snapshot()["state"], "stopped")  # the band isn't playing
         pg.click("#live-stop")
         pg.wait_for_selector("#live-start:not(.hidden)")
-        pg.click("#live-solo")  # back with the band
+        pg.click("#live-band")  # back with the band
         self.assertFalse(pg.evaluate("document.body.classList.contains('is-solo')"))
 
     def test_server_drop_mid_song_keeps_the_click_going(self):

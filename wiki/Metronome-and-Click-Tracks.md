@@ -38,9 +38,9 @@ In the editor, **Preview click** plays the whole song's click on this device, an
 
 ## Practice click tracks
 
-**Click track** in the editor downloads a `.wav` file of the whole song's click, made with this device's **⚙ Click** settings (sound, subdivisions, spoken count-in, one ear only): every tempo change and count-in in the right place, ready to drop into a phone, a DAW, or a practice app. Same sounds as the live click, so practice and stage feel the same.
+**Share → Click track** in the editor downloads a `.wav` file of the whole song's click, made with this device's **Click** settings (sound, subdivisions, spoken count-in, one ear only): every tempo change and count-in in the right place, ready to drop into a phone, a DAW, or a practice app. Same sounds as the live click, so practice and stage feel the same.
 
-**⬇ Practice tracks** on a setlist does the same for every song in it at once: a `.zip` of numbered click tracks, for practising at home with no server at all.
+**Share → Practice tracks** on a setlist does the same for every song in it at once: a `.zip` of numbered click tracks, for practising at home with no server at all.
 
 These are the same click sounds [QLC+ Swiss Knife](https://github.com/giopas/qlc-plus-swiss-knife-tool-script) uses for its click tracks.
 

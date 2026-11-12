@@ -7,7 +7,7 @@ If you already run your click from a metronome app on an iPad or phone, this pag
 ## Five minutes from metronome app to Barline
 
 1. **Get your tempos in.** In the sidebar, press **+** next to *Songs*, then **Paste a list**. Type or paste your set, one song per line: `Harbour Lights - 124`, or `Paper Boats, 96, 3:45` with a length. Tick **Also make a setlist** and press **Add**. That's your whole set, in order, ready to play. No tempo to hand? Type the title, hit **Tap** a few times along with the song.
-2. **Say it's you.** Tap **You: …** at the bottom of the sidebar and pick yourself. Because you're down as *Drums*, the live view opens in **Big view**: huge tempo, bar count, and how many bars until the next part.
+2. **Say it's you.** Tap **You: …** at the bottom of the sidebar and pick yourself. Because you're down as *Drums*, the live view opens in the **Big** view: huge tempo, bar count, and how many bars until the next part.
 3. **Set up your click.** In the live view, press **⚙ Click**: pick the sound, eighths or sixteenths, a spoken count-in ("one, two, three, four") and which ear it goes to. Then press **Test the click** with your splitter and in-ears plugged in, exactly as on stage. If you hear it, you're done.
 4. **Play.** **▶ Start** (or a foot pedal: Space starts and stops, the arrow keys change song).
 
@@ -30,8 +30,8 @@ Everything in **⚙ Click** belongs to your device only. The singer can have no 
 ## When the laptop or Wi-Fi goes away
 
 - **In the middle of a song**: your tablet keeps clicking to the end of the song (and on into the next one in the setlist), showing *Server out of reach: playing on, on this device only*. When the server is back, you rejoin the band as soon as you stop.
-- **Practising on your own**: tap **With the band** at the top of the live view to switch to **Solo**. Start and Stop now only work on your device, from the songs it already has, so you can run a song while the others are still tuning.
-- **At home, with no server at all**: on a setlist, press **⬇ Practice tracks**. You get a `.zip` with one click track per song, made with your click settings (subdivisions, spoken count-in, one ear). Play them in any music app.
+- **Practising on your own**: tap **Solo** in the **With the band | Solo** switch at the top of the live view. Start and Stop now only work on your device, from the songs it already has, so you can run a song while the others are still tuning.
+- **At home, with no server at all**: on a setlist, open **Share → Practice tracks**. You get a `.zip` with one click track per song, made with your click settings (subdivisions, spoken count-in, one ear). Play them in any music app.
 
 Solo needs the live view to have been open once while connected to the server, so your device has a copy of the songs. Opening Barline from scratch still needs the server.
 

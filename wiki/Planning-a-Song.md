@@ -80,9 +80,11 @@ Everybody connected sees the same song, and changes show up on every screen with
 
 ![The laptop edits, the phone follows](https://raw.githubusercontent.com/giopas/barline/main/screenshots/sync.gif)
 
+To delete a song, open **Advanced** at the top of its page: **Delete this song** is at the bottom, away from the everyday buttons. It goes from every setlist, on every device.
+
 ## Building a setlist
 
-Click **+** next to Setlists. Add songs from "All songs" on the right, then put them in playing order: drag a song by its **⋮⋮** handle (mouse or finger), or use the arrows. The setlist shows how long the set runs, count-ins included. Switching between songs and setlists is instant; there's no loading screen.
+Click **+** next to Setlists. Add songs from "All songs" on the right, then put them in playing order: drag a song by its handle (the six dots; mouse or finger), or use the arrows (on a phone, dragging is the way). The setlist shows how long the set runs, count-ins included. Switching between songs and setlists is instant; there's no loading screen.
 
 The song list in the sidebar follows the setlist you're looking at: its songs first, numbered in playing order, then the songs that aren't in it. It stays that way when you open a song, so you can walk through the set from the sidebar. The menu above the list switches back to **A–Z** or to another setlist's order (each device remembers its own choice).
 

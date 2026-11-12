@@ -99,7 +99,7 @@ class PocketRoundTrip(unittest.TestCase):
         card.locator(".add-hint").click()
         pg.keyboard.type("Pocket note: slide into the verse")
         pg.wait_for_function("document.querySelector('.section-card:nth-child(2) .hint-author:not(.hidden)')")
-        self.assertEqual(card.locator(".hint-author:not(.hidden)").last.text_content(), "Sam (Bass)")
+        self.assertEqual(card.locator(".hint-author:not(.hidden)").last.text_content(), "from Sam (Bass)")
         # ... with a voice memo (a file, as a phone without a microphone gives)
         clip = os.path.join(ROOT, "demo", "audio", sorted(os.listdir(os.path.join(ROOT, "demo", "audio")))[0])
         card.locator(".hint-file").last.set_input_files(clip)

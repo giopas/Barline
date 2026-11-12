@@ -51,7 +51,15 @@
         opts.headers["Content-Type"] = "application/json";
         opts.body = JSON.stringify(body);
       }
-      const res = await fetch("/api" + path, opts);
+      let res;
+      try {
+        res = await fetch("/api" + path, opts);
+      } catch (err) {
+        // the browser's own words ("Failed to fetch", "Load failed") mean nothing to a player
+        const e = new Error("can't reach the server");
+        e.unreachable = true;
+        throw e;
+      }
       if (res.status === 204) return null;
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || `${method} ${path} failed (${res.status})`);

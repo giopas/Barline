@@ -36,7 +36,7 @@ Nothing to buy or sign up for, and no app store: it's a web page that keeps itse
 On the band's Barline (the laptop or the Pi):
 
 - **Band → Export everything** makes one file with every song, setlist, player and voice memo.
-- Or open a setlist and press **Export**: that setlist, its songs and the players.
+- Or open a setlist and choose **Share → Export**: that setlist, its songs and the players.
 
 Send the file to your phone: email it to yourself, AirDrop it, or put it in Files, iCloud Drive or Google Drive. Then in Pocket, press **Import a file** and pick it. The first time, Pocket asks who you are in the band, so it knows which hints are yours and whose name to put on the notes you write.
 

@@ -37,11 +37,11 @@ Started the click a little late, and the band is already ahead of it? Under **Ju
 
 ## Big view (drummers)
 
-**Big view** at the top swaps the song list for three huge numbers: the tempo, the bar you're on in this part ("3/8"), and how many bars until the next part (yellow when it's two or fewer). It's on by itself on a device held by a drummer, and anyone can switch it on or off.
+**Big** in the **Chart | Big** switch at the top swaps the song list for three huge numbers: the tempo, the bar you're on in this part ("3/8"), and how many bars until the next part (yellow when it's two or fewer). It's on by itself on a device held by a drummer, and anyone can switch it on or off.
 
 ## Solo: just this device
 
-**With the band** at the top switches to **Solo: this device only**. Start, Stop and the song arrows then only work on your own device, from its own copy of the songs: for practising a song while the others tune, or when there's no server. Tap it again to rejoin the band. If the server drops off mid-song, a device switches to solo by itself and keeps playing (see [[For Drummers]]).
+**Solo** in the **With the band | Solo** switch at the top plays on this device only. Start, Stop and the song arrows then only work on your own device, from its own copy of the songs: for practising a song while the others tune, or when there's no server. Tap **With the band** to rejoin. If the server drops off mid-song, a device switches to solo by itself and keeps playing (see [[For Drummers]]). If it's gone before you start, a yellow line says so and the button reads **Start on this device**: it plays here, and rejoins the band once the server is back.
 
 ## Count-ins on screen
 
@@ -51,7 +51,7 @@ During a count-in the screen turns yellow and says which section it's counting i
 
 ## Your hints, up front
 
-The panel next to (or under) the big section name shows the hints for right now. Its **+ Hint** button adds a note to that section on the spot, handy at rehearsal ("we keep rushing here"). Yours come first, marked **For you**, then the ones for the whole band. Hints for other players stay out of the way ("+1 for other players"); tap that, or **Show everyone's hints**, to see them. Underneath, **Coming up** shows the next section's hints before you get there.
+The panel next to (or under) the big section name shows the hints for right now. Its **+ Hint** button adds a note to that section on the spot, handy at rehearsal ("we keep rushing here"). Yours come first, marked **For you**, then the ones for the whole band. Hints for other players stay out of the way ("+1 for other players"); tap that, or **Show everyone's hints**, to see them. When there's nothing for you in a section, the panel shrinks to one line ("No hints for you in Intro · 1 for others"). Every hint says who wrote it ("from Mia (Vocals)"), and one aimed at another player says who it's for ("For Sam"). Underneath, **Coming up** shows the next section's hints before you get there.
 
 The full song is listed below, and scrolls along with the band. On a phone, there's only room for what matters: where you are, what's next, and your hints.
 
@@ -61,7 +61,7 @@ On a laptop or a shared screen set to "Whole band", every hint shows, each label
 
 ## The click
 
-Each device can play its own metronome click, in time with everyone else. Tap **Click: tap to enable** once (browsers only allow sound after a tap), pick a sound and a volume. Nobody else hears your click unless you want them to. More in [[Metronome and Click Tracks]].
+Each device can play its own metronome click, in time with everyone else. Browsers only allow sound after a tap, so until this device has been tapped once a yellow **Tap here to turn on your click** bar sits above Start: tap it (or anywhere on the live view). Then pick a sound and a volume. Nobody else hears your click unless you want them to. More in [[Metronome and Click Tracks]].
 
 The click only plays while the device's screen is on and Barline is in front. Phones cut the connection to the server when the screen goes off, and a click that can't hear "stop" shouldn't keep going. Turn the screen back on and it picks the song up again.
 

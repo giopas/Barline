@@ -1368,3 +1368,157 @@ body.is-pocket .empty-actions .pocket-only { display: inline-block; }
 .ck-status { min-height: 1.4em; margin: 4px 0 0; font-size: 13px; color: var(--text-dim); }
 .ck-status.bad { color: var(--danger); }
 #ck-test.playing { background: var(--warn); color: #16181d; border-color: var(--warn); }
+
+/* =====================================================================
+   0.20: fixes from the UI review
+   ===================================================================== */
+
+/* native controls (sliders, checkboxes, scrollbars) in the app's own dark
+   colours instead of the browser's bright default blue */
+:root { color-scheme: dark; accent-color: var(--accent); }
+
+/* one icon set, drawn the same everywhere (no more emoji and text glyphs) */
+.icon-sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+.ic {
+  width: 1.15em; height: 1.15em; vertical-align: -0.2em; flex-shrink: 0; pointer-events: none;
+  fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.btn-icon { display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.btn-icon .ic { width: 15px; height: 15px; }
+.drag-handle { display: inline-flex; align-items: center; letter-spacing: 0; }
+.drag-handle .ic { width: 18px; height: 18px; }
+.dim-note .ic { width: 14px; height: 14px; }
+.print-save .ic { width: 18px; height: 18px; }
+
+/* the one main action on a page: filled */
+.btn-primary { background: var(--ok); border-color: var(--ok); color: #0d1a12; font-weight: 600; }
+.btn-primary:hover { background: #5fd49e; }
+
+/* Share: print, click track and export in one menu */
+details.menu { position: relative; display: inline-block; }
+details.menu > summary { list-style: none; display: inline-block; user-select: none; -webkit-user-select: none; }
+details.menu > summary::-webkit-details-marker { display: none; }
+details.menu > summary .ic:last-child { width: 0.95em; height: 0.95em; margin-left: 2px; transition: transform 0.15s; }
+details.menu[open] > summary .ic:last-child { transform: rotate(180deg); }
+details.menu[open] > summary { background: var(--accent); }
+.menu-list {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; min-width: 250px;
+  display: flex; flex-direction: column; padding: 4px;
+  background: var(--bg-panel); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+}
+.menu-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; text-align: left;
+  background: none; border: none; border-radius: 6px; color: var(--text);
+  padding: 9px 12px; font-size: 14px; cursor: pointer;
+}
+.menu-item:hover, .menu-item:focus-visible { background: var(--bg-card); }
+.menu-item .ic { color: var(--text-dim); }
+.menu-note { margin-left: auto; padding-left: 12px; color: var(--text-dim); font-size: 12px; white-space: nowrap; }
+body.is-pocket .menu-list:not(:has(.menu-item:not([data-server-only]))) { display: none; }
+
+/* Delete lives at the bottom of Advanced, away from everyday buttons */
+.danger-zone { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+.danger-zone .dim-note { margin-left: 0; font-size: 12px; color: var(--text-dim); }
+
+/* when the server is gone: one honest message (finding 3) */
+body.offline .main::before {
+  content: "Lost the server, reconnecting\2026 Your changes are kept here and sent when it's back. Don't reload this page until then.";
+}
+.toast-ok { border-color: var(--ok); }
+
+/* the live view, server gone (finding 1): the note sits where solo's does */
+.live-solo-note { display: flex; align-items: center; gap: 8px; }
+
+/* the click is locked until this device is tapped (finding 2) */
+.live-unlock {
+  flex-basis: 100%; display: flex; align-items: center; gap: 12px; text-align: left;
+  background: rgba(255, 209, 102, 0.12); border: 2px solid var(--warn); border-radius: 10px;
+  color: var(--warn); padding: 12px 16px; cursor: pointer; font-size: 17px;
+}
+.live-unlock .ic { width: 28px; height: 28px; }
+.live-unlock > span { display: flex; flex-direction: column; gap: 2px; }
+.live-unlock-sub { font-size: 13px; color: var(--text-dim); }
+.live-unlock.hidden { display: none; }
+.big-go, .big-stop { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+
+/* live: who Start reaches, and how the screen looks, as two clear switches (finding 9) */
+.live-seg { border-radius: 999px; flex-shrink: 0; }
+.live-seg button { padding: 5px 12px; font-size: 12px; white-space: nowrap; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; font-weight: 600; }
+#live-solo[aria-pressed="true"] { background: var(--warn); color: #241a00; }
+
+/* hints: who it's for, and who wrote it (finding 5) */
+.hint-who {
+  text-transform: none; letter-spacing: 0; font-size: 12px; font-weight: 600;
+  border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; align-self: center;
+}
+.hint-mine .hint-who { border-color: rgba(255, 209, 102, 0.6); }
+.hint-author { max-width: 170px; }
+
+/* an empty hints panel is one quiet line, not a card (finding 10) */
+.hints-now.empty { padding: 6px 8px 6px 14px; background: transparent; }
+.hints-empty-line { margin: 0; color: var(--text-dim); font-size: 14px; }
+.hints-empty-line .btn-link { font-size: inherit; }
+.hints-now-head .btn-small { white-space: nowrap; flex-shrink: 0; }
+
+/* the live strip's playhead: a tick at the top and bottom, so it never
+   crosses out the section's name (nice to have) */
+.playhead {
+  background: transparent; box-shadow: none;
+  border-top: 7px solid #fff; border-bottom: 7px solid #fff;
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.8));
+}
+.song-shape-block { white-space: nowrap; overflow: hidden; }
+
+/* setlist rows: the title gets the width; tempo, length and tags go under it (finding 8) */
+.setlist-song-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.setlist-song-meta .item-count { margin: 0; }
+@media (max-width: 520px) {
+  .setlist-songs .move-btn { display: none; }
+  .setlist-songs .tag-badges, .setlist-available .tag-badges { display: flex; }
+}
+
+/* click settings (finding 11) */
+.click-grid output.ck-val { margin-left: 4px; }
+#ck-reset { font-size: 13px; color: var(--text-dim); }
+#ck-reset:hover { color: var(--text); }
+.label-note { color: var(--text-dim); font-size: 11px; font-weight: 400; }
+
+/* touch screens: every control at least 44 by 44 (finding 4) */
+@media (pointer: coarse) {
+  .btn-icon { width: 44px; height: 44px; }
+  .btn-icon .ic { width: 18px; height: 18px; }
+  .btn, .btn-danger, .btn-small, .chip, .menu-item, .seg button, .tap-btn,
+  select, input[type="text"], input[type="number"], input[type="search"] { min-height: 44px; }
+  .btn, .btn-danger, .btn-small, .chip { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+  details.menu > summary.btn { display: inline-flex; }
+  .live-seg button { min-width: 56px; }
+  .tag-filter { gap: 6px; }
+  .tag-filter .chip { min-height: 36px; padding: 4px 12px; font-size: 12px; }
+  .song-tags .tag-chip { min-height: 44px; padding-right: 0; }
+  .tag-remove { min-width: 44px; min-height: 44px; margin: -8px 0; display: inline-flex; align-items: center; justify-content: center; }
+  .drag-handle { min-width: 44px; min-height: 44px; justify-content: center; margin: 0; padding: 0; }
+  .countin-chip { min-width: 44px; min-height: 44px; }
+  .live-controls { gap: 10px; }
+  .click-controls input[type="range"] { min-height: 44px; }
+}
+
+/* phones: a section's name keeps its row; its buttons go on the next one */
+@media (max-width: 520px) {
+  .section-card-head { flex-wrap: wrap; }
+  .section-card-head .section-label { flex: 1 1 calc(100% - 60px); }
+  .section-card-controls { flex-basis: 100%; justify-content: flex-end; }
+  .countin-remove { margin-left: auto; }
+}
+@media (max-width: 900px) {
+  .live-seg { order: 5; }
+}
+@media (max-width: 520px) {
+  .live-seg button { padding: 5px 10px; }
+}
+@media (max-width: 520px) {
+  .live-hint { flex-wrap: wrap; row-gap: 2px; }
+  .live-hint .hint-body { flex: 1 1 60%; }
+  .live-hint .hint-by { flex-basis: 100%; text-align: right; margin-left: 0; }
+}
