@@ -5,6 +5,68 @@ follows semver (MAJOR.MINOR.PATCH).
 
 ## [Unreleased]
 
+## [0.20.0] -- 2026-11-12
+
+Fixes from a review of the whole interface: the live view says when the
+server is gone, no player is left with a silent click, edits made offline
+are kept, and everything is easier to hit on a tablet or phone.
+
+### Fixed
+
+- **The live view says when the server is gone.** A yellow line ("Lost the
+  server, reconnecting... Start plays on this device only until it's
+  back"), the device count shows "–", and the button reads **Start on this
+  device**. Pressing it plays on this device and rejoins the band once the
+  server is back. Before, it still showed Start and "2 devices" as if
+  nothing had happened.
+- **No silent click for players who follow the drummer.** Browsers allow
+  sound only after a tap, and pressing Start was that tap, so a bassist
+  who never touched the screen heard nothing. Until a device has been
+  tapped, a big yellow **Tap here to turn on your click** bar sits above
+  Start; a tap anywhere on the live view does it too.
+- **Edits made while the server is out of reach are kept.** They're held
+  on the device and sent as soon as it's back ("Back in touch: your
+  changes are saved"), for songs, setlists and the band. Before, the edit
+  could be lost, with "Couldn't save: Failed to fetch" contradicting the
+  banner that promised edits would wait. Network errors now read "can't
+  reach the server" everywhere.
+- **Bigger controls on touch screens.** Every button, chip, switch and
+  field is at least 44 by 44 points on a tablet or phone (section buttons
+  were 24, a tag's remove cross 17 by 14, the live top bar 25 tall).
+  Mouse and keyboard screens keep the compact sizes.
+- Closing a dialog with its cross works however the icon is tapped.
+
+### Changed
+
+- **Hints say who they're for and who wrote them**: "For Sam" and "from Mia
+  (Vocals)", in the live view and the editor, instead of two bare names.
+- **The song page has one main button.** **Go live** is filled green;
+  **Paper chart**, **Click track** and **Export** are in a **Share** menu
+  (on a setlist too: **Print set**, **Practice tracks**, **Export**).
+  **Delete this song** moved to the bottom of **Advanced**, away from the
+  everyday buttons.
+- **The section strip stays readable on a phone**: a part's name, or its
+  short form when the block is narrow ("V1", "PC", "Ch"), never "Ver…".
+- **Setlists on a phone**: the title gets the row's width, with tempo,
+  length and tags under it; reorder by dragging the handle.
+- **Live view switches**: **With the band | Solo** and **Chart | Big** are
+  two clear switches (the old chips looked alike, and showed "on" in two
+  different colours).
+- **An empty hints panel is one quiet line**: "No hints for you in Intro ·
+  1 for others", with **+ Hint** beside it.
+- **Click settings** show each level as a percentage, the sliders use the
+  app's colours, and **Reset to defaults** is a quiet link instead of a
+  main button.
+- Wording: "Started on another device" instead of "Started by someone";
+  the "who's using this device" button reads **You: ...** everywhere; Add
+  songs says "120 if empty" and "optional" instead of showing 120 and 4:00
+  as if they were filled in.
+- **One icon set**, drawn the same on every platform, instead of emoji and
+  text symbols; every icon-only button has a name for screen readers.
+- The live strip's playhead is a tick at the top and bottom, so it no
+  longer crosses out the section's name.
+- Screenshots, GIFs and the wiki show the new controls.
+
 ## [0.19.0] -- 2026-11-10
 
 The count-in as a block of its own you can listen to, a click pattern per
