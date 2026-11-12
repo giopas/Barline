@@ -5,6 +5,13 @@ follows semver (MAJOR.MINOR.PATCH).
 
 ## [Unreleased]
 
+### Fixed
+
+- The pitch video wasn't made for 0.21.0: called by the release, the
+  workflow took the release for a push to `main` and skipped itself. It now
+  tells them apart, and pushing this fix makes the video and the video page
+  for 0.21.0.
+
 ## [0.21.0] -- 2026-11-12
 
 ### Added

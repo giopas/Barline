@@ -49,6 +49,15 @@ class PitchCI(unittest.TestCase):
                         '      - "tools/make_pitch_video.py"', '      - "screenshots/**"'):
             self.assertIn(trigger, text)
 
+    def test_a_release_run_is_never_mistaken_for_a_push_to_main(self):
+        # Called by release.yml, GITHUB_EVENT_NAME is the tag's "push": 0.21.0's
+        # video was skipped because the check looked at it.
+        text = (WF / "pitch.yml").read_text(encoding="utf-8")
+        line = next(l for l in text.splitlines() if "git tag --points-at HEAD" in l)
+        self.assertIn('-z "$IN_TAG"', line)
+        self.assertIn('"$GITHUB_REF" = "refs/heads/main"', line)
+        self.assertNotIn("GITHUB_EVENT_NAME", line)
+
     def test_pitch_republishes_the_pocket_site_on_the_release_tag(self):
         pitch = (WF / "pitch.yml").read_text(encoding="utf-8")
         self.assertIn('gh workflow run pocket.yml --repo "$GITHUB_REPOSITORY" --ref "$LATEST"', pitch)
