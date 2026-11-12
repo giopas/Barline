@@ -19,6 +19,7 @@ What it makes, from the repo's own screenshots and GIFs:
 Usage (from anywhere; paths are found from this file):
 
     python3 tools/make_pitch_video.py                 # dist/marketing/Barline_Pitch.mp4
+    python3 tools/make_pitch_video.py --poster screenshots/pitch-poster.png   # the README's picture
     python3 tools/make_pitch_video.py --stills        # also one PNG per slide + a PDF deck
     python3 tools/make_pitch_video.py --hd            # 1080x1920 instead of 720x1280
     python3 tools/make_pitch_video.py --only 5        # just slide 5, for a quick look
@@ -38,6 +39,11 @@ Optional, for a more natural voice: `pip install edge-tts`, then --tts edge
 Mac, better `say` voices are a free download: System Settings > Accessibility
 > Read & Speak (Spoken Content before macOS 26) > System voice menu > Manage
 Voices... (e.g. "Zoe (Premium)").
+
+Nobody needs to run this by hand any more: GitHub Actions makes the video and
+the deck for every release (.github/workflows/pitch.yml, with --tts edge
+--strict-voice) and attaches them to it, and the Pocket site shows them at
+giopas.github.io/Barline/video/. Run it here only to try out a change.
 
 To change what the video says, edit SLIDES below. Each slide's screenshots
 come from screenshots/ (retake them with tools/shots.py); a missing file is
@@ -76,6 +82,10 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SHOTS = os.path.join(ROOT, "screenshots")
 ICONS = os.path.join(ROOT, "packaging", "icons")
 OUT_DIR = os.path.join(ROOT, "dist", "marketing")
+# The video and the deck are named after this, here and on every GitHub
+# release (.github/workflows/pitch.yml attaches them; the README and the
+# video page link to them). Never committed.
+FILE_STEM = "Barline_Pitch"
 
 RATE = 22050          # same rate as Barline's click sounds and spoken count-in
 BPM = 120
@@ -601,9 +611,11 @@ def mix_soundtrack(total: float, plan: list, vo_wavs: list, music_on: bool, kit:
 
 FONT_FILES = {
     False: ["/System/Library/Fonts/Supplemental/Arial.ttf", "/Library/Fonts/Arial.ttf",
-            "C:/Windows/Fonts/arial.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"],
+            "C:/Windows/Fonts/arial.ttf", "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"],
     True: ["/System/Library/Fonts/Supplemental/Arial Bold.ttf", "/Library/Fonts/Arial Bold.ttf",
-           "C:/Windows/Fonts/arialbd.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"],
+           "C:/Windows/Fonts/arialbd.ttf", "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+           "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"],
 }
 _fonts: dict = {}
 
@@ -999,9 +1011,41 @@ def caption_track(text: str, start: float, length: float) -> list:
 # Main
 # ---------------------------------------------------------------------------
 
+def draw_poster(path: str, width: int = 1280, height: int = 720) -> None:
+    """The picture at the top of the README that opens the video page: the
+    icon, the name, the tagline, Barline's four beat dots and a play button.
+    No version and no screenshot on it, so it never needs to be made again."""
+    img = Image.new("RGB", (width, height), BG)
+    d = ImageDraw.Draw(img)
+    for y in range(height):                                   # a soft blue glow at the top
+        k = max(0.0, 1.0 - y / (height * 0.75)) * 0.14
+        d.line([(0, y), (width, y)], fill=tuple(int(BG[c] * (1 - k) + BLUE[c] * k) for c in range(3)))
+    cx = width // 2
+    icon_path = os.path.join(ICONS, "icon-256.png")
+    if os.path.exists(icon_path):
+        icon = Image.open(icon_path).convert("RGBA").resize((112, 112), Image.LANCZOS)
+        img.paste(icon, (cx - 56, 92), icon)
+
+    def centred(text, y, f, fill):
+        w = d.textlength(text, font=f)
+        d.text((cx - w / 2, y), text, font=f, fill=fill)
+    centred("Barline", 222, font(64, True), WHITE)
+    centred("Plan your set, and keep everyone in sync on stage", 302, font(30), DIM)
+    # the four beat dots, the first one lit, as in the app
+    for i in range(4):
+        x, y, r = cx - 66 + i * 44, 382, 9
+        d.ellipse([x - r, y - r, x + r, y + r], fill=GREEN if i == 0 else LINE)
+    cy, r = 508, 66
+    d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=BLUE)
+    d.polygon([(cx - 20, cy - 32), (cx - 20, cy + 32), (cx + 36, cy)], fill=WHITE)
+    centred("Watch the video", cy + r + 24, font(30, True), TEXT)
+    os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
+    img.save(path, optimize=True)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Make Barline's vertical pitch video (and stills).")
-    ap.add_argument("--out", default=os.path.join(OUT_DIR, "Barline_Pitch.mp4"), help="output .mp4")
+    ap.add_argument("--out", default=os.path.join(OUT_DIR, FILE_STEM + ".mp4"), help="output .mp4")
     ap.add_argument("--hd", action="store_true", help="1080x1920 instead of 720x1280")
     ap.add_argument("--tts", choices=("auto", "say", "espeak", "edge", "none"), default="auto",
                     help="voice engine (auto: macOS say, else espeak-ng)")
@@ -1014,7 +1058,18 @@ def main() -> None:
     ap.add_argument("--stills-only", action="store_true", help="only the PNGs and the PDF, no video")
     ap.add_argument("--only", type=int, metavar="N", help="render just slide N (1-based), for a quick check")
     ap.add_argument("--crf", type=int, help="H.264 quality, lower is better/bigger (default 24, 22 with --hd)")
+    ap.add_argument("--strict-voice", action="store_true",
+                    help="stop with an error when the asked voice is missing or any slide gets no voice "
+                         "(the pitch workflow uses it, so a video without a voice is never published)")
+    ap.add_argument("--poster", metavar="PNG",
+                    help="only draw the README picture that opens the video page (16:9, no version on it), "
+                         "and stop")
     args = ap.parse_args()
+
+    if args.poster:
+        draw_poster(args.poster)
+        print(f"Poster: {args.poster}")
+        return
 
     if args.list_voices:
         voices = say_voices()
@@ -1060,7 +1115,7 @@ def main() -> None:
             p = os.path.join(stills_dir, f"slide-{(args.only or i + 1):02d}.png")
             img.save(p)
             pages.append(img)
-        pdf = os.path.join(os.path.dirname(out_path), "Barline_Pitch.pdf")
+        pdf = os.path.join(os.path.dirname(out_path), FILE_STEM + ".pdf")
         pages[0].save(pdf, save_all=True, append_images=pages[1:], resolution=144)
         print(f"Stills: {stills_dir}/  ·  deck: {pdf}")
         if args.stills_only:
@@ -1068,6 +1123,8 @@ def main() -> None:
 
     with tempfile.TemporaryDirectory(prefix="barline-pitch-") as tmp:
         voice = Voice.choose(args.tts, args.voice, args.rate)
+        if args.strict_voice and args.tts not in ("auto", "none") and voice.engine != args.tts:
+            sys.exit(f"--strict-voice: asked for {args.tts}, got {voice.label}.")
         print(f"1/3 Voice-over with {voice.label}...")
         vo_wavs, vo_lens = [], []
         for i, sl in enumerate(slides):
@@ -1077,6 +1134,8 @@ def main() -> None:
                     vo_lens.append(w.getnframes() / float(w.getframerate()))
                 vo_wavs.append(wav)
             else:
+                if args.strict_voice:
+                    sys.exit(f"--strict-voice: slide {i + 1} got no voice.")
                 vo_lens.append(estimate_speech(sl["vo"]))
                 vo_wavs.append(None)
         plan = plan_timing(slides, vo_lens)

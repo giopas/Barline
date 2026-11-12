@@ -14,6 +14,16 @@ moving through the song together, each with its own click.
 *Called SSP until version 0.17.0; nothing changes for your songs. Coming
 from SSP? See [Renamed from SSP](#renamed-from-ssp).*
 
+### See it in two minutes
+
+[![Watch the video about Barline](screenshots/pitch-poster.png)](https://giopas.github.io/Barline/video/)
+
+The picture opens [a page that plays the video](https://giopas.github.io/Barline/video/)
+in the browser. To keep or send them on: the [video](https://github.com/giopas/Barline/releases/latest/download/Barline_Pitch.mp4)
+(vertical, made for a phone, so it drops straight into a band's WhatsApp chat)
+and the same [slides as a PDF](https://github.com/giopas/Barline/releases/latest/download/Barline_Pitch.pdf).
+Both are made again with every release.
+
 ![The editor: a song's sections, bars, tempo, count-ins and hints](screenshots/01-editor.png)
 
 ## What it does

@@ -74,6 +74,7 @@ self.addEventListener("activate", (ev) => {
 self.addEventListener("fetch", (ev) => {
   const req = ev.request;
   if (req.method !== "GET" || new URL(req.url).origin !== location.origin) return;
+  if (new URL(req.url).pathname.includes("/video/")) return; // the video page: straight from the network
   ev.respondWith(
     caches.match(req, { ignoreSearch: true }).then((hit) => {
       if (hit) return hit;

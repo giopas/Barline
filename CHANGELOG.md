@@ -5,6 +5,33 @@ follows semver (MAJOR.MINOR.PATCH).
 
 ## [Unreleased]
 
+## [0.21.0] -- 2026-11-12
+
+### Added
+
+- **The pitch video in the README.** A "See it in two minutes" picture near
+  the top opens [a page that plays the video](https://giopas.github.io/Barline/video/)
+  in the browser, next to Barline Pocket, with buttons for Pocket, the
+  app, the slides (PDF) and saving the video. The README also links the
+  video and the slides of the latest release, to keep or send on.
+- **Made by GitHub, for every release.** After a release is published, the
+  new `pitch` workflow makes the video (with the edge voice) and the slide
+  deck and attaches `Barline_Pitch.mp4` and `Barline_Pitch.pdf` to it, then
+  republishes the Pocket site with the video page. A change to the slides
+  or the screenshots on `main` refreshes them on the latest release. It
+  never publishes a video without a voice: three tries, then it keeps the
+  files it had (or lends the previous release's to a new one). Nothing is
+  made by hand or committed any more, and the in-app update check ignores
+  the two files.
+- `make_pitch_video.py --poster` draws the README picture (no version on it,
+  so it never needs redrawing) and `--strict-voice` stops instead of making
+  a silent video. On Linux it draws with Liberation Sans, Arial's twin.
+
+### Changed
+
+- Pocket's offline copy leaves the video page alone (it plays straight from
+  the network, as Safari needs for video).
+
 ## [0.20.1] -- 2026-11-12
 
 ### Fixed
