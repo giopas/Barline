@@ -98,12 +98,12 @@ class PocketRoundTrip(unittest.TestCase):
         card = pg.locator(".section-card").nth(1)
         card.locator(".add-hint").click()
         pg.keyboard.type("Pocket note: slide into the verse")
-        pg.wait_for_function("document.querySelector('.section-card:nth-child(2) .hint-author:not(.hidden)')")
+        card.locator(".hint-author:not(.hidden)").last.wait_for()  # this card, not a CSS position: the count-in block comes first
         self.assertEqual(card.locator(".hint-author:not(.hidden)").last.text_content(), "from Sam (Bass)")
         # ... with a voice memo (a file, as a phone without a microphone gives)
         clip = os.path.join(ROOT, "demo", "audio", sorted(os.listdir(os.path.join(ROOT, "demo", "audio")))[0])
         card.locator(".hint-file").last.set_input_files(clip)
-        pg.wait_for_function("document.querySelectorAll('.section-card:nth-child(2) .hint-play:not(.hidden)').length > 0")
+        card.locator(".hint-play:not(.hidden)").first.wait_for()
         bars = pg.locator(".section-bars").first
         bars.fill(str(song["sections"][0]["bars"] + 2))
         pg.wait_for_timeout(900)  # the save is debounced

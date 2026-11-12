@@ -5,6 +5,16 @@ follows semver (MAJOR.MINOR.PATCH).
 
 ## [Unreleased]
 
+## [0.20.1] -- 2026-11-12
+
+### Fixed
+
+- **Barline Pocket online is up to date again.** Its build had been
+  failing since 0.19.0 (so the online Pocket stayed on 0.18.1): a test
+  found a section by its position on the page, and the count-in block
+  added in 0.19.0 moved it. The app was fine; the test now looks at the
+  section it edited.
+
 ## [0.20.0] -- 2026-11-12
 
 Fixes from a review of the whole interface: the live view says when the
