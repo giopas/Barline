@@ -5,7 +5,19 @@ follows semver (MAJOR.MINOR.PATCH).
 
 ## [Unreleased]
 
+### Added
+
+- The video page has share buttons: the phone's own share sheet, Send on
+  WhatsApp and Copy the link. They send the page link, not the file, so in
+  WhatsApp the video plays in the browser with nothing to download. The
+  message also links Barline Pocket. When the video ends, a card offers
+  Barline Pocket ("Try it now, on this phone") and Watch again.
+
 ### Fixed
+
+- The video page's link preview had no picture in WhatsApp: its `og:image`
+  and `og:video` were relative URLs, which chat apps ignore. They are now
+  absolute.
 
 - The pitch video wasn't made for 0.21.0: called by the release, the
   workflow took the release for a push to `main` and skipped itself. It now

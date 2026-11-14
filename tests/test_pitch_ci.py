@@ -102,6 +102,16 @@ class PitchCI(unittest.TestCase):
         self.assertIn("playsinline", html)
         self.assertIn('href="../"', html)  # Pocket, one level up
 
+    def test_the_page_shares_well_on_whatsapp(self):
+        html = (ROOT / "tools" / "pitch_page.html").read_text(encoding="utf-8")
+        # chat apps skip relative og: URLs, and the link then comes with no picture
+        self.assertIn('property="og:image" content="https://giopas.github.io/Barline/video/slide-01.png"', html)
+        self.assertNotIn('property="og:image" content="slide-01.png"', html)
+        self.assertIn("https://wa.me/?text=", html)
+        self.assertIn("navigator.share", html)
+        self.assertIn('const POCKET = "https://giopas.github.io/Barline/";', html)
+        self.assertIn('video.addEventListener("ended"', html)  # Pocket when it ends
+
     def test_the_tool_names_its_files_after_the_stem(self):
         m = _tool()
         self.assertEqual(m.FILE_STEM, "Barline_Pitch")
